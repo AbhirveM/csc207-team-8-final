@@ -1,0 +1,48 @@
+# ---- Java ----
+*.class
+*.log
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ---- Maven ----
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ---- Gradle (in case anyone uses it) ----
+.gradle/
+build/
+
+# ---- IntelliJ IDEA / JetBrains ----
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# ---- Eclipse / VS Code (in case a teammate uses them) ----
+.classpath
+.project
+.settings/
+.vscode/
+bin/
+
+# ---- OS junk ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Environment / secrets ----
+.env
+*.local
