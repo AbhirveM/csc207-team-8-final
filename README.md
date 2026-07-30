@@ -8,12 +8,12 @@ A group final project for **CSC207: Software Design** (University of Toronto), b
 
 ## Team members
 
-| Name | GitHub | Role |
-|------|--------|------|
-| _TBD_ | [@username](https://github.com/) | _TBD_ |
-| _TBD_ | [@username](https://github.com/) | _TBD_ |
-| _TBD_ | [@username](https://github.com/) | _TBD_ |
-| _TBD_ | [@username](https://github.com/) | _TBD_ |
+| Name | GitHub                               | Role |
+|------|--------------------------------------|------|
+| _TBD_ | [@mouftz](https://github.com/mouftz) | _TBD_ |
+| _TBD_ | [@username](https://github.com/)     | _TBD_ |
+| _TBD_ | [@username](https://github.com/)     | _TBD_ |
+| _TBD_ | [@username](https://github.com/)     | _TBD_ |
 
 ## Tech stack
 
