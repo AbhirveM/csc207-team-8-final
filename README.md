@@ -19,6 +19,12 @@
 # Project Overview
 
 **Market Watchlist & Backtester** is a personal finance tool that allows users to evaluate stock trading strategies using historical market data.
+| Name | GitHub                               | Role |
+|------|--------------------------------------|------|
+| _TBD_ | [@mouftz](https://github.com/mouftz) | _TBD_ |
+| _TBD_ | [@Ratnabh](https://github.com/RatnabhK)| _TBD_ |
+| _TBD_ | [@username](https://github.com/)     | _TBD_ |
+| _TBD_ | [@username](https://github.com/)     | _TBD_ |
 
 Users can create a watchlist of stock tickers, retrieve historical price information, apply trading strategies, and analyze how those strategies would have performed in the past.
 
