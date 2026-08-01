@@ -11,7 +11,7 @@ A group final project for **CSC207: Software Design** (University of Toronto), b
 | Name | GitHub                               | Role |
 |------|--------------------------------------|------|
 | _TBD_ | [@mouftz](https://github.com/mouftz) | _TBD_ |
-| _TBD_ | [@username](https://github.com/)     | _TBD_ |
+| _TBD_ | [@Ratnabh](https://github.com/RatnabhK)| _TBD_ |
 | _TBD_ | [@username](https://github.com/)     | _TBD_ |
 | _TBD_ | [@username](https://github.com/)     | _TBD_ |
 
