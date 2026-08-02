@@ -73,6 +73,7 @@ class CompareStrategiesTest {
         interactor.execute(List.of(onlyResult));
 
         assertNotNull(presenter.lastSuccess);
+        assertNull(presenter.lastError);
         assertEquals(onlyResult, presenter.lastSuccess.best);
         assertEquals(1, presenter.lastSuccess.resultsRankedByReturn.size());
     }
@@ -88,6 +89,7 @@ class CompareStrategiesTest {
 
         interactor.execute(List.of(worse, better, middle));
 
+        assertNull(presenter.lastError);
         List<BacktestResult> ranked = presenter.lastSuccess.resultsRankedByReturn;
         assertEquals(3, ranked.size());
         assertEquals(better, ranked.get(0));
@@ -108,10 +110,14 @@ class CompareStrategiesTest {
         interactor.execute(List.of(tiedA, tiedB));
 
         assertNotNull(presenter.lastSuccess);
+        assertNull(presenter.lastError);
         List<BacktestResult> ranked = presenter.lastSuccess.resultsRankedByReturn;
         assertEquals(2, ranked.size());
-        assertTrue(ranked.contains(tiedA));
-        assertTrue(ranked.contains(tiedB));
+        // The sort is stable and reversing the comparator keeps ties comparing
+        // equal, so tied results must come back in the order they went in.
+        assertEquals(tiedA, ranked.get(0));
+        assertEquals(tiedB, ranked.get(1));
+        assertEquals(tiedA, presenter.lastSuccess.best);
         assertEquals(10.0, presenter.lastSuccess.best.getTotalReturn());
     }
 }
