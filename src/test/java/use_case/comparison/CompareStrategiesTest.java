@@ -108,6 +108,10 @@ class CompareStrategiesTest {
         interactor.execute(List.of(tiedA, tiedB));
 
         assertNotNull(presenter.lastSuccess);
+        List<BacktestResult> ranked = presenter.lastSuccess.resultsRankedByReturn;
+        assertEquals(2, ranked.size());
+        assertTrue(ranked.contains(tiedA));
+        assertTrue(ranked.contains(tiedB));
         assertEquals(10.0, presenter.lastSuccess.best.getTotalReturn());
     }
 }
