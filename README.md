@@ -1,4 +1,4 @@
-# Backtest Bandits — Market Watchlist & Backtester
+# MarketLens — Market Watchlist & Backtester
 
 ## Table of Contents
 
@@ -17,15 +17,6 @@
 ---
 
 # Project Overview
-
-**Market Watchlist & Backtester** is a personal finance tool that allows users to evaluate stock trading strategies using historical market data.
-| Name | GitHub                               | Role |
-|------|--------------------------------------|------|
-| _TBD_ | [@mouftz](https://github.com/mouftz) | _TBD_ |
-| _TBD_ | [@Ratnabh](https://github.com/RatnabhK)| _TBD_ |
-| _TBD_ | [@username](https://github.com/)     | _TBD_ |
-| _TBD_ | [@username](https://github.com/)     | _TBD_ |
-
 Users can create a watchlist of stock tickers, retrieve historical price information, apply trading strategies, and analyze how those strategies would have performed in the past.
 
 The purpose of this application is to help users understand and compare trading strategies through historical simulation without risking real money.
@@ -161,7 +152,7 @@ Users can close and reopen the application without losing their previous setup.
 
 Before running the project, install:
 
-- **Java 17 or higher** — [Eclipse Temurin (Adoptium) downloads](https://adoptium.net/) or `brew install openjdk@17` on macOS
+- **Java 17 or higher** — [Eclipse Temurin ( Adoptium) downloads](https://adoptium.net/) or `brew install openjdk@17` on macOS
 - **Apache Maven** — [Maven install guide](https://maven.apache.org/install.html), or `brew install maven` on macOS (Homebrew must be installed first: [brew.sh](https://brew.sh/))
 - **Git** — [git-scm.com/downloads](https://git-scm.com/downloads)
 
