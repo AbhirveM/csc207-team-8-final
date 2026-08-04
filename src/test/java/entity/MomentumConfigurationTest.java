@@ -64,4 +64,10 @@ class MomentumConfigurationTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new MomentumConfiguration(14, 70.0, 30.0));
     }
+
+    @Test
+    void rejectsRsiPeriodOfOne() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new MomentumConfiguration(1, 30.0, 70.0));
+    }
 }

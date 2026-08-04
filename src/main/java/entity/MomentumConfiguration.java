@@ -16,9 +16,9 @@ public class MomentumConfiguration implements Serializable {
     public MomentumConfiguration(int rsiPeriod,
                                  double buyThreshold,
                                  double sellThreshold) {
-        if (rsiPeriod <= 0) {
+        if (rsiPeriod <= 1) {
             throw new IllegalArgumentException(
-                    "RSI period must be positive");
+                    "RSI period must be greater than 1");
         }
 
         if (buyThreshold < 0 || buyThreshold > 100) {
