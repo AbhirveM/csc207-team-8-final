@@ -5,13 +5,13 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Generates BUY, SELL, or HOLD signals using the Relative Strength Index.
+ * Generates trading signals using the Relative Strength Index.
  */
-public class MomentumStrategy implements TradingStrategy {
+public class RSIMomentumStrategy implements TradingStrategy {
 
     private final MomentumConfiguration configuration;
 
-    public MomentumStrategy(MomentumConfiguration configuration) {
+    public RSIMomentumStrategy(MomentumConfiguration configuration) {
         this.configuration = Objects.requireNonNull(
                 configuration,
                 "Momentum configuration cannot be null");
@@ -19,15 +19,21 @@ public class MomentumStrategy implements TradingStrategy {
 
     @Override
     public String getName() {
-        return "Momentum RSI Strategy";
+        return "RSI Momentum Strategy";
     }
 
     @Override
     public List<TradingSignal> generateSignals(List<DailyPrice> prices) {
         Objects.requireNonNull(prices, "Prices cannot be null");
 
+        final int period = configuration.getPeriod();
+
+        if (prices.size() < period + 1) {
+            throw new IllegalArgumentException(
+                    "Insufficient price history for RSI calculation");
+        }
+
         final List<TradingSignal> signals = new ArrayList<>();
-        final int period = configuration.getRsiPeriod();
 
         for (int index = 0; index < prices.size(); index++) {
             final DailyPrice currentPrice = prices.get(index);
@@ -49,9 +55,9 @@ public class MomentumStrategy implements TradingStrategy {
         return signals;
     }
 
-    private double calculateRsi(List<DailyPrice> prices,
-                                int endIndex,
-                                int period) {
+    double calculateRsi(List<DailyPrice> prices,
+                        int endIndex,
+                        int period) {
         double totalGain = 0.0;
         double totalLoss = 0.0;
 
@@ -91,11 +97,11 @@ public class MomentumStrategy implements TradingStrategy {
     }
 
     private SignalType determineSignalType(double rsi) {
-        if (rsi <= configuration.getBuyThreshold()) {
+        if (rsi <= configuration.getOversoldThreshold()) {
             return SignalType.BUY;
         }
 
-        if (rsi >= configuration.getSellThreshold()) {
+        if (rsi >= configuration.getOverboughtThreshold()) {
             return SignalType.SELL;
         }
 

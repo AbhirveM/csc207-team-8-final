@@ -3,53 +3,53 @@ package entity;
 import java.io.Serializable;
 
 /**
- * Stores the configuration values used by the momentum RSI strategy.
+ * Stores configuration values for the RSI Momentum strategy.
  */
 public class MomentumConfiguration implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private final int rsiPeriod;
-    private final double buyThreshold;
-    private final double sellThreshold;
+    private final int period;
+    private final double oversoldThreshold;
+    private final double overboughtThreshold;
 
-    public MomentumConfiguration(int rsiPeriod,
-                                 double buyThreshold,
-                                 double sellThreshold) {
-        if (rsiPeriod <= 1) {
+    public MomentumConfiguration(int period,
+                                 double oversoldThreshold,
+                                 double overboughtThreshold) {
+        if (period <= 1) {
             throw new IllegalArgumentException(
                     "RSI period must be greater than 1");
         }
 
-        if (buyThreshold < 0 || buyThreshold > 100) {
+        if (oversoldThreshold < 0 || oversoldThreshold > 100) {
             throw new IllegalArgumentException(
-                    "Buy threshold must be between 0 and 100");
+                    "Oversold threshold must be between 0 and 100");
         }
 
-        if (sellThreshold < 0 || sellThreshold > 100) {
+        if (overboughtThreshold < 0 || overboughtThreshold > 100) {
             throw new IllegalArgumentException(
-                    "Sell threshold must be between 0 and 100");
+                    "Overbought threshold must be between 0 and 100");
         }
 
-        if (buyThreshold >= sellThreshold) {
+        if (oversoldThreshold >= overboughtThreshold) {
             throw new IllegalArgumentException(
-                    "Sell threshold must be greater than buy threshold");
+                    "Oversold threshold must be smaller than overbought threshold");
         }
 
-        this.rsiPeriod = rsiPeriod;
-        this.buyThreshold = buyThreshold;
-        this.sellThreshold = sellThreshold;
+        this.period = period;
+        this.oversoldThreshold = oversoldThreshold;
+        this.overboughtThreshold = overboughtThreshold;
     }
 
-    public int getRsiPeriod() {
-        return rsiPeriod;
+    public int getPeriod() {
+        return period;
     }
 
-    public double getBuyThreshold() {
-        return buyThreshold;
+    public double getOversoldThreshold() {
+        return oversoldThreshold;
     }
 
-    public double getSellThreshold() {
-        return sellThreshold;
+    public double getOverboughtThreshold() {
+        return overboughtThreshold;
     }
 }
