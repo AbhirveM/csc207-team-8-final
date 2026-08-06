@@ -1,14 +1,14 @@
 package use_case.watchlist;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
 import entity.DailyPrice;
 import entity.Stock;
 import entity.Ticker;
 import entity.Watchlist;
 import use_case.persistence.SaveWatchlist;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Adds a validated ticker to the watchlist along with its price history.
@@ -23,8 +23,16 @@ import java.util.Optional;
  *   <li>Fetch prices <em>before</em> mutating anything, so a provider failure can
  *       never leave a half-added ticker behind.</li>
  *   <li>Look up the company name, treating failure as cosmetic.</li>
+ *   <li>Build the {@code Stock}, which is where a malformed price series is
+ *       rejected - still before any mutation.</li>
  *   <li>Only then update the watchlist, store the prices, and save.</li>
  * </ol>
+ *
+ * <p>Nothing a collaborator can throw escapes {@link #execute}: provider failures
+ * arrive as a checked {@link MarketDataException} and {@code Stock}'s invariant
+ * violations as an unchecked {@code IllegalArgumentException}, and both are mapped to
+ * a {@link WatchlistFailure}. The caller is a {@code SwingWorker}, which would
+ * otherwise swallow the stack trace and leave the window silently unchanged.
  *
  * <p>This interactor depends only on interfaces it or its own layer declares
  * ({@link MarketDataGateway}, {@link StockRepository}, and the persistence feature's
@@ -53,20 +61,17 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
 
     @Override
     public void execute(AddTickerInputData inputData) {
-        final String rawSymbol = inputData.getRawSymbol();
-        final TickerSymbolValidator.Result validation = TickerSymbolValidator.validate(rawSymbol);
+        Objects.requireNonNull(inputData, "Input data cannot be null");
 
-        if (!validation.isValid()) {
-            presenter.prepareFailView(WatchlistFailure.from(validation.getReason(), rawSymbol));
+        final WatchlistInputSupport.Resolution resolution = WatchlistInputSupport.resolve(
+                inputData.getRawSymbol(), watchlist, WatchlistInputSupport.Membership.MUST_BE_ABSENT);
+
+        if (!resolution.isResolved()) {
+            presenter.prepareFailView(resolution.getFailure());
             return;
         }
 
-        final String symbol = validation.getSymbol();
-
-        if (watchlist.contains(new Ticker(symbol, null))) {
-            presenter.prepareFailView(new WatchlistFailure(WatchlistFailure.Kind.DUPLICATE, symbol));
-            return;
-        }
+        final String symbol = resolution.getSymbol();
 
         final List<DailyPrice> prices;
         try {
@@ -83,26 +88,66 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
          * and this endpoint is the first to be cut off when the request quota runs
          * out, so treating it as fatal would make the feature fail on symbols that
          * worked the day before.
+         *
+         * "" rather than null, matching AddTickerOutputData's single non-null
+         * companyName field: absence is expressed once, not twice.
          */
-        String companyName = null;
+        String companyName = "";
+
         try {
             final Optional<String> fetchedName = marketDataGateway.fetchCompanyName(symbol);
             if (fetchedName.isPresent() && !fetchedName.get().isBlank()) {
                 companyName = fetchedName.get();
             }
         }
-        catch (MarketDataException e) {
-            companyName = null;
+        catch (MarketDataException exception) {
+            /*
+             * The decision stands - a missing name never blocks the add - and the
+             * redundant "companyName = null" that used to sit here is gone: the field
+             * is already "".
+             *
+             * exception.getKind() is what would tell the user "the provider has no
+             * name for this symbol" apart from "we were rate-limited" - the same blank
+             * cell, very different advice. Carrying it needs one extra field on
+             * AddTickerOutputData, which is an orchestrator-owned contract file that
+             * this agent may not edit. The request, with the exact shape wanted, is
+             * filed in plan/handoffs/use-case-needs.md; the one-line change here is
+             * `companyNameFailureKind = exception.getKind();` plus a fifth constructor
+             * argument below.
+             */
+            companyName = "";
         }
 
+        /*
+         * Stock enforces the oldest-to-newest, no-duplicate-dates invariant in its
+         * constructor, and signals a violation with an unchecked
+         * IllegalArgumentException. That is a malformed provider response, not a
+         * programming error, so it is caught and mapped rather than allowed to escape
+         * execute and kill the SwingWorker that called it.
+         *
+         * Building the Stock before touching the watchlist is what keeps the
+         * fetch-before-mutate guarantee intact for this failure too: a rejected price
+         * series must not leave a ticker behind with no history.
+         */
+        final Stock stock;
         final Ticker ticker = new Ticker(symbol, companyName);
+
+        try {
+            stock = new Stock(ticker, prices);
+        }
+        catch (IllegalArgumentException exception) {
+            presenter.prepareFailView(
+                    new WatchlistFailure(WatchlistFailure.Kind.MALFORMED_RESPONSE, symbol));
+            return;
+        }
+
         watchlist.addTicker(ticker);
-        stockRepository.save(new Stock(ticker, prices));
+        stockRepository.save(stock);
         saveWatchlist.execute(watchlist);
 
         presenter.prepareSuccessView(new AddTickerOutputData(
                 symbol,
-                companyName == null ? "" : companyName,
+                companyName,
                 prices.size(),
                 WatchlistSnapshotFactory.build(watchlist, stockRepository, symbol)));
     }

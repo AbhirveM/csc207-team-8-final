@@ -1,13 +1,14 @@
 package use_case.watchlist;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
 import entity.DailyPrice;
 import entity.Stock;
 import entity.Ticker;
 import entity.Watchlist;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import entity.WatchlistEntry;
 
 /**
  * Re-fetches the price history for a ticker already on the watchlist.
@@ -39,25 +40,22 @@ public final class RefreshTickerInteractor implements RefreshTickerInputBoundary
 
     @Override
     public void execute(RefreshTickerInputData inputData) {
-        final String rawSymbol = inputData.getRawSymbol();
-        final TickerSymbolValidator.Result validation = TickerSymbolValidator.validate(rawSymbol);
-
-        if (!validation.isValid()) {
-            presenter.prepareFailView(WatchlistFailure.from(validation.getReason(), rawSymbol));
-            return;
-        }
-
-        final String symbol = validation.getSymbol();
+        Objects.requireNonNull(inputData, "Input data cannot be null");
 
         /*
-         * Guard before touching the provider, so refreshing something that was never
-         * added cannot spend a request from the daily quota.
+         * The membership guard runs before the provider is touched, so refreshing
+         * something that was never added cannot spend a request from the daily quota.
          */
-        if (!watchlist.contains(new Ticker(symbol, null))) {
-            presenter.prepareFailView(
-                    new WatchlistFailure(WatchlistFailure.Kind.NOT_ON_WATCHLIST, symbol));
+        final WatchlistInputSupport.Resolution resolution = WatchlistInputSupport.resolve(
+                inputData.getRawSymbol(), watchlist,
+                WatchlistInputSupport.Membership.MUST_BE_PRESENT);
+
+        if (!resolution.isResolved()) {
+            presenter.prepareFailView(resolution.getFailure());
             return;
         }
+
+        final String symbol = resolution.getSymbol();
 
         final List<DailyPrice> prices;
         try {
@@ -70,9 +68,25 @@ public final class RefreshTickerInteractor implements RefreshTickerInputBoundary
 
         // Keep whatever company name was already discovered for this ticker.
         final Optional<Stock> existing = stockRepository.findBySymbol(symbol);
-        final Stock refreshed = existing
-                .map(stock -> stock.withDailyPrices(prices))
-                .orElseGet(() -> new Stock(tickerFor(symbol), prices));
+        final Stock refreshed;
+
+        /*
+         * Stock rejects unsorted or duplicate dates with an unchecked
+         * IllegalArgumentException. Mapping it to MALFORMED_RESPONSE keeps the
+         * previously stored history in place - exactly the degrade-to-stale-but-usable
+         * behaviour this use case promises for a provider failure.
+         */
+        try {
+            refreshed = existing
+                    .map(stock -> stock.withDailyPrices(prices))
+                    .orElseGet(() -> new Stock(tickerFor(symbol), prices));
+        }
+        catch (IllegalArgumentException exception) {
+            presenter.prepareFailView(
+                    new WatchlistFailure(WatchlistFailure.Kind.MALFORMED_RESPONSE, symbol));
+            return;
+        }
+
         stockRepository.save(refreshed);
 
         presenter.prepareSuccessView(new RefreshTickerOutputData(
@@ -84,8 +98,8 @@ public final class RefreshTickerInteractor implements RefreshTickerInputBoundary
 
     /** Recovers the ticker from the watchlist so its company name is not lost. */
     private Ticker tickerFor(String symbol) {
-        return watchlist.findEntry(new Ticker(symbol, null))
-                .map(entry -> entry.getTicker())
-                .orElseGet(() -> new Ticker(symbol, null));
+        return watchlist.findEntry(WatchlistInputSupport.lookupKey(symbol))
+                .map(WatchlistEntry::getTicker)
+                .orElseGet(() -> WatchlistInputSupport.lookupKey(symbol));
     }
 }

@@ -1,10 +1,9 @@
 package use_case.watchlist;
 
-import entity.Ticker;
+import java.util.Objects;
+
 import entity.Watchlist;
 import use_case.persistence.SaveWatchlist;
-
-import java.util.Objects;
 
 /**
  * Removes a ticker, and its cached price history, from the watchlist.
@@ -31,24 +30,20 @@ public final class RemoveTickerInteractor implements RemoveTickerInputBoundary {
 
     @Override
     public void execute(RemoveTickerInputData inputData) {
-        final String rawSymbol = inputData.getRawSymbol();
-        final TickerSymbolValidator.Result validation = TickerSymbolValidator.validate(rawSymbol);
+        Objects.requireNonNull(inputData, "Input data cannot be null");
 
-        if (!validation.isValid()) {
-            presenter.prepareFailView(WatchlistFailure.from(validation.getReason(), rawSymbol));
+        final WatchlistInputSupport.Resolution resolution = WatchlistInputSupport.resolve(
+                inputData.getRawSymbol(), watchlist,
+                WatchlistInputSupport.Membership.MUST_BE_PRESENT);
+
+        if (!resolution.isResolved()) {
+            presenter.prepareFailView(resolution.getFailure());
             return;
         }
 
-        final String symbol = validation.getSymbol();
-        final Ticker ticker = new Ticker(symbol, null);
+        final String symbol = resolution.getSymbol();
 
-        if (!watchlist.contains(ticker)) {
-            presenter.prepareFailView(
-                    new WatchlistFailure(WatchlistFailure.Kind.NOT_ON_WATCHLIST, symbol));
-            return;
-        }
-
-        watchlist.removeTicker(ticker);
+        watchlist.removeTicker(WatchlistInputSupport.lookupKey(symbol));
         stockRepository.remove(symbol);
         saveWatchlist.execute(watchlist);
 
