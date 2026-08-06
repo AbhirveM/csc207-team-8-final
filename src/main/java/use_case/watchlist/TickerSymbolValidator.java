@@ -1,6 +1,7 @@
 package use_case.watchlist;
 
 import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
@@ -82,9 +83,8 @@ public final class TickerSymbolValidator {
             return Result.invalid(Reason.BLANK);
         }
 
-        final String normalized = WHITESPACE.matcher(rawInput.strip())
-                .replaceAll("")
-                .toUpperCase(Locale.ROOT);
+        final String normalized = normalizeKey(
+                WHITESPACE.matcher(rawInput.strip()).replaceAll(""));
 
         if (normalized.isEmpty()) {
             return Result.invalid(Reason.BLANK);
@@ -103,5 +103,34 @@ public final class TickerSymbolValidator {
         }
 
         return Result.valid(normalized);
+    }
+
+    /**
+     * Folds a symbol to the canonical form used as a map or cache key.
+     *
+     * <p>This is the case-folding half of {@link #validate}, exposed on its own because
+     * anything that stores data <em>per symbol</em> - the stock repository, the
+     * market-data cache, the offline fake - has to agree with the validator on what
+     * makes two symbols the same, or a symbol added in one case is invisible when
+     * looked up in another.
+     *
+     * <p><strong>{@link Locale#ROOT}, never the default locale.</strong> On a
+     * Turkish-locale JVM {@code "titan".toUpperCase()} is {@code "TİTAN"} - a dotted
+     * capital I - so {@code "titan"} and {@code "TITAN"} would land on two different
+     * cache keys and the same holding would be fetched, and paid for, twice. Ticker
+     * symbols are locale-independent identifiers, so the locale-independent mapping is
+     * the correct one.
+     *
+     * <p>Unlike {@link #validate} this does no validating and strips no whitespace: it
+     * folds case and nothing else, so it is safe to apply to a symbol that has already
+     * been validated without changing it a second time.
+     *
+     * @param symbol an already-validated symbol; must be non-null
+     * @return the symbol upper-cased under {@code Locale.ROOT}; never null
+     * @throws NullPointerException if {@code symbol} is null
+     */
+    public static String normalizeKey(String symbol) {
+        Objects.requireNonNull(symbol, "Symbol cannot be null");
+        return symbol.toUpperCase(Locale.ROOT);
     }
 }
