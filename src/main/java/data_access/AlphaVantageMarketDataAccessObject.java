@@ -143,9 +143,14 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
      * the order the keys happen to arrive in would produce a price list that violates
      * the oldest-to-newest contract intermittently rather than reliably.
      *
+     * <p>The result is <strong>unmodifiable</strong>. {@link CachingMarketDataGateway}
+     * stores exactly the list it is handed and returns that same reference on every hit,
+     * so a caller that sorted or cleared a live {@code ArrayList} would silently corrupt
+     * the cache for every subsequent caller.
+     *
      * @param symbol the symbol being parsed, for error reporting
      * @param json   the raw response body
-     * @return the prices, oldest to newest
+     * @return the prices, oldest to newest; unmodifiable
      * @throws MarketDataException if the response reports an error or cannot be parsed
      */
     static List<DailyPrice> parseDailyPrices(String symbol, String json) throws MarketDataException {
@@ -187,7 +192,7 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
         }
 
         prices.sort(Comparator.comparing(DailyPrice::getDate));
-        return prices;
+        return List.copyOf(prices);
     }
 
     /**

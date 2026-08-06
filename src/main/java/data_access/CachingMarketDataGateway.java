@@ -104,9 +104,22 @@ public class CachingMarketDataGateway implements MarketDataGateway {
         return priceCache.size();
     }
 
+    /**
+     * Caches and returns one immutable copy of a delegate's result.
+     *
+     * <p>The copy is taken here as well as in the delegate because this decorator wraps
+     * any {@link MarketDataGateway}, not only ones that already return immutable lists.
+     * The stored and returned references are the same object on purpose - it just cannot
+     * be mutated, so sharing it is safe.
+     *
+     * @param key    the normalized cache key
+     * @param prices the freshly fetched prices
+     * @return the cached, unmodifiable list
+     */
     private List<DailyPrice> storeAndReturn(String key, List<DailyPrice> prices) {
-        priceCache.put(key, new CacheEntry(prices, clock.instant()));
-        return prices;
+        final List<DailyPrice> immutable = List.copyOf(prices);
+        priceCache.put(key, new CacheEntry(immutable, clock.instant()));
+        return immutable;
     }
 
     private boolean isExpired(CacheEntry entry) {

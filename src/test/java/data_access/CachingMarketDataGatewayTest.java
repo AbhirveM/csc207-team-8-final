@@ -4,6 +4,7 @@ import entity.DailyPrice;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import use_case.watchlist.MarketDataException;
+import use_case.watchlist.MarketDataGateway;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -11,10 +12,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -114,16 +116,66 @@ class CachingMarketDataGatewayTest {
 
     @Test
     void aFreshReadReplacesTheCachedValue() throws Exception {
-        List<DailyPrice> shortSeries = List.of(
+        final List<DailyPrice> shortSeries = List.of(
                 new DailyPrice(LocalDate.of(2026, 8, 5), 1, 1, 1, 1, 1L));
         delegate.putPrices("AAPL", shortSeries);
 
-        List<DailyPrice> refreshed = gateway.fetchDailyPricesFresh("AAPL");
-        List<DailyPrice> cached = gateway.fetchDailyPrices("AAPL");
+        final List<DailyPrice> refreshed = gateway.fetchDailyPricesFresh("AAPL");
+        final List<DailyPrice> cached = gateway.fetchDailyPrices("AAPL");
 
         assertEquals(1, refreshed.size());
-        assertSame(refreshed, cached, "The cached copy should be the refreshed one");
+        assertEquals(refreshed, cached, "The cached copy should hold the refreshed contents");
         assertEquals(1, delegate.getPriceCallCount("AAPL"), "The follow-up read should be cached");
+    }
+
+    /**
+     * Every hit hands out the same reference, so a caller that could sort or clear it
+     * would corrupt the cache for everyone after them. The list must be unmodifiable.
+     */
+    @Test
+    void cachedPriceListsAreUnmodifiable() throws Exception {
+        final DailyPrice extra = new DailyPrice(LocalDate.of(2026, 8, 6), 1, 1, 1, 1, 1L);
+
+        final List<DailyPrice> fromCacheMiss = gateway.fetchDailyPrices("AAPL");
+        final List<DailyPrice> fromCacheHit = gateway.fetchDailyPrices("AAPL");
+        final List<DailyPrice> fromFreshRead = gateway.fetchDailyPricesFresh("AAPL");
+
+        for (final List<DailyPrice> result : List.of(fromCacheMiss, fromCacheHit, fromFreshRead)) {
+            assertThrows(UnsupportedOperationException.class, () -> result.add(extra));
+            assertThrows(UnsupportedOperationException.class, result::clear);
+        }
+    }
+
+    /**
+     * The delegate here returns a live ArrayList, as any third-party gateway might. The
+     * decorator must copy on the way in rather than aliasing whatever it was handed.
+     */
+    @Test
+    void aMutableDelegateResultIsCopiedBeforeItIsCached() throws Exception {
+        final List<DailyPrice> mutableSource = new ArrayList<>(List.of(
+                new DailyPrice(LocalDate.of(2026, 8, 4), 1, 1, 1, 1, 1L),
+                new DailyPrice(LocalDate.of(2026, 8, 5), 2, 2, 2, 2, 2L)));
+
+        final MarketDataGateway mutableDelegate = new MarketDataGateway() {
+            @Override
+            public List<DailyPrice> fetchDailyPrices(String normalizedSymbol) {
+                return mutableSource;
+            }
+
+            @Override
+            public Optional<String> fetchCompanyName(String normalizedSymbol) {
+                return Optional.empty();
+            }
+        };
+        final CachingMarketDataGateway wrapper =
+                new CachingMarketDataGateway(mutableDelegate, Duration.ofMinutes(15), clock);
+
+        final List<DailyPrice> first = wrapper.fetchDailyPrices("AAPL");
+        mutableSource.clear();
+
+        assertEquals(2, first.size(), "The returned list must not alias the delegate's");
+        assertEquals(2, wrapper.fetchDailyPrices("AAPL").size(),
+                "The cached list must not alias the delegate's");
     }
 
     /** A transient failure must not lock the user out until an entry expires. */
