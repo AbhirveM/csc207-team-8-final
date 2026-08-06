@@ -92,9 +92,31 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
             companyName = null;
         }
 
+        /*
+         * Stock enforces the oldest-to-newest, no-duplicate-dates invariant in its
+         * constructor, and signals a violation with an unchecked
+         * IllegalArgumentException. That is a malformed provider response, not a
+         * programming error, so it is caught and mapped rather than allowed to escape
+         * execute and kill the SwingWorker that called it.
+         *
+         * Building the Stock before touching the watchlist is what keeps the
+         * fetch-before-mutate guarantee intact for this failure too: a rejected price
+         * series must not leave a ticker behind with no history.
+         */
+        final Stock stock;
         final Ticker ticker = new Ticker(symbol, companyName);
+
+        try {
+            stock = new Stock(ticker, prices);
+        }
+        catch (IllegalArgumentException exception) {
+            presenter.prepareFailView(
+                    new WatchlistFailure(WatchlistFailure.Kind.MALFORMED_RESPONSE, symbol));
+            return;
+        }
+
         watchlist.addTicker(ticker);
-        stockRepository.save(new Stock(ticker, prices));
+        stockRepository.save(stock);
         saveWatchlist.execute(watchlist);
 
         presenter.prepareSuccessView(new AddTickerOutputData(

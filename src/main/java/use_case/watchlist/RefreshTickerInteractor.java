@@ -68,9 +68,25 @@ public final class RefreshTickerInteractor implements RefreshTickerInputBoundary
 
         // Keep whatever company name was already discovered for this ticker.
         final Optional<Stock> existing = stockRepository.findBySymbol(symbol);
-        final Stock refreshed = existing
-                .map(stock -> stock.withDailyPrices(prices))
-                .orElseGet(() -> new Stock(tickerFor(symbol), prices));
+        final Stock refreshed;
+
+        /*
+         * Stock rejects unsorted or duplicate dates with an unchecked
+         * IllegalArgumentException. Mapping it to MALFORMED_RESPONSE keeps the
+         * previously stored history in place - exactly the degrade-to-stale-but-usable
+         * behaviour this use case promises for a provider failure.
+         */
+        try {
+            refreshed = existing
+                    .map(stock -> stock.withDailyPrices(prices))
+                    .orElseGet(() -> new Stock(tickerFor(symbol), prices));
+        }
+        catch (IllegalArgumentException exception) {
+            presenter.prepareFailView(
+                    new WatchlistFailure(WatchlistFailure.Kind.MALFORMED_RESPONSE, symbol));
+            return;
+        }
+
         stockRepository.save(refreshed);
 
         presenter.prepareSuccessView(new RefreshTickerOutputData(
