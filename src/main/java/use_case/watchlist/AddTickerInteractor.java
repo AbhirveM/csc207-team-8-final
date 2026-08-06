@@ -1,14 +1,14 @@
 package use_case.watchlist;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
 import entity.DailyPrice;
 import entity.Stock;
 import entity.Ticker;
 import entity.Watchlist;
 import use_case.persistence.SaveWatchlist;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Adds a validated ticker to the watchlist along with its price history.
@@ -53,20 +53,15 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
 
     @Override
     public void execute(AddTickerInputData inputData) {
-        final String rawSymbol = inputData.getRawSymbol();
-        final TickerSymbolValidator.Result validation = TickerSymbolValidator.validate(rawSymbol);
+        final WatchlistInputSupport.Resolution resolution = WatchlistInputSupport.resolve(
+                inputData.getRawSymbol(), watchlist, WatchlistInputSupport.Membership.MUST_BE_ABSENT);
 
-        if (!validation.isValid()) {
-            presenter.prepareFailView(WatchlistFailure.from(validation.getReason(), rawSymbol));
+        if (!resolution.isResolved()) {
+            presenter.prepareFailView(resolution.getFailure());
             return;
         }
 
-        final String symbol = validation.getSymbol();
-
-        if (watchlist.contains(new Ticker(symbol, null))) {
-            presenter.prepareFailView(new WatchlistFailure(WatchlistFailure.Kind.DUPLICATE, symbol));
-            return;
-        }
+        final String symbol = resolution.getSymbol();
 
         final List<DailyPrice> prices;
         try {
