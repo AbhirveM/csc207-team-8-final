@@ -93,6 +93,38 @@ class InMemoryStockRepositoryTest {
         assertThrows(UnsupportedOperationException.class, () -> all.add(stock("NVDA", 1)));
     }
 
+    /**
+     * Nothing in Member 1's watchlist slice calls findAll - it is declared by
+     * StockRepository as the hand-off surface for Members 2 and 3's backtesting, so it
+     * is kept and tested rather than deleted as dead code.
+     */
+    @Test
+    void findAllIsEmptyForAFreshRepository() {
+        assertEquals(List.of(), repository.findAll());
+    }
+
+    @Test
+    void findAllReflectsRemovalsAndIsCaseInsensitiveAboutThem() {
+        repository.save(stock("AAPL", 1));
+        repository.save(stock("MSFT", 1));
+
+        repository.remove("aapl");
+
+        assertEquals(List.of("MSFT"), repository.findAll().stream().map(Stock::getSymbol).toList());
+    }
+
+    /** The returned list is a snapshot: later saves must not appear in an earlier one. */
+    @Test
+    void findAllReturnsASnapshotRatherThanALiveView() {
+        repository.save(stock("AAPL", 1));
+        final List<Stock> snapshot = repository.findAll();
+
+        repository.save(stock("MSFT", 1));
+
+        assertEquals(1, snapshot.size());
+        assertEquals(2, repository.findAll().size());
+    }
+
     @Test
     void saveRejectsNull() {
         assertThrows(NullPointerException.class, () -> repository.save(null));

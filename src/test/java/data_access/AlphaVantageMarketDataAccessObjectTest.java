@@ -171,6 +171,20 @@ class AlphaVantageMarketDataAccessObjectTest {
                 client.getLastRequestedUrl());
     }
 
+    /**
+     * The stub is the whole reason the suite never touches the network, so its own
+     * failure modes have to be legible. Asking for a URL before any request was made is
+     * a test bug, and it must say so rather than throwing IndexOutOfBoundsException.
+     */
+    @Test
+    void theStubExplainsItselfWhenNoRequestWasMade() {
+        final StubHttpJsonClient client = new StubHttpJsonClient();
+
+        assertTrue(client.getRequestedUrls().isEmpty());
+        assertTrue(assertThrows(AssertionError.class, client::getLastRequestedUrl)
+                .getMessage().contains("No request was made"));
+    }
+
     // --- Symbol contract (MarketDataGateway, orchestrator 5.1) -----------------
 
     @Test
