@@ -70,4 +70,18 @@ class MomentumConfigurationTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new MomentumConfiguration(14, 70.0, 30.0));
     }
+
+    @Test
+    void rejectsNaNOversoldThreshold() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new MomentumConfiguration(
+                        14, Double.NaN, 70.0));
+    }
+
+    @Test
+    void rejectsNaNOverboughtThreshold() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new MomentumConfiguration(
+                        14, 30.0, Double.NaN));
+    }
 }
