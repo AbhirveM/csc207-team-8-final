@@ -20,9 +20,9 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void sampleDataProvidesPricesAndNamesForTheKnownSymbols() throws Exception {
-        InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
 
-        for (String symbol : List.of("AAPL", "MSFT", "TSLA")) {
+        for (final String symbol : List.of("AAPL", "MSFT", "TSLA")) {
             assertEquals(InMemoryMarketDataGateway.SAMPLE_PRICE_COUNT,
                     gateway.fetchDailyPrices(symbol).size(), symbol);
             assertTrue(gateway.fetchCompanyName(symbol).isPresent(), symbol);
@@ -31,7 +31,7 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void lookupIsCaseInsensitive() throws Exception {
-        InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
 
         assertEquals(InMemoryMarketDataGateway.SAMPLE_PRICE_COUNT,
                 gateway.fetchDailyPrices("aapl").size());
@@ -39,16 +39,16 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void unknownSymbolIsReportedAsInvalid() {
-        InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
 
-        MarketDataException thrown = assertThrows(MarketDataException.class,
+        final MarketDataException thrown = assertThrows(MarketDataException.class,
                 () -> gateway.fetchDailyPrices("ZZZZ"));
         assertEquals(MarketDataException.Kind.INVALID_SYMBOL, thrown.getKind());
     }
 
     @Test
     void unknownCompanyNameIsEmptyRatherThanAFailure() throws Exception {
-        InMemoryMarketDataGateway gateway = new InMemoryMarketDataGateway()
+        final InMemoryMarketDataGateway gateway = new InMemoryMarketDataGateway()
                 .putPrices("VOO", InMemoryMarketDataGateway.syntheticSeries(
                         "VOO", LocalDate.of(2026, 8, 5), 10));
 
@@ -88,9 +88,9 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void configuredFailuresAreThrown() {
-        MarketDataException quota = new MarketDataException(
+        final MarketDataException quota = new MarketDataException(
                 MarketDataException.Kind.RATE_LIMIT, "AAPL", "quota used up");
-        InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData()
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData()
                 .failPricesWith("AAPL", quota)
                 .failCompanyNameWith("MSFT", quota);
 
@@ -102,7 +102,7 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void callCountsAreRecordedPerSymbol() throws Exception {
-        InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
 
         gateway.fetchDailyPrices("AAPL");
         gateway.fetchDailyPrices("aapl");
@@ -115,7 +115,7 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void fetchDailyPricesFreshDelegatesWhenNotCaching() throws Exception {
-        InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
 
         assertEquals(InMemoryMarketDataGateway.SAMPLE_PRICE_COUNT,
                 gateway.fetchDailyPricesFresh("AAPL").size());
@@ -124,7 +124,7 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void syntheticSeriesIsOldestToNewestAndSkipsWeekends() {
-        List<DailyPrice> prices = InMemoryMarketDataGateway.syntheticSeries(
+        final List<DailyPrice> prices = InMemoryMarketDataGateway.syntheticSeries(
                 "AAPL", InMemoryMarketDataGateway.SAMPLE_LAST_TRADING_DAY, 60);
 
         assertEquals(60, prices.size());
@@ -132,7 +132,7 @@ class InMemoryMarketDataGatewayTest {
                 prices.get(prices.size() - 1).getDate());
 
         for (int index = 0; index < prices.size(); index++) {
-            DayOfWeek day = prices.get(index).getDate().getDayOfWeek();
+            final DayOfWeek day = prices.get(index).getDate().getDayOfWeek();
             assertTrue(day != DayOfWeek.SATURDAY && day != DayOfWeek.SUNDAY,
                     "Weekend date at index " + index);
             if (index > 0) {
@@ -144,7 +144,7 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void syntheticSeriesIsDeterministicAndVariesBySymbol() {
-        LocalDate lastDay = LocalDate.of(2026, 8, 5);
+        final LocalDate lastDay = LocalDate.of(2026, 8, 5);
 
         assertEquals(InMemoryMarketDataGateway.syntheticSeries("AAPL", lastDay, 20),
                 InMemoryMarketDataGateway.syntheticSeries("AAPL", lastDay, 20));
@@ -155,11 +155,35 @@ class InMemoryMarketDataGatewayTest {
 
     @Test
     void syntheticSeriesHasHighLowBoundingOpenAndClose() {
-        for (DailyPrice price : InMemoryMarketDataGateway.syntheticSeries(
+        for (final DailyPrice price : InMemoryMarketDataGateway.syntheticSeries(
                 "MSFT", LocalDate.of(2026, 8, 5), 40)) {
             assertTrue(price.getHigh() >= Math.max(price.getOpen(), price.getClose()));
             assertTrue(price.getLow() <= Math.min(price.getOpen(), price.getClose()));
             assertTrue(price.getVolume() > 0);
+        }
+    }
+
+    /**
+     * The Phase 5 hand-off test runs at the default 5/20 windows, not the 10/50 pair
+     * checked below, so the series has to oscillate fast enough for the short average to
+     * cross the long one at that shorter pair too - for every sample symbol.
+     */
+    @Test
+    void sampleDataCrossesAtTheDefaultFiveAndTwentyWindows() throws Exception {
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+
+        for (final String symbol : List.of("AAPL", "MSFT", "TSLA")) {
+            final List<TradingSignal> signals = new MovingAverageCrossoverStrategy(
+                    new MovingAverageConfiguration(5, 20))
+                    .generateSignals(gateway.fetchDailyPrices(symbol));
+
+            final long buys = signals.stream()
+                    .filter(signal -> signal.getSignalType() == SignalType.BUY).count();
+            final long sells = signals.stream()
+                    .filter(signal -> signal.getSignalType() == SignalType.SELL).count();
+
+            assertTrue(buys > 0, symbol + " produced no BUY signal at 5/20");
+            assertTrue(sells > 0, symbol + " produced no SELL signal at 5/20");
         }
     }
 
@@ -170,14 +194,14 @@ class InMemoryMarketDataGatewayTest {
      */
     @Test
     void sampleDataProducesRealBuyAndSellSignals() throws Exception {
-        InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
-        List<DailyPrice> prices = gateway.fetchDailyPrices("AAPL");
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+        final List<DailyPrice> prices = gateway.fetchDailyPrices("AAPL");
 
-        List<TradingSignal> signals = new MovingAverageCrossoverStrategy(
+        final List<TradingSignal> signals = new MovingAverageCrossoverStrategy(
                 new MovingAverageConfiguration(10, 50)).generateSignals(prices);
 
-        long buys = signals.stream().filter(s -> s.getSignalType() == SignalType.BUY).count();
-        long sells = signals.stream().filter(s -> s.getSignalType() == SignalType.SELL).count();
+        final long buys = signals.stream().filter(s -> s.getSignalType() == SignalType.BUY).count();
+        final long sells = signals.stream().filter(s -> s.getSignalType() == SignalType.SELL).count();
 
         assertEquals(prices.size(), signals.size());
         assertTrue(buys > 0, "Expected at least one BUY signal, got " + buys);

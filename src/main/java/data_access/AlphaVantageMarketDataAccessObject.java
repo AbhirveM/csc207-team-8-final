@@ -65,6 +65,16 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
         return Optional.of(key.strip());
     }
 
+    /**
+     * Builds a data access object that talks to the real provider over HTTPS.
+     *
+     * <p>This is the constructor the composition root uses, paired with
+     * {@link #apiKeyFromEnvironment()}.
+     *
+     * @param apiKey the provider key; must be non-null and non-blank
+     * @throws NullPointerException     if {@code apiKey} is null
+     * @throws IllegalArgumentException if {@code apiKey} is blank
+     */
     public AlphaVantageMarketDataAccessObject(String apiKey) {
         this(apiKey, new JdkHttpJsonClient());
     }
@@ -72,12 +82,22 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
     /**
      * Constructor used by tests to supply canned responses instead of real HTTP.
      *
-     * @param apiKey     the provider key
+     * <p>A blank key is rejected here rather than sent: the provider would answer with
+     * an "Error Message" that this class maps to {@code MISSING_API_KEY}, which is a
+     * confusing round-trip for a fault that is entirely local and costs quota to learn.
+     *
+     * @param apiKey     the provider key; must be non-null and non-blank
      * @param httpClient the transport to use
+     * @throws NullPointerException     if either argument is null
+     * @throws IllegalArgumentException if {@code apiKey} is blank
      */
     AlphaVantageMarketDataAccessObject(String apiKey, HttpJsonClient httpClient) {
         this.apiKey = Objects.requireNonNull(apiKey, "API key cannot be null");
         this.httpClient = Objects.requireNonNull(httpClient, "HTTP client cannot be null");
+
+        if (apiKey.isBlank()) {
+            throw new IllegalArgumentException("API key cannot be blank");
+        }
     }
 
     /**

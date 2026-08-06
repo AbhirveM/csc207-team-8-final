@@ -3,6 +3,7 @@ package data_access;
 import entity.DailyPrice;
 import org.junit.jupiter.api.Test;
 import use_case.watchlist.MarketDataException;
+import use_case.watchlist.MarketDataGateway;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,7 +27,7 @@ class AlphaVantageMarketDataAccessObjectTest {
     }
 
     private static MarketDataException.Kind dailyFailureKind(String fixture) {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read(fixture));
 
         return assertThrows(MarketDataException.class,
@@ -36,10 +38,10 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void parsesDailyPricesOldestToNewest() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
 
-        List<DailyPrice> prices = withResponses(client).fetchDailyPrices("AAPL");
+        final List<DailyPrice> prices = withResponses(client).fetchDailyPrices("AAPL");
 
         assertEquals(5, prices.size());
         assertEquals(LocalDate.of(2026, 7, 30), prices.get(0).getDate());
@@ -53,10 +55,10 @@ class AlphaVantageMarketDataAccessObjectTest {
      */
     @Test
     void datesStrictlyIncreaseEvenThoughTheResponseIsNewestFirst() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
 
-        List<DailyPrice> prices = withResponses(client).fetchDailyPrices("AAPL");
+        final List<DailyPrice> prices = withResponses(client).fetchDailyPrices("AAPL");
 
         for (int index = 1; index < prices.size(); index++) {
             assertTrue(prices.get(index - 1).getDate().isBefore(prices.get(index).getDate()),
@@ -66,10 +68,10 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void parsesAllFieldsOfARow() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
 
-        DailyPrice newest = withResponses(client).fetchDailyPrices("AAPL").get(4);
+        final DailyPrice newest = withResponses(client).fetchDailyPrices("AAPL").get(4);
 
         assertEquals(265.10, newest.getOpen(), 1e-9);
         assertEquals(267.55, newest.getHigh(), 1e-9);
@@ -81,10 +83,10 @@ class AlphaVantageMarketDataAccessObjectTest {
     /** Volume is documented as an integer but has been observed in decimal form. */
     @Test
     void acceptsVolumeExpressedAsADecimal() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read("time_series_daily_decimal_volume.json"));
 
-        List<DailyPrice> prices = withResponses(client).fetchDailyPrices("IBM");
+        final List<DailyPrice> prices = withResponses(client).fetchDailyPrices("IBM");
 
         assertEquals(2_984_110L, prices.get(0).getVolume());
         assertEquals(3_512_004L, prices.get(1).getVolume());
@@ -92,7 +94,7 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void parsesCompanyName() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(OVERVIEW, JsonFixtures.read("overview_ibm.json"));
 
         assertEquals(Optional.of("International Business Machines"),
@@ -101,7 +103,7 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void treatsAnUnknownCompanyAsAbsentRatherThanAFailure() throws Exception {
-        StubHttpJsonClient nameIsNone = new StubHttpJsonClient()
+        final StubHttpJsonClient nameIsNone = new StubHttpJsonClient()
                 .respondTo(OVERVIEW, JsonFixtures.read("overview_name_none.json"));
 
         assertTrue(withResponses(nameIsNone).fetchCompanyName("VOO").isEmpty());
@@ -135,12 +137,12 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void requestsTheDailyTimeSeriesEndpointWithACompactOutputSize() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
 
         withResponses(client).fetchDailyPrices("AAPL");
 
-        String url = client.getLastRequestedUrl();
+        final String url = client.getLastRequestedUrl();
         assertTrue(url.startsWith(AlphaVantageMarketDataAccessObject.BASE_URL), url);
         assertTrue(url.contains("function=" + AlphaVantageMarketDataAccessObject.FUNCTION_TIME_SERIES_DAILY), url);
         assertTrue(url.contains("symbol=AAPL"), url);
@@ -150,12 +152,12 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void requestsTheCompanyOverviewEndpoint() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(OVERVIEW, JsonFixtures.read("overview_ibm.json"));
 
         withResponses(client).fetchCompanyName("IBM");
 
-        String url = client.getLastRequestedUrl();
+        final String url = client.getLastRequestedUrl();
         assertTrue(url.contains("function=" + AlphaVantageMarketDataAccessObject.FUNCTION_OVERVIEW), url);
         assertTrue(url.contains("symbol=IBM"), url);
     }
@@ -274,10 +276,10 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void unreachableProviderIsReportedAsANetworkFailure() {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .failWith(new IOException("connection reset"));
 
-        MarketDataException thrown = assertThrows(MarketDataException.class,
+        final MarketDataException thrown = assertThrows(MarketDataException.class,
                 () -> withResponses(client).fetchDailyPrices("AAPL"));
 
         assertEquals(MarketDataException.Kind.NETWORK, thrown.getKind());
@@ -358,7 +360,7 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void blankBodyIsReportedAsAnEmptyResponse() {
-        StubHttpJsonClient client = new StubHttpJsonClient().respondTo(DAILY, "   ");
+        final StubHttpJsonClient client = new StubHttpJsonClient().respondTo(DAILY, "   ");
 
         assertEquals(MarketDataException.Kind.EMPTY_RESPONSE,
                 assertThrows(MarketDataException.class,
@@ -367,7 +369,7 @@ class AlphaVantageMarketDataAccessObjectTest {
 
     @Test
     void companyNameLookupAlsoMapsProviderErrors() {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(OVERVIEW, JsonFixtures.read("information_daily_limit.json"));
 
         assertEquals(MarketDataException.Kind.RATE_LIMIT,
@@ -381,13 +383,13 @@ class AlphaVantageMarketDataAccessObjectTest {
      */
     @Test
     void failureMessagesNeverContainTheApiKey() {
-        StubHttpJsonClient network = new StubHttpJsonClient()
+        final StubHttpJsonClient network = new StubHttpJsonClient()
                 .failWith(new IOException("connection reset"));
-        StubHttpJsonClient malformed = new StubHttpJsonClient()
+        final StubHttpJsonClient malformed = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read("not_json.html"));
 
-        for (StubHttpJsonClient client : List.of(network, malformed)) {
-            MarketDataException thrown = assertThrows(MarketDataException.class,
+        for (final StubHttpJsonClient client : List.of(network, malformed)) {
+            final MarketDataException thrown = assertThrows(MarketDataException.class,
                     () -> withResponses(client).fetchDailyPrices("AAPL"));
 
             assertFalse(thrown.getMessage().contains(API_KEY), thrown.getMessage());
@@ -403,5 +405,39 @@ class AlphaVantageMarketDataAccessObjectTest {
                 () -> new AlphaVantageMarketDataAccessObject(null, new StubHttpJsonClient()));
         assertThrows(NullPointerException.class,
                 () -> new AlphaVantageMarketDataAccessObject(API_KEY, null));
+        assertThrows(NullPointerException.class,
+                () -> new AlphaVantageMarketDataAccessObject(null));
+    }
+
+    /**
+     * A blank key would be sent and come back as the provider's "Error Message", which
+     * this class maps to MISSING_API_KEY - a confusing round-trip that costs quota to
+     * learn about a fault that is entirely local.
+     */
+    @Test
+    void constructorRejectsABlankKey() {
+        for (final String blank : List.of("", "   ", "	")) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new AlphaVantageMarketDataAccessObject(blank, new StubHttpJsonClient()),
+                    "[" + blank + "]");
+            assertThrows(IllegalArgumentException.class,
+                    () -> new AlphaVantageMarketDataAccessObject(blank), "[" + blank + "]");
+        }
+    }
+
+    /**
+     * The public one-argument constructor is the one the composition root calls in
+     * Phase 4, and nothing exercised it. Constructing performs no I/O - the transport is
+     * only built, never used - so this stays offline.
+     */
+    @Test
+    void thePublicConstructorBuildsAUsableGatewayWithoutTouchingTheNetwork() {
+        final MarketDataGateway gateway = new AlphaVantageMarketDataAccessObject(API_KEY);
+
+        assertNotNull(gateway);
+        assertThrows(NullPointerException.class, () -> gateway.fetchDailyPrices(null));
+        assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                assertThrows(MarketDataException.class,
+                        () -> gateway.fetchCompanyName("  ")).getKind());
     }
 }
