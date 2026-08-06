@@ -6,15 +6,19 @@ import java.io.Serializable;
  * One row on a user's watchlist: a ticker, plus whichever strategy config(s)
  * the user has set up for it (either may be null if not configured yet).
  *
- * NOTE: Strategy configurations will be added once their respective entities
- * are merged into the project.
+ * Both configuration types implement {@link Serializable}, so a whole
+ * {@link Watchlist} graph containing configured entries round-trips through
+ * {@code FileWatchlistDataAccessObject}'s object serialization.
  */
 public class WatchlistEntry implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private final Ticker ticker;
 
-    // TODO: Add strategy configurations once their entities are merged.
-    // private MovingAverageConfiguration movingAverageConfiguration;
-    // private MomentumConfiguration momentumConfiguration;
+    // Either may be null if the user hasn't configured that strategy for this ticker.
+    private MovingAverageConfiguration movingAverageConfiguration;
+    private MomentumConfiguration momentumConfiguration;
 
     public WatchlistEntry(Ticker ticker) {
         this.ticker = ticker;
@@ -24,5 +28,19 @@ public class WatchlistEntry implements Serializable {
         return ticker;
     }
 
-    // TODO: Re-add MovingAverageConfiguration getter/setter when the entity exists.
+    public MovingAverageConfiguration getMovingAverageConfiguration() {
+        return movingAverageConfiguration;
+    }
+
+    public void setMovingAverageConfiguration(MovingAverageConfiguration movingAverageConfiguration) {
+        this.movingAverageConfiguration = movingAverageConfiguration;
+    }
+
+    public MomentumConfiguration getMomentumConfiguration() {
+        return momentumConfiguration;
+    }
+
+    public void setMomentumConfiguration(MomentumConfiguration momentumConfiguration) {
+        this.momentumConfiguration = momentumConfiguration;
+    }
 }
