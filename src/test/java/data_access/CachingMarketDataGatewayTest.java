@@ -15,8 +15,11 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -225,6 +228,105 @@ class CachingMarketDataGatewayTest {
         assertEquals(1, gateway.getCachedSymbolCount());
     }
 
+    // --- Eviction and bounds ---------------------------------------------------
+
+    /**
+     * The method name promises live entries. Before eviction on access it counted dead
+     * ones too, so a caller could not tell a warm cache from an expired one.
+     */
+    @Test
+    void expiredPriceEntriesAreEvictedRatherThanCounted() throws Exception {
+        gateway.fetchDailyPrices("AAPL");
+        gateway.fetchDailyPrices("MSFT");
+        assertEquals(2, gateway.getCachedSymbolCount());
+
+        clock.advance(Duration.ofMinutes(16));
+
+        assertEquals(0, gateway.getCachedSymbolCount(),
+                "Expired entries must not be counted as cached symbols");
+    }
+
+    @Test
+    void anExpiredEntryIsEvictedWhenItIsRead() throws Exception {
+        gateway.fetchDailyPrices("AAPL");
+        clock.advance(Duration.ofMinutes(16));
+
+        gateway.fetchDailyPrices("AAPL");
+
+        assertEquals(2, delegate.getPriceCallCount("AAPL"));
+        assertEquals(1, gateway.getCachedSymbolCount(), "The refetched entry replaces the dead one");
+    }
+
+    /**
+     * Company names never expire, so without a bound the map would grow for the whole
+     * life of the process.
+     */
+    @Test
+    void theCompanyNameCacheIsBounded() throws Exception {
+        final InMemoryMarketDataGateway many = new InMemoryMarketDataGateway();
+        final int overflowBy = 3;
+        final int total = CachingMarketDataGateway.MAX_NAME_ENTRIES + overflowBy;
+        for (int index = 0; index < total; index++) {
+            many.putCompanyName("SYM" + index, "Company " + index);
+        }
+        final CachingMarketDataGateway bounded =
+                new CachingMarketDataGateway(many, Duration.ofMinutes(15), clock);
+
+        for (int index = 0; index < total; index++) {
+            bounded.fetchCompanyName("SYM" + index);
+        }
+
+        assertTrue(bounded.getCachedNameCount() <= CachingMarketDataGateway.MAX_NAME_ENTRIES,
+                "Name cache grew to " + bounded.getCachedNameCount());
+        assertEquals(overflowBy, bounded.getCachedNameCount(),
+                "Clear-on-overflow should leave only the entries added since the reset");
+    }
+
+    /**
+     * The Swing refresh runs on a background thread, so the maps are hit concurrently.
+     * With plain HashMaps this loops forever or throws; the assertion is that it
+     * finishes and that every reader saw correct data.
+     */
+    @Test
+    void concurrentReadersDoNotCorruptTheCache() throws Exception {
+        final int threadCount = 8;
+        final int readsPerThread = 200;
+        final CountDownLatch start = new CountDownLatch(1);
+        final AtomicInteger failures = new AtomicInteger();
+        final List<Thread> threads = new ArrayList<>(threadCount);
+
+        for (int index = 0; index < threadCount; index++) {
+            final String symbol = index % 2 == 0 ? "AAPL" : "MSFT";
+            final Thread thread = new Thread(() -> {
+                try {
+                    start.await();
+                    for (int read = 0; read < readsPerThread; read++) {
+                        if (gateway.fetchDailyPrices(symbol).size()
+                                != InMemoryMarketDataGateway.SAMPLE_PRICE_COUNT) {
+                            failures.incrementAndGet();
+                        }
+                        gateway.fetchCompanyName(symbol);
+                        gateway.getCachedSymbolCount();
+                    }
+                }
+                catch (InterruptedException | MarketDataException exception) {
+                    failures.incrementAndGet();
+                }
+            });
+            threads.add(thread);
+            thread.start();
+        }
+
+        start.countDown();
+        for (final Thread thread : threads) {
+            thread.join(30_000);
+            assertFalse(thread.isAlive(), "A reader thread did not finish");
+        }
+
+        assertEquals(0, failures.get());
+        assertEquals(2, gateway.getCachedSymbolCount());
+    }
+
     // --- Symbol contract (MarketDataGateway, orchestrator 5.1) -----------------
 
     @Test
@@ -273,5 +375,15 @@ class CachingMarketDataGatewayTest {
                 () -> new CachingMarketDataGateway(delegate, null, clock));
         assertThrows(NullPointerException.class,
                 () -> new CachingMarketDataGateway(delegate, Duration.ofMinutes(1), null));
+    }
+
+    /** A zero or negative time-to-live silently turns the cache into a no-op. */
+    @Test
+    void constructorRejectsANonPositiveTimeToLive() {
+        for (final Duration invalid : List.of(Duration.ZERO, Duration.ofMinutes(-1))) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new CachingMarketDataGateway(delegate, invalid, clock),
+                    String.valueOf(invalid));
+        }
     }
 }
