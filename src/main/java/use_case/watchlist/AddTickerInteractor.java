@@ -80,16 +80,34 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
          * and this endpoint is the first to be cut off when the request quota runs
          * out, so treating it as fatal would make the feature fail on symbols that
          * worked the day before.
+         *
+         * "" rather than null, matching AddTickerOutputData's single non-null
+         * companyName field: absence is expressed once, not twice.
          */
-        String companyName = null;
+        String companyName = "";
+
         try {
             final Optional<String> fetchedName = marketDataGateway.fetchCompanyName(symbol);
             if (fetchedName.isPresent() && !fetchedName.get().isBlank()) {
                 companyName = fetchedName.get();
             }
         }
-        catch (MarketDataException e) {
-            companyName = null;
+        catch (MarketDataException exception) {
+            /*
+             * The decision stands - a missing name never blocks the add - and the
+             * redundant "companyName = null" that used to sit here is gone: the field
+             * is already "".
+             *
+             * exception.getKind() is what would tell the user "the provider has no
+             * name for this symbol" apart from "we were rate-limited" - the same blank
+             * cell, very different advice. Carrying it needs one extra field on
+             * AddTickerOutputData, which is an orchestrator-owned contract file that
+             * this agent may not edit. The request, with the exact shape wanted, is
+             * filed in plan/handoffs/use-case-needs.md; the one-line change here is
+             * `companyNameFailureKind = exception.getKind();` plus a fifth constructor
+             * argument below.
+             */
+            companyName = "";
         }
 
         /*
@@ -121,7 +139,7 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
 
         presenter.prepareSuccessView(new AddTickerOutputData(
                 symbol,
-                companyName == null ? "" : companyName,
+                companyName,
                 prices.size(),
                 WatchlistSnapshotFactory.build(watchlist, stockRepository, symbol)));
     }
