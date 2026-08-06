@@ -3,6 +3,7 @@ package data_access;
 import entity.DailyPrice;
 import use_case.watchlist.MarketDataException;
 import use_case.watchlist.MarketDataGateway;
+import use_case.watchlist.TickerSymbolValidator;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -11,7 +12,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -151,7 +151,9 @@ public class InMemoryMarketDataGateway implements MarketDataGateway {
         }
         Collections.reverse(tradingDays);
 
-        final int seed = Math.abs(seedSymbol.toUpperCase(Locale.ROOT).hashCode());
+        // Folded through the same helper as the map keys, so "aapl" and "AAPL" seed the
+        // same series and cannot disagree with the symbol they are stored under.
+        final int seed = Math.abs(TickerSymbolValidator.normalizeKey(seedSymbol).hashCode());
         final double base = 100.0 + seed % 150;
         final double amplitude = 15.0 + seed % 10;
         // A period shorter than the series length guarantees several full cycles,
@@ -197,7 +199,19 @@ public class InMemoryMarketDataGateway implements MarketDataGateway {
         }
     }
 
+    /**
+     * Folds a symbol to its map key.
+     *
+     * <p>Delegates to {@link TickerSymbolValidator#normalizeKey(String)}, which rejects
+     * null with the same message this method used to raise itself. The fetch methods
+     * reject null at {@link #requireUsableSymbol(String)} before reaching here; the
+     * remaining callers are the fluent seeding seams, where a null symbol is a test bug
+     * and an immediate NullPointerException is the right answer.
+     *
+     * @param symbol the symbol to fold
+     * @return the upper-cased map key
+     */
     private static String key(String symbol) {
-        return Objects.requireNonNull(symbol, "Symbol cannot be null").toUpperCase(Locale.ROOT);
+        return TickerSymbolValidator.normalizeKey(symbol);
     }
 }

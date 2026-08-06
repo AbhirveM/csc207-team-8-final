@@ -3,12 +3,12 @@ package data_access;
 import entity.DailyPrice;
 import use_case.watchlist.MarketDataException;
 import use_case.watchlist.MarketDataGateway;
+import use_case.watchlist.TickerSymbolValidator;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -212,7 +212,17 @@ public class CachingMarketDataGateway implements MarketDataGateway {
         }
     }
 
+    /**
+     * Folds a symbol to its cache key.
+     *
+     * <p>Delegates to {@link TickerSymbolValidator#normalizeKey(String)} so the cache
+     * and the validator cannot drift apart on what makes two symbols the same. Null is
+     * unreachable here: every caller runs {@link #requireUsableSymbol(String)} first.
+     *
+     * @param symbol an already-validated symbol
+     * @return the upper-cased cache key
+     */
     private static String key(String symbol) {
-        return symbol.toUpperCase(Locale.ROOT);
+        return TickerSymbolValidator.normalizeKey(symbol);
     }
 }

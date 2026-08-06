@@ -142,6 +142,18 @@ class InMemoryMarketDataGatewayTest {
         }
     }
 
+    /**
+     * The seed is folded through the same helper as the map keys, so a series stored
+     * under "AAPL" cannot be shaped differently from one requested as "aapl".
+     */
+    @Test
+    void syntheticSeriesSeedIsCaseInsensitive() {
+        final LocalDate lastDay = LocalDate.of(2026, 8, 5);
+
+        assertEquals(InMemoryMarketDataGateway.syntheticSeries("AAPL", lastDay, 20),
+                InMemoryMarketDataGateway.syntheticSeries("aapl", lastDay, 20));
+    }
+
     @Test
     void syntheticSeriesIsDeterministicAndVariesBySymbol() {
         final LocalDate lastDay = LocalDate.of(2026, 8, 5);

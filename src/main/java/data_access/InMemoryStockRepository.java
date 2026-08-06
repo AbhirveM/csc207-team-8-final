@@ -2,12 +2,12 @@ package data_access;
 
 import entity.Stock;
 import use_case.watchlist.StockRepository;
+import use_case.watchlist.TickerSymbolValidator;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -52,7 +52,21 @@ public class InMemoryStockRepository implements StockRepository {
         return Collections.unmodifiableList(all);
     }
 
+    /**
+     * Folds a symbol to its map key.
+     *
+     * <p>Delegates to {@link TickerSymbolValidator#normalizeKey(String)} so a symbol
+     * normalized by the validator and one typed in any case resolve to the same entry.
+     *
+     * <p>The null tolerance {@code findBySymbol} and {@code remove} promise stays at
+     * those call sites as an explicit guard, rather than being pushed into the shared
+     * helper: a null lookup is a legitimate no-op, but a null <em>save</em> is a bug and
+     * must still fail loudly.
+     *
+     * @param symbol a non-null symbol
+     * @return the upper-cased map key
+     */
     private static String key(String symbol) {
-        return symbol.toUpperCase(Locale.ROOT);
+        return TickerSymbolValidator.normalizeKey(symbol);
     }
 }

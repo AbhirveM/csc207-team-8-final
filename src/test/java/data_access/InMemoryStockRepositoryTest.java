@@ -3,6 +3,7 @@ package data_access;
 import entity.DailyPrice;
 import entity.Stock;
 import entity.Ticker;
+import use_case.watchlist.TickerSymbolValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -124,6 +125,37 @@ class InMemoryStockRepositoryTest {
 
         assertEquals(1, snapshot.size());
         assertEquals(2, repository.findAll().size());
+    }
+
+    /**
+     * The repository no longer folds case itself; it delegates to
+     * TickerSymbolValidator.normalizeKey. This pins the two together, so a symbol the
+     * validator produced always resolves to the entry the repository stored.
+     */
+    @Test
+    void keysAgreeWithTheValidatorsNormalization() {
+        repository.save(stock("aapl", 1));
+
+        final String normalized = TickerSymbolValidator.validate("  aapl ").getSymbol();
+
+        assertEquals("AAPL", normalized);
+        assertTrue(repository.findBySymbol(normalized).isPresent(),
+                "A validator-normalized symbol must resolve to the stored entry");
+        assertTrue(repository.findBySymbol("aapl").isPresent());
+        assertEquals(1, repository.findAll().size(), "Both forms are the same entry");
+    }
+
+    /**
+     * Normalization applies to the map key, not to the entity. The repository stores the
+     * Stock exactly as handed over - constructing a Ticker from a validated symbol is the
+     * interactor's job, and rewriting the caller's entity would be the repository
+     * exceeding its remit.
+     */
+    @Test
+    void theStoredEntityKeepsItsOwnSymbolCasing() {
+        repository.save(stock("aapl", 1));
+
+        assertEquals("aapl", repository.findBySymbol("AAPL").orElseThrow().getSymbol());
     }
 
     @Test
