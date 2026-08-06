@@ -147,6 +147,38 @@ class AlphaVantageMarketDataAccessObjectTest {
                 client.getLastRequestedUrl());
     }
 
+    // --- Symbol contract (MarketDataGateway, orchestrator 5.1) -----------------
+
+    @Test
+    void aNullSymbolIsRejectedWithANullPointerException() {
+        final AlphaVantageMarketDataAccessObject dao = withResponses(new StubHttpJsonClient());
+
+        assertThrows(NullPointerException.class, () -> dao.fetchDailyPrices(null));
+        assertThrows(NullPointerException.class, () -> dao.fetchDailyPricesFresh(null));
+        assertThrows(NullPointerException.class, () -> dao.fetchCompanyName(null));
+    }
+
+    @Test
+    void aBlankSymbolIsReportedAsInvalidWithoutReachingTheProvider() {
+        final StubHttpJsonClient client = new StubHttpJsonClient();
+        final AlphaVantageMarketDataAccessObject dao = withResponses(client);
+
+        for (final String blank : List.of("", "   ", "\t")) {
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> dao.fetchDailyPrices(blank)).getKind(), blank);
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> dao.fetchDailyPricesFresh(blank)).getKind(), blank);
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> dao.fetchCompanyName(blank)).getKind(), blank);
+        }
+
+        assertTrue(client.getRequestedUrls().isEmpty(),
+                "A blank symbol must never reach the provider");
+    }
+
     // --- Failure mapping -------------------------------------------------------
 
     @Test

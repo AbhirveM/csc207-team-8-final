@@ -80,8 +80,29 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
         this.httpClient = Objects.requireNonNull(httpClient, "HTTP client cannot be null");
     }
 
+    /**
+     * Enforces the {@link MarketDataGateway} symbol contract before any request is built.
+     *
+     * <p>Rejecting here rather than letting {@code URLEncoder} throw is what makes this
+     * implementation agree with the other two: a null symbol is a programming error and
+     * a blank symbol is a user error, and neither may reach the provider or spend quota.
+     *
+     * @param normalizedSymbol the symbol to check
+     * @throws NullPointerException if {@code normalizedSymbol} is null
+     * @throws MarketDataException of kind {@code INVALID_SYMBOL} if it is blank
+     */
+    private static void requireUsableSymbol(String normalizedSymbol) throws MarketDataException {
+        Objects.requireNonNull(normalizedSymbol, "Symbol cannot be null");
+        if (normalizedSymbol.isBlank()) {
+            throw new MarketDataException(MarketDataException.Kind.INVALID_SYMBOL,
+                    normalizedSymbol, "A blank symbol cannot be requested from the provider");
+        }
+    }
+
     @Override
     public List<DailyPrice> fetchDailyPrices(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String url = BASE_URL
                 + "?function=" + FUNCTION_TIME_SERIES_DAILY
                 + "&symbol=" + encode(normalizedSymbol)
@@ -93,6 +114,8 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
 
     @Override
     public Optional<String> fetchCompanyName(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String url = BASE_URL
                 + "?function=" + FUNCTION_OVERVIEW
                 + "&symbol=" + encode(normalizedSymbol)

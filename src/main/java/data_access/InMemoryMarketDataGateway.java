@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -80,6 +81,8 @@ public class InMemoryMarketDataGateway implements MarketDataGateway {
 
     @Override
     public List<DailyPrice> fetchDailyPrices(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String key = key(normalizedSymbol);
         priceCallCounts.merge(key, 1, Integer::sum);
 
@@ -99,6 +102,8 @@ public class InMemoryMarketDataGateway implements MarketDataGateway {
 
     @Override
     public Optional<String> fetchCompanyName(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String key = key(normalizedSymbol);
         companyNameCallCounts.merge(key, 1, Integer::sum);
 
@@ -174,7 +179,25 @@ public class InMemoryMarketDataGateway implements MarketDataGateway {
         return Math.round(value * 100.0) / 100.0;
     }
 
+    /**
+     * Enforces the {@link MarketDataGateway} symbol contract.
+     *
+     * <p>Checked before the call counters are incremented, so a rejected symbol leaves
+     * no trace at all - "must not reach the network" has an exact analogue here.
+     *
+     * @param normalizedSymbol the symbol to check
+     * @throws NullPointerException if {@code normalizedSymbol} is null
+     * @throws MarketDataException of kind {@code INVALID_SYMBOL} if it is blank
+     */
+    private static void requireUsableSymbol(String normalizedSymbol) throws MarketDataException {
+        Objects.requireNonNull(normalizedSymbol, "Symbol cannot be null");
+        if (normalizedSymbol.isBlank()) {
+            throw new MarketDataException(MarketDataException.Kind.INVALID_SYMBOL,
+                    normalizedSymbol, "A blank symbol has no sample data and is never recorded");
+        }
+    }
+
     private static String key(String symbol) {
-        return symbol == null ? "" : symbol.toUpperCase(Locale.ROOT);
+        return Objects.requireNonNull(symbol, "Symbol cannot be null").toUpperCase(Locale.ROOT);
     }
 }

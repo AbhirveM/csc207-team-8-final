@@ -55,6 +55,37 @@ class InMemoryMarketDataGatewayTest {
         assertTrue(gateway.fetchCompanyName("VOO").isEmpty());
     }
 
+    // --- Symbol contract (MarketDataGateway, orchestrator 5.1) -----------------
+
+    @Test
+    void aNullSymbolIsRejectedWithANullPointerException() {
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+
+        assertThrows(NullPointerException.class, () -> gateway.fetchDailyPrices(null));
+        assertThrows(NullPointerException.class, () -> gateway.fetchDailyPricesFresh(null));
+        assertThrows(NullPointerException.class, () -> gateway.fetchCompanyName(null));
+    }
+
+    @Test
+    void aBlankSymbolIsReportedAsInvalidAndNotRecorded() {
+        final InMemoryMarketDataGateway gateway = InMemoryMarketDataGateway.withSampleData();
+
+        for (final String blank : List.of("", "   ", "\t")) {
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> gateway.fetchDailyPrices(blank)).getKind(), blank);
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> gateway.fetchDailyPricesFresh(blank)).getKind(), blank);
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> gateway.fetchCompanyName(blank)).getKind(), blank);
+        }
+
+        assertEquals(0, gateway.getPriceCallCount(""));
+        assertEquals(0, gateway.getCompanyNameCallCount(""));
+    }
+
     @Test
     void configuredFailuresAreThrown() {
         MarketDataException quota = new MarketDataException(

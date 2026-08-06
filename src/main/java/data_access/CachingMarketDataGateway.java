@@ -58,6 +58,8 @@ public class CachingMarketDataGateway implements MarketDataGateway {
 
     @Override
     public List<DailyPrice> fetchDailyPrices(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String key = key(normalizedSymbol);
         final CacheEntry cached = priceCache.get(key);
 
@@ -70,12 +72,16 @@ public class CachingMarketDataGateway implements MarketDataGateway {
 
     @Override
     public List<DailyPrice> fetchDailyPricesFresh(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         // Always goes to the delegate; the refreshed value replaces any cached copy.
         return storeAndReturn(key(normalizedSymbol), delegate.fetchDailyPricesFresh(normalizedSymbol));
     }
 
     @Override
     public Optional<String> fetchCompanyName(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String key = key(normalizedSymbol);
         final Optional<String> cached = companyNameCache.get(key);
 
@@ -107,7 +113,26 @@ public class CachingMarketDataGateway implements MarketDataGateway {
         return Duration.between(entry.storedAt(), clock.instant()).compareTo(timeToLive) >= 0;
     }
 
+    /**
+     * Enforces the {@link MarketDataGateway} symbol contract before the cache is touched.
+     *
+     * <p>Validating ahead of {@link #key(String)} is the point: the previous code mapped
+     * null and blank alike onto the key {@code ""}, so an invalid symbol could occupy a
+     * cache slot and be served back on a later call.
+     *
+     * @param normalizedSymbol the symbol to check
+     * @throws NullPointerException if {@code normalizedSymbol} is null
+     * @throws MarketDataException of kind {@code INVALID_SYMBOL} if it is blank
+     */
+    private static void requireUsableSymbol(String normalizedSymbol) throws MarketDataException {
+        Objects.requireNonNull(normalizedSymbol, "Symbol cannot be null");
+        if (normalizedSymbol.isBlank()) {
+            throw new MarketDataException(MarketDataException.Kind.INVALID_SYMBOL,
+                    normalizedSymbol, "A blank symbol is never cached or delegated");
+        }
+    }
+
     private static String key(String symbol) {
-        return symbol == null ? "" : symbol.toUpperCase(Locale.ROOT);
+        return symbol.toUpperCase(Locale.ROOT);
     }
 }

@@ -173,6 +173,47 @@ class CachingMarketDataGatewayTest {
         assertEquals(1, gateway.getCachedSymbolCount());
     }
 
+    // --- Symbol contract (MarketDataGateway, orchestrator 5.1) -----------------
+
+    @Test
+    void aNullSymbolIsRejectedWithANullPointerException() {
+        assertThrows(NullPointerException.class, () -> gateway.fetchDailyPrices(null));
+        assertThrows(NullPointerException.class, () -> gateway.fetchDailyPricesFresh(null));
+        assertThrows(NullPointerException.class, () -> gateway.fetchCompanyName(null));
+    }
+
+    @Test
+    void aBlankSymbolIsReportedAsInvalidWithoutReachingTheDelegate() {
+        for (final String blank : List.of("", "   ", "\t")) {
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> gateway.fetchDailyPrices(blank)).getKind(), blank);
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> gateway.fetchDailyPricesFresh(blank)).getKind(), blank);
+            assertEquals(MarketDataException.Kind.INVALID_SYMBOL,
+                    assertThrows(MarketDataException.class,
+                            () -> gateway.fetchCompanyName(blank)).getKind(), blank);
+        }
+
+        assertEquals(0, delegate.getPriceCallCount(""));
+        assertEquals(0, delegate.getCompanyNameCallCount(""));
+    }
+
+    /**
+     * The old key function folded null and blank alike onto {@code ""}, so a rejected
+     * symbol could still occupy a cache slot. Nothing may be stored under a blank key.
+     */
+    @Test
+    void aBlankSymbolIsNeverCached() {
+        assertThrows(MarketDataException.class, () -> gateway.fetchDailyPrices(""));
+        assertThrows(MarketDataException.class, () -> gateway.fetchCompanyName(""));
+
+        assertEquals(0, gateway.getCachedSymbolCount());
+    }
+
+    // --- Construction ----------------------------------------------------------
+
     @Test
     void constructorRejectsNullCollaborators() {
         assertThrows(NullPointerException.class, () -> new CachingMarketDataGateway(null));
