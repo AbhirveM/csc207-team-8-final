@@ -65,6 +65,16 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
         return Optional.of(key.strip());
     }
 
+    /**
+     * Builds a data access object that talks to the real provider over HTTPS.
+     *
+     * <p>This is the constructor the composition root uses, paired with
+     * {@link #apiKeyFromEnvironment()}.
+     *
+     * @param apiKey the provider key; must be non-null and non-blank
+     * @throws NullPointerException     if {@code apiKey} is null
+     * @throws IllegalArgumentException if {@code apiKey} is blank
+     */
     public AlphaVantageMarketDataAccessObject(String apiKey) {
         this(apiKey, new JdkHttpJsonClient());
     }
@@ -72,16 +82,47 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
     /**
      * Constructor used by tests to supply canned responses instead of real HTTP.
      *
-     * @param apiKey     the provider key
+     * <p>A blank key is rejected here rather than sent: the provider would answer with
+     * an "Error Message" that this class maps to {@code MISSING_API_KEY}, which is a
+     * confusing round-trip for a fault that is entirely local and costs quota to learn.
+     *
+     * @param apiKey     the provider key; must be non-null and non-blank
      * @param httpClient the transport to use
+     * @throws NullPointerException     if either argument is null
+     * @throws IllegalArgumentException if {@code apiKey} is blank
      */
     AlphaVantageMarketDataAccessObject(String apiKey, HttpJsonClient httpClient) {
         this.apiKey = Objects.requireNonNull(apiKey, "API key cannot be null");
         this.httpClient = Objects.requireNonNull(httpClient, "HTTP client cannot be null");
+
+        if (apiKey.isBlank()) {
+            throw new IllegalArgumentException("API key cannot be blank");
+        }
+    }
+
+    /**
+     * Enforces the {@link MarketDataGateway} symbol contract before any request is built.
+     *
+     * <p>Rejecting here rather than letting {@code URLEncoder} throw is what makes this
+     * implementation agree with the other two: a null symbol is a programming error and
+     * a blank symbol is a user error, and neither may reach the provider or spend quota.
+     *
+     * @param normalizedSymbol the symbol to check
+     * @throws NullPointerException if {@code normalizedSymbol} is null
+     * @throws MarketDataException of kind {@code INVALID_SYMBOL} if it is blank
+     */
+    private static void requireUsableSymbol(String normalizedSymbol) throws MarketDataException {
+        Objects.requireNonNull(normalizedSymbol, "Symbol cannot be null");
+        if (normalizedSymbol.isBlank()) {
+            throw new MarketDataException(MarketDataException.Kind.INVALID_SYMBOL,
+                    normalizedSymbol, "A blank symbol cannot be requested from the provider");
+        }
     }
 
     @Override
     public List<DailyPrice> fetchDailyPrices(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String url = BASE_URL
                 + "?function=" + FUNCTION_TIME_SERIES_DAILY
                 + "&symbol=" + encode(normalizedSymbol)
@@ -93,6 +134,8 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
 
     @Override
     public Optional<String> fetchCompanyName(String normalizedSymbol) throws MarketDataException {
+        requireUsableSymbol(normalizedSymbol);
+
         final String url = BASE_URL
                 + "?function=" + FUNCTION_OVERVIEW
                 + "&symbol=" + encode(normalizedSymbol)
@@ -120,9 +163,14 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
      * the order the keys happen to arrive in would produce a price list that violates
      * the oldest-to-newest contract intermittently rather than reliably.
      *
+     * <p>The result is <strong>unmodifiable</strong>. {@link CachingMarketDataGateway}
+     * stores exactly the list it is handed and returns that same reference on every hit,
+     * so a caller that sorted or cleared a live {@code ArrayList} would silently corrupt
+     * the cache for every subsequent caller.
+     *
      * @param symbol the symbol being parsed, for error reporting
      * @param json   the raw response body
-     * @return the prices, oldest to newest
+     * @return the prices, oldest to newest; unmodifiable
      * @throws MarketDataException if the response reports an error or cannot be parsed
      */
     static List<DailyPrice> parseDailyPrices(String symbol, String json) throws MarketDataException {
@@ -164,7 +212,7 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
         }
 
         prices.sort(Comparator.comparing(DailyPrice::getDate));
-        return prices;
+        return List.copyOf(prices);
     }
 
     /**
@@ -173,9 +221,23 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
      * <p>An unknown symbol yields {@code {}} here, which is reported as an absent name
      * rather than an error: a symbol can be perfectly valid for price data and still
      * have no company record.
+     *
+     * <p>That is why the empty root is checked <em>before</em>
+     * {@link #rejectProviderError(String, JSONObject)}, whose own empty-root check would
+     * otherwise turn it into {@code EMPTY_RESPONSE}. A missing company name is cosmetic
+     * and must never block adding a ticker - and {@code OVERVIEW} is the first endpoint
+     * the free-tier quota kills, so this path is common rather than exotic.
+     *
+     * @param symbol the symbol being parsed, for error reporting
+     * @param json   the raw response body
+     * @return the company name, or empty when the provider has none
+     * @throws MarketDataException if the response reports a genuine provider error
      */
     static Optional<String> parseCompanyName(String symbol, String json) throws MarketDataException {
         final JSONObject root = readRoot(symbol, json);
+        if (root.isEmpty()) {
+            return Optional.empty();
+        }
         rejectProviderError(symbol, root);
 
         final String name = root.optString(COMPANY_NAME_KEY, "").strip();

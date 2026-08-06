@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,8 +24,8 @@ class InMemoryStockRepositoryTest {
     }
 
     private static Stock stock(String symbol, int priceCount) {
-        List<DailyPrice> prices = new java.util.ArrayList<>();
-        LocalDate date = LocalDate.of(2026, 1, 1);
+        final List<DailyPrice> prices = new ArrayList<>();
+        final LocalDate date = LocalDate.of(2026, 1, 1);
         for (int index = 0; index < priceCount; index++) {
             prices.add(new DailyPrice(date.plusDays(index), 10, 10, 10, 10, 1L));
         }
@@ -86,11 +87,43 @@ class InMemoryStockRepositoryTest {
         repository.save(stock("AAPL", 1));
         repository.save(stock("MSFT", 1));
 
-        List<Stock> all = repository.findAll();
+        final List<Stock> all = repository.findAll();
 
         assertEquals(List.of("AAPL", "MSFT", "TSLA"),
                 all.stream().map(Stock::getSymbol).toList());
         assertThrows(UnsupportedOperationException.class, () -> all.add(stock("NVDA", 1)));
+    }
+
+    /**
+     * Nothing in Member 1's watchlist slice calls findAll - it is declared by
+     * StockRepository as the hand-off surface for Members 2 and 3's backtesting, so it
+     * is kept and tested rather than deleted as dead code.
+     */
+    @Test
+    void findAllIsEmptyForAFreshRepository() {
+        assertEquals(List.of(), repository.findAll());
+    }
+
+    @Test
+    void findAllReflectsRemovalsAndIsCaseInsensitiveAboutThem() {
+        repository.save(stock("AAPL", 1));
+        repository.save(stock("MSFT", 1));
+
+        repository.remove("aapl");
+
+        assertEquals(List.of("MSFT"), repository.findAll().stream().map(Stock::getSymbol).toList());
+    }
+
+    /** The returned list is a snapshot: later saves must not appear in an earlier one. */
+    @Test
+    void findAllReturnsASnapshotRatherThanALiveView() {
+        repository.save(stock("AAPL", 1));
+        final List<Stock> snapshot = repository.findAll();
+
+        repository.save(stock("MSFT", 1));
+
+        assertEquals(1, snapshot.size());
+        assertEquals(2, repository.findAll().size());
     }
 
     @Test

@@ -2,6 +2,7 @@ package data_access;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,7 @@ import java.util.Map;
  * Vantage endpoints differently by matching on {@code function=...}. Recording the
  * URLs is what lets the tests assert which endpoints are actually being called.
  */
-class StubHttpJsonClient implements HttpJsonClient {
+final class StubHttpJsonClient implements HttpJsonClient {
 
     private final Map<String, String> bodiesByUrlFragment = new LinkedHashMap<>();
     private final List<String> requestedUrls = new ArrayList<>();
@@ -48,11 +49,26 @@ class StubHttpJsonClient implements HttpJsonClient {
         throw new AssertionError("No stub response configured for URL: " + url);
     }
 
+    /**
+     * Exposes every URL the client was asked for, in order.
+     *
+     * @return an unmodifiable view of the recorded URLs, oldest first
+     */
     List<String> getRequestedUrls() {
-        return requestedUrls;
+        return Collections.unmodifiableList(requestedUrls);
     }
 
+    /**
+     * Returns the most recent URL, failing with an explanation rather than an
+     * IndexOutOfBoundsException when nothing was requested.
+     *
+     * @return the last URL the client was asked for
+     */
     String getLastRequestedUrl() {
+        if (requestedUrls.isEmpty()) {
+            throw new AssertionError(
+                    "No request was made, so there is no last requested URL to inspect");
+        }
         return requestedUrls.get(requestedUrls.size() - 1);
     }
 }
