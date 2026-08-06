@@ -204,3 +204,89 @@ No port signature needed to change, so `plan/handoffs/agent-b-request.md` was no
 
 6. **The company-name cache clears wholesale at 64 entries.** Fine for a watchlist, worth
    revisiting only if some later feature caches names for hundreds of symbols.
+
+---
+
+# Phase 2 follow-up — B-N1 (commit `b7bb19c`)
+
+Done in the main working directory on `feature/watchlist-use-cases`, branching from
+`1144daa`, after the orchestrator merged Phase 2 and Agent A landed the helper N1 asked
+for. `mvn -o clean test` is green: **319 tests, 0 failures, 0 errors, BUILD SUCCESS**
+(316 at the merge, plus the three tests below).
+
+## What changed
+
+`TickerSymbolValidator.normalizeKey(String)` now backs every symbol-key fold in
+`data_access`. **Four** copies of the idiom collapsed to one-line delegations, not the
+three N1 named — `syntheticSeries`'s seed fold was a fourth instance of the same
+`toUpperCase(Locale.ROOT)` on a symbol, so it was routed through the helper too:
+
+| Site | Before | After |
+|---|---|---|
+| `CachingMarketDataGateway.key` | `symbol.toUpperCase(Locale.ROOT)` | delegates |
+| `InMemoryMarketDataGateway.key` | `Objects.requireNonNull(...).toUpperCase(Locale.ROOT)` | delegates |
+| `InMemoryStockRepository.key` | `symbol.toUpperCase(Locale.ROOT)` | delegates |
+| `InMemoryMarketDataGateway.syntheticSeries` seed | `seedSymbol.toUpperCase(Locale.ROOT)` | delegates |
+
+No `toUpperCase` and no `java.util.Locale` import remains anywhere in `data_access`
+except `AlphaVantageMarketDataAccessObject`, which uses `Locale.ROOT` to lower-case
+*provider messages* for substring matching — a different concern from key folding, so it
+stays.
+
+## Null was decided per call site, not assumed
+
+`normalizeKey` throws `NullPointerException("Symbol cannot be null")`. The three sites
+disagreed on null before D8; after D8 they no longer did, so every substitution is
+behaviour-preserving. Checked individually rather than substituted blindly:
+
+- **`CachingMarketDataGateway.key`** — already threw (D8 removed its `null → ""` fold).
+  All three callers run `requireUsableSymbol` first, so null is unreachable. Unchanged.
+- **`InMemoryMarketDataGateway.key`** — already did `Objects.requireNonNull` with the
+  exact message `normalizeKey` uses, so even the exception text is identical. The fetch
+  paths reject null earlier at `requireUsableSymbol`; the remaining callers are the fluent
+  seeding seams (`putPrices`, `putCompanyName`, `failPricesWith`, `failCompanyNameWith`)
+  and the call counters, where a null symbol is a test bug and an immediate NPE is right.
+- **`InMemoryStockRepository.key`** — already threw. The null tolerance `findBySymbol` and
+  `remove` promise is kept as an **explicit guard at those two call sites** rather than
+  being pushed into the shared helper, exactly as the orchestrator directed: a null lookup
+  is a legitimate no-op, but a null `save` is a bug and must still fail loudly. Both
+  behaviours remain pinned by `findBySymbolIsEmptyForUnknownOrNullSymbols` and
+  `removeIsANoOpForUnknownAndNullSymbols`, which still pass unmodified.
+
+## Tests added (3)
+
+- `InMemoryStockRepositoryTest.keysAgreeWithTheValidatorsNormalization` — a symbol the
+  validator produced resolves to the entry the repository stored, so the two cannot drift.
+- `InMemoryStockRepositoryTest.theStoredEntityKeepsItsOwnSymbolCasing` — normalization
+  applies to the map key, not to the caller's entity. Worth pinning: my first draft of the
+  test above asserted the opposite and failed, which is the useful kind of failure.
+  Constructing a `Ticker` from a validated symbol is the interactor's job; a repository
+  rewriting the caller's entity would be exceeding its remit.
+- `InMemoryMarketDataGatewayTest.syntheticSeriesSeedIsCaseInsensitive` — `"AAPL"` and
+  `"aapl"` seed the identical series, so a stored series cannot disagree with the key it
+  is stored under.
+
+The Turkish-locale guarantee is pinned on Agent A's side, at the helper, which is the
+right place for it; `data_access` tests assert agreement with the helper rather than
+re-testing the locale.
+
+## Dependency direction — confirmed clean
+
+This introduces a `data_access` → `use_case` compile dependency, which is the correct
+direction: `data_access` already depended on `use_case` for the ports it implements.
+Verified there is no dependency the other way — neither `use_case` nor `entity` imports
+`data_access`, `interface_adapter`, or `view`, and `entity` imports no `use_case` either.
+
+## Files touched
+
+Main sources: `CachingMarketDataGateway.java`, `InMemoryMarketDataGateway.java`,
+`InMemoryStockRepository.java`.
+Tests: `InMemoryStockRepositoryTest.java`, `InMemoryMarketDataGatewayTest.java`.
+
+Nothing under `use_case/**` was edited — `TickerSymbolValidator` is Agent A's and was
+only consumed. The stale worktree at `wt-agent-b` was not touched.
+
+## Status
+
+**N1 is closed** (`plan/handoffs/data-access-needs.md`). Agent B has no open needs and
+nothing outstanding for Phase 3.
