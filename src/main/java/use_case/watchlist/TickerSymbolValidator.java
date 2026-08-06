@@ -90,8 +90,10 @@ public final class TickerSymbolValidator {
             return Result.invalid(Reason.BLANK);
         }
         /*
-         * Length is checked before the character set so that a long run of illegal
-         * characters reports the more specific problem rather than TOO_LONG.
+         * The character set is checked before the length, so that a long run of
+         * illegal characters reports ILLEGAL_CHARACTERS - the more specific and more
+         * actionable problem - rather than TOO_LONG. Swapping these two checks would
+         * silently change which Reason such an input reports.
          */
         if (!ALLOWED.matcher(normalized).matches()) {
             return Result.invalid(Reason.ILLEGAL_CHARACTERS);
