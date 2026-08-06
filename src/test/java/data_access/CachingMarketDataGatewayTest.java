@@ -377,6 +377,22 @@ class CachingMarketDataGatewayTest {
                 () -> new CachingMarketDataGateway(delegate, Duration.ofMinutes(1), null));
     }
 
+    /**
+     * The one-argument constructor is what Phase 4's composition root wires up, so its
+     * defaults are a contract rather than an implementation detail.
+     */
+    @Test
+    void theOneArgumentConstructorUsesTheDefaultTimeToLive() throws Exception {
+        final CachingMarketDataGateway defaults = new CachingMarketDataGateway(delegate);
+
+        defaults.fetchDailyPrices("AAPL");
+        defaults.fetchDailyPrices("AAPL");
+
+        assertEquals(Duration.ofMinutes(15), CachingMarketDataGateway.DEFAULT_TTL);
+        assertEquals(1, delegate.getPriceCallCount("AAPL"), "The second read should be cached");
+        assertEquals(1, defaults.getCachedSymbolCount());
+    }
+
     /** A zero or negative time-to-live silently turns the cache into a no-op. */
     @Test
     void constructorRejectsANonPositiveTimeToLive() {
