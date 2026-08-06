@@ -160,14 +160,67 @@ class AlphaVantageMarketDataAccessObjectTest {
         assertTrue(url.contains("symbol=IBM"), url);
     }
 
+    /**
+     * The DAO does not cache, so the fresh variant inherits the default and must reach
+     * the same endpoint. This is endpoint behaviour, not configuration.
+     */
     @Test
-    void symbolsNeedingEscapingAreUrlEncoded() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
+    void fetchDailyPricesFreshUsesTheSameEndpointWhenNotCached() throws Exception {
+        final StubHttpJsonClient client = new StubHttpJsonClient()
+                .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
+
+        assertEquals(5, withResponses(client).fetchDailyPricesFresh("AAPL").size());
+        assertTrue(client.getLastRequestedUrl().contains(DAILY));
+    }
+
+    /**
+     * The old version of this test asserted only that the URL contained
+     * {@code symbol=BRK.B}, which URLEncoder produces without transforming anything - it
+     * proved nothing about escaping. Pinning the whole URL is what actually constrains
+     * the query the DAO builds.
+     */
+    @Test
+    void theDailyRequestUrlIsBuiltExactlyAsSpecified() throws Exception {
+        final StubHttpJsonClient client = new StubHttpJsonClient()
                 .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
 
         withResponses(client).fetchDailyPrices("BRK.B");
 
-        assertTrue(client.getLastRequestedUrl().contains("symbol=BRK.B"),
+        assertEquals(List.of(AlphaVantageMarketDataAccessObject.BASE_URL
+                        + "?function=TIME_SERIES_DAILY"
+                        + "&symbol=BRK.B"
+                        + "&outputsize=compact"
+                        + "&apikey=" + API_KEY),
+                client.getRequestedUrls());
+    }
+
+    /**
+     * Dots and hyphens survive URLEncoder untouched, so a class share such as BRK.B is
+     * not evidence of escaping. A space and an ampersand are genuinely reserved, and an
+     * unescaped ampersand would silently truncate the query string.
+     */
+    @Test
+    void reservedCharactersInASymbolAreUrlEncoded() throws Exception {
+        final StubHttpJsonClient client = new StubHttpJsonClient()
+                .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
+
+        withResponses(client).fetchDailyPrices("A&B C");
+
+        final String url = client.getLastRequestedUrl();
+        assertTrue(url.contains("&symbol=A%26B+C&"), url);
+        assertFalse(url.contains("symbol=A&B"), url);
+    }
+
+    /** A key containing reserved characters must be escaped the same way. */
+    @Test
+    void reservedCharactersInTheApiKeyAreUrlEncoded() throws Exception {
+        final StubHttpJsonClient client = new StubHttpJsonClient()
+                .respondTo(OVERVIEW, JsonFixtures.read("overview_ibm.json"));
+
+        new AlphaVantageMarketDataAccessObject("a b&c", client).fetchCompanyName("IBM");
+
+        assertEquals(AlphaVantageMarketDataAccessObject.BASE_URL
+                        + "?function=OVERVIEW&symbol=IBM&apikey=a+b%26c",
                 client.getLastRequestedUrl());
     }
 
@@ -345,35 +398,10 @@ class AlphaVantageMarketDataAccessObjectTest {
     // --- Configuration ---------------------------------------------------------
 
     @Test
-    void apiKeyFromEnvironmentIsEmptyWhenTheVariableIsUnset() {
-        /*
-         * The environment cannot be modified from inside the JVM, so only the absent
-         * branch is exercised here. The reading code is kept to a few lines for
-         * exactly that reason, and the configured branch is covered by the
-         * constructor tests above.
-         */
-        if (System.getenv(AlphaVantageMarketDataAccessObject.API_KEY_ENV_VARIABLE) == null) {
-            assertTrue(AlphaVantageMarketDataAccessObject.apiKeyFromEnvironment().isEmpty());
-        }
-        else {
-            assertTrue(AlphaVantageMarketDataAccessObject.apiKeyFromEnvironment().isPresent());
-        }
-    }
-
-    @Test
     void constructorRejectsANullKeyOrClient() {
         assertThrows(NullPointerException.class,
                 () -> new AlphaVantageMarketDataAccessObject(null, new StubHttpJsonClient()));
         assertThrows(NullPointerException.class,
                 () -> new AlphaVantageMarketDataAccessObject(API_KEY, null));
-    }
-
-    @Test
-    void fetchDailyPricesFreshUsesTheSameEndpointWhenNotCached() throws Exception {
-        StubHttpJsonClient client = new StubHttpJsonClient()
-                .respondTo(DAILY, JsonFixtures.read("time_series_daily_aapl.json"));
-
-        assertEquals(5, withResponses(client).fetchDailyPricesFresh("AAPL").size());
-        assertTrue(client.getLastRequestedUrl().contains(DAILY));
     }
 }
