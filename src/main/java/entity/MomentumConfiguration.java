@@ -21,14 +21,18 @@ public class MomentumConfiguration implements Serializable {
                     "RSI period must be greater than 1");
         }
 
-        if (oversoldThreshold < 0 || oversoldThreshold > 100) {
-            throw new IllegalArgumentException(
-                    "Oversold threshold must be between 0 and 100");
+        if (Double.isNaN(oversoldThreshold)
+        || oversoldThreshold < 0
+        || oversoldThreshold > 100) {
+    throw new IllegalArgumentException(
+            "Oversold threshold must be between 0 and 100");
         }
 
-        if (overboughtThreshold < 0 || overboughtThreshold > 100) {
-            throw new IllegalArgumentException(
-                    "Overbought threshold must be between 0 and 100");
+        if (Double.isNaN(overboughtThreshold)
+        || overboughtThreshold < 0
+        || overboughtThreshold > 100) {
+    throw new IllegalArgumentException(
+            "Overbought threshold must be between 0 and 100");
         }
 
         if (oversoldThreshold >= overboughtThreshold) {
