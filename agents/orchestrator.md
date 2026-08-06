@@ -212,8 +212,13 @@ Semantics, binding on Agent A:
   `WatchlistSnapshotFactory.build(...)`.
 - A `selectedSymbol` that is not on the watchlist is **not** a failure — it degrades
   silently to `""`.
-- `prepareFailView` is on the boundary for symmetry and for the null-`inputData` case
-  only.
+- `prepareFailView` is on the boundary for symmetry only. Show Watchlist has **no failure
+  mode of its own**: an off-watchlist selection degrades silently to `""`, and a null
+  `inputData` fails fast with `NullPointerException` (D6) rather than reaching the
+  presenter. **Agent C must still implement the method** — it is on the interface — but no
+  interactor will ever drive it, so it can only be covered by calling it directly from a
+  presenter test. Do not write a test asserting that Show Watchlist produces a
+  `WatchlistFailure`. (Corrected in Phase 2; see A-N2 and `plan/review-phase-2.md` W10.)
 
 **Why this use case exists.** Without it, (a) clicking a different row in the watchlist
 table cannot repopulate the price table — no existing use case can do that without a
