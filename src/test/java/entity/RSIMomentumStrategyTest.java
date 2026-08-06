@@ -3,6 +3,7 @@ package entity;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -160,6 +161,41 @@ class RSIMomentumStrategyTest {
                 () -> strategy.generateSignals(null));
     }
 
+    @Test
+    void rejectsNullPriceInsideList() {
+        final RSIMomentumStrategy strategy =
+                createStrategy();
+
+        final List<DailyPrice> prices = new ArrayList<>();
+        prices.add(createPrice(1, 10.0));
+        prices.add(createPrice(2, 11.0));
+        prices.add(null);
+        prices.add(createPrice(4, 13.0));
+
+        assertThrows(NullPointerException.class,
+                () -> strategy.generateSignals(prices));
+    }
+
+    @Test
+    void rsiUsesClosingPricesInsteadOfOpeningPrices() {
+        final RSIMomentumStrategy strategy =
+                createStrategy();
+
+        final List<DailyPrice> prices = List.of(
+                createPriceWithDifferentOpenAndClose(1, 100.0, 10.0),
+                createPriceWithDifferentOpenAndClose(2, 90.0, 11.0),
+                createPriceWithDifferentOpenAndClose(3, 80.0, 12.0),
+                createPriceWithDifferentOpenAndClose(4, 70.0, 13.0)
+        );
+
+        final List<TradingSignal> signals =
+                strategy.generateSignals(prices);
+
+        assertEquals(
+                SignalType.SELL,
+                signals.get(3).getSignalType());
+    }
+
     private RSIMomentumStrategy createStrategy() {
         return new RSIMomentumStrategy(
                 new MomentumConfiguration(3, 30.0, 70.0));
@@ -171,6 +207,20 @@ class RSIMomentumStrategyTest {
                 close,
                 close,
                 close,
+                close,
+                1000L);
+    }
+
+    private DailyPrice createPriceWithDifferentOpenAndClose(
+            int day,
+            double open,
+            double close) {
+
+        return new DailyPrice(
+                LocalDate.of(2026, 1, day),
+                open,
+                Math.max(open, close),
+                Math.min(open, close),
                 close,
                 1000L);
     }
