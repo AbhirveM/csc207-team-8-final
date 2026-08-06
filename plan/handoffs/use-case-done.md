@@ -180,3 +180,69 @@ observations from testing against the fakes, both already on B's Phase 2 list:
   seam.** If D8 or any later hardening adds ordering validation to `putPrices`, the D4
   tests in `AddTickerInteractorTest` and `RefreshTickerInteractorTest` lose their only
   offline way to trigger `Stock`'s `IllegalArgumentException`.
+
+---
+
+## Phase 2 follow-up (post-merge, on `feature/watchlist-use-cases` from `fa3c665`)
+
+Two items closed in the main working directory after the orchestrator merged both
+worktrees. `mvn -o clean test` green: **316 tests, 0 failures**. `mvn -o verify` green.
+Line coverage still **100%** on all four interactors; overall project coverage now
+**80.6%**.
+
+### D5 tail — closed (`8825910`)
+
+A-N1 landed exactly as requested, so the last hop is done. `AddTickerInteractor` now
+captures `exception.getKind()` in the company-name `catch` and passes it as
+`AddTickerOutputData`'s fifth constructor argument. Also renamed the surviving
+`catch (MarketDataException e)` around `fetchDailyPrices` to `exception` — the first D5
+pass only covered the company-name catch.
+
+**A-N1 is resolved and closed.** `plan/handoffs/use-case-needs.md` A-N1 can be marked
+done.
+
+**Agent C: this supersedes point 4 of the "For Agent C" section above.** The presenter
+*can* now distinguish the two cases, and should:
+
+| `getCompanyName()` | `getCompanyNameFailureKind()` | What happened | Suggested wording |
+|---|---|---|---|
+| `"Apple Inc."` | `null` | name fetched | normal success |
+| `""` | `null` | provider has no company record (ETFs) | success, no mention of the name |
+| `""` | `RATE_LIMIT` etc. | the lookup itself failed | success, plus "company name unavailable — <reason>" |
+
+The kind is only ever non-null when `isCompanyNameAvailable()` is false, and the add
+succeeds in all three rows. It is never a `prepareFailView`.
+
+New tests: the all-kinds parameterized company-name test now asserts the kind is
+surfaced; plus a rate-limited lookup still adding the ticker and saving, a clean add
+leaving the kind `null`, and a no-company-record symbol being distinguishable from a
+failed lookup. `WatchlistBoundaryTypesTest` covers the four-argument constructor
+delegating with `null`.
+
+### B-N1 — `normalizeKey` landed (`1144daa`)
+
+Agent B's request fits `TickerSymbolValidator` cleanly — the class already performed this
+exact fold internally — so it was added rather than declined:
+
+```java
+public static String normalizeKey(String symbol)   // requireNonNull, then toUpperCase(Locale.ROOT)
+```
+
+`validate()` now delegates its case-folding step to it instead of duplicating the call,
+so the validator and anything keyed by symbol cannot drift apart on what makes two
+symbols the same.
+
+Behaviour, for Agent B's three `key` methods:
+- **Null:** throws `NullPointerException("Symbol cannot be null")`. `InMemoryMarketDataGateway.key`
+  currently maps null to `""` and `InMemoryStockRepository.key` currently NPEs on it —
+  B decides per call site whether to null-check before delegating or to let the NPE
+  through. Post-D8 the gateways reject a null symbol at the public entry point anyway,
+  so the private `key` should never see one.
+- **Folds case only.** No whitespace stripping, no validation, no blank rejection —
+  `normalizeKey("a a p l")` is `"A A P L"` and `normalizeKey("")` is `""`. It is
+  idempotent, so applying it to an already-validated symbol is a no-op.
+- **`Locale.ROOT`**, pinned by a test that sets the default locale to `tr-TR` and
+  restores it in a `finally`, asserting `"titan"` and `"TITAN"` map to the same key and
+  that the naive `toUpperCase()` does not.
+
+**Agent B is unblocked** — the three `key` methods can collapse to one-line delegations.
