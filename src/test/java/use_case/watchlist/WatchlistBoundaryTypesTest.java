@@ -45,6 +45,25 @@ class WatchlistBoundaryTypesTest {
     }
 
     @Test
+    void theFourArgumentConstructorMeansNoDiagnosisRatherThanNoFailure() {
+        final AddTickerOutputData undiagnosed =
+                new AddTickerOutputData("AAPL", "", 5, EMPTY_SNAPSHOT);
+
+        assertNull(undiagnosed.getCompanyNameFailureKind());
+        assertFalse(undiagnosed.isCompanyNameAvailable());
+    }
+
+    @Test
+    void aCompanyNameFailureKindTravelsWithAnOtherwiseSuccessfulAdd() {
+        final AddTickerOutputData diagnosed = new AddTickerOutputData(
+                "AAPL", "", 5, EMPTY_SNAPSHOT, MarketDataException.Kind.RATE_LIMIT);
+
+        assertEquals(MarketDataException.Kind.RATE_LIMIT, diagnosed.getCompanyNameFailureKind());
+        assertFalse(diagnosed.isCompanyNameAvailable());
+        assertEquals(5, diagnosed.getPriceCount());
+    }
+
+    @Test
     void addTickerOutputDataRejectsNulls() {
         assertThrows(NullPointerException.class,
                 () -> new AddTickerOutputData(null, "Apple Inc.", 1, EMPTY_SNAPSHOT));

@@ -242,6 +242,60 @@ class AddTickerInteractorTest {
         assertEquals("", presenter.getAddResult().getCompanyName());
         assertFalse(presenter.getAddResult().isCompanyNameAvailable());
         assertEquals(4, presenter.getAddResult().getPriceCount());
+
+        // Non-fatal, but not silent: the reason travels with the successful outcome.
+        assertEquals(kind, presenter.getAddResult().getCompanyNameFailureKind());
+    }
+
+    @Test
+    void aRateLimitedNameLookupStillAddsTheTickerAndSaysWhyTheNameIsMissing() {
+        gateway.putPrices(SYMBOL, WatchlistTestData.ascendingPrices(4))
+                .failCompanyNameWith(SYMBOL, new MarketDataException(
+                        MarketDataException.Kind.RATE_LIMIT, SYMBOL, "OVERVIEW quota reached"));
+
+        execute(SYMBOL);
+
+        // The add succeeds - vision.md principle 7 - and the ticker really is on the list.
+        assertEquals(1, presenter.getAddSuccessCount());
+        assertEquals(0, presenter.getFailureCount());
+        assertTrue(watchlist.contains(new Ticker(SYMBOL, null)));
+        assertEquals(1, saveWatchlist.getCallCount());
+        assertEquals(4, stocks.findBySymbol(SYMBOL).orElseThrow().getPriceCount());
+
+        /*
+         * The distinguishing assertion: a rate-limited lookup and a symbol with no
+         * company record both produce an empty name, so only the kind lets the
+         * presenter say "unavailable - provider quota reached" rather than staying
+         * silent.
+         */
+        assertEquals("", presenter.getAddResult().getCompanyName());
+        assertFalse(presenter.getAddResult().isCompanyNameAvailable());
+        assertEquals(MarketDataException.Kind.RATE_LIMIT,
+                presenter.getAddResult().getCompanyNameFailureKind());
+    }
+
+    @Test
+    void aCleanAddReportsNoCompanyNameFailureKind() {
+        gateway.putPrices(SYMBOL, WatchlistTestData.ascendingPrices(4))
+                .putCompanyName(SYMBOL, "Apple Inc.");
+
+        execute(SYMBOL);
+
+        assertEquals("Apple Inc.", presenter.getAddResult().getCompanyName());
+        assertTrue(presenter.getAddResult().isCompanyNameAvailable());
+        assertNull(presenter.getAddResult().getCompanyNameFailureKind());
+    }
+
+    @Test
+    void aSymbolWithNoCompanyRecordIsDistinguishableFromAFailedLookup() {
+        gateway.putPrices(SYMBOL, WatchlistTestData.ascendingPrices(4));
+
+        execute(SYMBOL);
+
+        // Nothing failed - the provider simply has no name - so there is no kind.
+        assertEquals("", presenter.getAddResult().getCompanyName());
+        assertFalse(presenter.getAddResult().isCompanyNameAvailable());
+        assertNull(presenter.getAddResult().getCompanyNameFailureKind());
     }
 
     @Test

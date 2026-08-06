@@ -77,8 +77,8 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
         try {
             prices = marketDataGateway.fetchDailyPrices(symbol);
         }
-        catch (MarketDataException e) {
-            presenter.prepareFailView(WatchlistFailure.from(e));
+        catch (MarketDataException exception) {
+            presenter.prepareFailView(WatchlistFailure.from(exception));
             return;
         }
 
@@ -93,6 +93,7 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
          * companyName field: absence is expressed once, not twice.
          */
         String companyName = "";
+        MarketDataException.Kind companyNameFailureKind = null;
 
         try {
             final Optional<String> fetchedName = marketDataGateway.fetchCompanyName(symbol);
@@ -102,20 +103,13 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
         }
         catch (MarketDataException exception) {
             /*
-             * The decision stands - a missing name never blocks the add - and the
-             * redundant "companyName = null" that used to sit here is gone: the field
-             * is already "".
-             *
-             * exception.getKind() is what would tell the user "the provider has no
-             * name for this symbol" apart from "we were rate-limited" - the same blank
-             * cell, very different advice. Carrying it needs one extra field on
-             * AddTickerOutputData, which is an orchestrator-owned contract file that
-             * this agent may not edit. The request, with the exact shape wanted, is
-             * filed in plan/handoffs/use-case-needs.md; the one-line change here is
-             * `companyNameFailureKind = exception.getKind();` plus a fifth constructor
-             * argument below.
+             * The decision stands - a missing name never blocks the add - but the
+             * diagnostic is no longer discarded. The kind is what tells "this symbol
+             * has no company record" apart from "the name lookup was rate-limited":
+             * the same blank cell, very different advice. The presenter chooses the
+             * wording; the add succeeds either way.
              */
-            companyName = "";
+            companyNameFailureKind = exception.getKind();
         }
 
         /*
@@ -149,6 +143,7 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
                 symbol,
                 companyName,
                 prices.size(),
-                WatchlistSnapshotFactory.build(watchlist, stockRepository, symbol)));
+                WatchlistSnapshotFactory.build(watchlist, stockRepository, symbol),
+                companyNameFailureKind));
     }
 }
