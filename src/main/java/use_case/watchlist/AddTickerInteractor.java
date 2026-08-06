@@ -23,8 +23,16 @@ import use_case.persistence.SaveWatchlist;
  *   <li>Fetch prices <em>before</em> mutating anything, so a provider failure can
  *       never leave a half-added ticker behind.</li>
  *   <li>Look up the company name, treating failure as cosmetic.</li>
+ *   <li>Build the {@code Stock}, which is where a malformed price series is
+ *       rejected - still before any mutation.</li>
  *   <li>Only then update the watchlist, store the prices, and save.</li>
  * </ol>
+ *
+ * <p>Nothing a collaborator can throw escapes {@link #execute}: provider failures
+ * arrive as a checked {@link MarketDataException} and {@code Stock}'s invariant
+ * violations as an unchecked {@code IllegalArgumentException}, and both are mapped to
+ * a {@link WatchlistFailure}. The caller is a {@code SwingWorker}, which would
+ * otherwise swallow the stack trace and leave the window silently unchanged.
  *
  * <p>This interactor depends only on interfaces it or its own layer declares
  * ({@link MarketDataGateway}, {@link StockRepository}, and the persistence feature's
