@@ -26,6 +26,12 @@ public class RSIMomentumStrategy implements TradingStrategy {
     public List<TradingSignal> generateSignals(List<DailyPrice> prices) {
         Objects.requireNonNull(prices, "Prices cannot be null");
 
+        for (DailyPrice price : prices) {
+            Objects.requireNonNull(
+                    price,
+                    "Price entries cannot be null");
+        }
+
         final int period = configuration.getPeriod();
 
         if (prices.size() < period + 1) {
