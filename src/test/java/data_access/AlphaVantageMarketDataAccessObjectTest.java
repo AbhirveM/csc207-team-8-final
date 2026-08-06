@@ -107,6 +107,30 @@ class AlphaVantageMarketDataAccessObjectTest {
         assertTrue(withResponses(nameIsNone).fetchCompanyName("VOO").isEmpty());
     }
 
+    /**
+     * An unrecognized symbol produces a bare {@code {}} OVERVIEW body. That is an absent
+     * name, not a failure: the price endpoint may still know the symbol, and OVERVIEW is
+     * the first endpoint the free-tier quota kills, so a name lookup must never be able
+     * to block adding a ticker.
+     */
+    @Test
+    void anEmptyOverviewBodyIsAnAbsentNameRatherThanAnError() throws Exception {
+        final StubHttpJsonClient client = new StubHttpJsonClient()
+                .respondTo(OVERVIEW, JsonFixtures.read("overview_unknown_symbol.json"));
+
+        assertEquals(Optional.empty(), withResponses(client).fetchCompanyName("ZZZZ"));
+    }
+
+    /**
+     * The same {@code {}} body remains an EMPTY_RESPONSE on the price endpoint - there is
+     * no price history to degrade gracefully to.
+     */
+    @Test
+    void anEmptyDailySeriesBodyIsStillAnError() {
+        assertEquals(MarketDataException.Kind.EMPTY_RESPONSE,
+                dailyFailureKind("overview_unknown_symbol.json"));
+    }
+
     // --- Endpoint usage (the API rubric line, proven rather than claimed) -------
 
     @Test

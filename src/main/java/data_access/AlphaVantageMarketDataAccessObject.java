@@ -196,9 +196,23 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
      * <p>An unknown symbol yields {@code {}} here, which is reported as an absent name
      * rather than an error: a symbol can be perfectly valid for price data and still
      * have no company record.
+     *
+     * <p>That is why the empty root is checked <em>before</em>
+     * {@link #rejectProviderError(String, JSONObject)}, whose own empty-root check would
+     * otherwise turn it into {@code EMPTY_RESPONSE}. A missing company name is cosmetic
+     * and must never block adding a ticker - and {@code OVERVIEW} is the first endpoint
+     * the free-tier quota kills, so this path is common rather than exotic.
+     *
+     * @param symbol the symbol being parsed, for error reporting
+     * @param json   the raw response body
+     * @return the company name, or empty when the provider has none
+     * @throws MarketDataException if the response reports a genuine provider error
      */
     static Optional<String> parseCompanyName(String symbol, String json) throws MarketDataException {
         final JSONObject root = readRoot(symbol, json);
+        if (root.isEmpty()) {
+            return Optional.empty();
+        }
         rejectProviderError(symbol, root);
 
         final String name = root.optString(COMPANY_NAME_KEY, "").strip();
