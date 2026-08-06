@@ -53,6 +53,8 @@ public final class AddTickerInteractor implements AddTickerInputBoundary {
 
     @Override
     public void execute(AddTickerInputData inputData) {
+        Objects.requireNonNull(inputData, "Input data cannot be null");
+
         final WatchlistInputSupport.Resolution resolution = WatchlistInputSupport.resolve(
                 inputData.getRawSymbol(), watchlist, WatchlistInputSupport.Membership.MUST_BE_ABSENT);
 

@@ -40,6 +40,8 @@ public final class RefreshTickerInteractor implements RefreshTickerInputBoundary
 
     @Override
     public void execute(RefreshTickerInputData inputData) {
+        Objects.requireNonNull(inputData, "Input data cannot be null");
+
         /*
          * The membership guard runs before the provider is touched, so refreshing
          * something that was never added cannot spend a request from the daily quota.

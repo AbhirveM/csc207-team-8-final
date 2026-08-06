@@ -30,6 +30,8 @@ public final class RemoveTickerInteractor implements RemoveTickerInputBoundary {
 
     @Override
     public void execute(RemoveTickerInputData inputData) {
+        Objects.requireNonNull(inputData, "Input data cannot be null");
+
         final WatchlistInputSupport.Resolution resolution = WatchlistInputSupport.resolve(
                 inputData.getRawSymbol(), watchlist,
                 WatchlistInputSupport.Membership.MUST_BE_PRESENT);
