@@ -17,9 +17,11 @@ public interface ShowWatchlistOutputBoundary {
     /**
      * Reports that the watchlist could not be shown.
      *
-     * <p>Present for symmetry with the other three use cases and for the null
-     * {@code inputData} case. A selected symbol that is absent from the watchlist is
-     * <em>not</em> a failure.
+     * <p>Present for symmetry with the other three use cases. Show Watchlist has no
+     * failure mode of its own — a selected symbol that is absent from the watchlist
+     * degrades silently to no selection rather than failing, and a null
+     * {@code inputData} is a wiring error that fails fast with
+     * {@link NullPointerException} — so no interactor currently calls this.
      *
      * @param failure why the watchlist could not be shown
      */
