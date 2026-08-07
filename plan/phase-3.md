@@ -40,7 +40,7 @@ Verify `mvn -o clean test` is green, commit, then spawn C and D.
 |---|---|
 | `interface_adapter/watchlist/WatchlistPresenter.java` | one class implementing all four output boundaries |
 | `interface_adapter/watchlist/WatchlistController.java` | four `void` pass-through methods |
-| `src/test/java/interface_adapter/watchlist/WatchlistPresenterTest.java` | pins all 11 failure strings and all 7 success strings |
+| `src/test/java/interface_adapter/watchlist/WatchlistPresenterTest.java` | pins all 11 failure strings and all 8 success strings |
 | `src/test/java/interface_adapter/watchlist/WatchlistControllerTest.java` | asserts the raw string reaches the boundary untouched |
 
 Methods to implement:
@@ -58,7 +58,7 @@ WatchlistController(AddTickerInputBoundary, RemoveTickerInputBoundary,
   addTicker(String) · removeTicker(String) · refreshTicker(String) · showWatchlist(String)
 ```
 
-The complete 11-row failure table and 7 success messages are in `agents/adapter.md`
+The complete 11-row failure table and 8 success messages are in `agents/adapter.md`
 § Interface Contract. That table is the **only** place user-facing strings may live.
 
 Three behaviours a test must pin, because getting them wrong is worse than the underlying
@@ -106,7 +106,7 @@ Full detail: `agents/view.md` § Phase Tasks — including the accessibility lis
 
 1. `mvn -o clean verify` — green.
 2. `WatchlistPresenterTest` asserts the **exact** string (`assertEquals`, not `contains`)
-   for all 11 `WatchlistFailure.Kind` values and all 7 success messages.
+   for all 11 `WatchlistFailure.Kind` values and all 8 success messages.
 3. `grep -rn "javax.swing\|java.awt" src/main/java/interface_adapter` — empty.
 4. `grep -n "use_case\|entity" src/main/java/view/WatchlistView.java` — empty.
 5. `grep -n "String.format\|NumberFormat\|DateTimeFormatter" src/main/java/view/WatchlistView.java`

@@ -70,7 +70,8 @@ work back to the owning agent; the next phase does not start.
 - **Done when:**
   - `mvn -o clean verify` is green.
   - `WatchlistPresenterTest` pins the exact user-facing string for all 11
-    `WatchlistFailure.Kind` values and all 7 success messages.
+    `WatchlistFailure.Kind` values and all 8 success messages (see `agents/adapter.md`
+    § Interface Contract — the add-success table has three rows, not two).
   - `grep -rn "javax.swing" src/main/java/interface_adapter` returns nothing.
   - `grep -n "use_case" src/main/java/view/WatchlistView.java` returns nothing.
   - Every button handler in `WatchlistView` runs its controller call inside a

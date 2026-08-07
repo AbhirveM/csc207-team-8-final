@@ -132,10 +132,17 @@ sentence rather than as `"" is not valid`.
 
 Success messages:
 
+There are **eight**, not seven. `AddTickerOutputData.getCompanyNameFailureKind()` was added in
+Phase 2 and is nullable, so a successful add now has three distinguishable outcomes: the name
+resolved, the provider has no company record for the symbol, or the lookup itself failed. The
+third is a *success with a caveat*, never a failure row — the ticker and its prices were added
+either way.
+
 | Situation | Message |
 |---|---|
 | Add, name known | `Added %s (%s) with %d days of price history.` |
-| Add, no name | `Added %s with %d days of price history. No company name was available.` |
+| Add, no name, `getCompanyNameFailureKind() == null` | `Added %s with %d days of price history. No company name was available.` |
+| Add, no name, `getCompanyNameFailureKind() != null` | `Added %s with %d days of price history. The company name could not be looked up right now.` |
 | Remove | `Removed %s from your watchlist.` |
 | Refresh, history present | `Refreshed %s: %d days of price history, latest %s.` |
 | Refresh, no history | `Refreshed %s, but no price history was returned.` |
@@ -180,7 +187,7 @@ boundaries with `Objects.requireNonNull(x, "... cannot be null")`.
 - One test per `WatchlistFailure.Kind` — all 11 — asserting the **exact** string via
   `assertEquals`, not `contains`. These strings are the deliverable; a substring check
   lets a typo through.
-- One test per success message — all 7.
+- One test per success message — all 8, including both no-name variants.
 - A test that `prepareFailView` leaves `getTickerRows()` and `getPriceRows()` unchanged.
 - A test that `prepareFailView` preserves and success clears `tickerFieldText`.
 - A test that `priceCount == 0` renders as `"Not loaded"`.
@@ -194,4 +201,4 @@ duplicate Agent A's coverage while hiding a real regression if the controller ev
 trimming).
 
 **Done when:** `grep -rn "javax.swing" src/main/java/interface_adapter` returns nothing,
-and 11/11 kinds plus 7/7 success messages are pinned.
+and 11/11 kinds plus 8/8 success messages are pinned.

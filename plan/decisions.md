@@ -115,3 +115,49 @@ here rather than fixed, per `/execute` step 5.
 Two items for the **team**, not this vertical (raise, do not absorb — §9):
 `view/ComparisonView.java:3` and `view/MainAppState.java:3` import `entity.BacktestResult`,
 which a grader running a `view → entity` check will hit. Both are teammates' files.
+
+---
+
+## Phase 3 decisions
+
+### D3-a — the add-success prose table has **eight** rows, not seven
+
+`plan/status.md` §Next flagged that `AddTickerOutputData.getCompanyNameFailureKind()` is new
+and nullable, so a successful add has three distinguishable outcomes: name resolved, no company
+record, and lookup failed. Decided this phase: the third becomes a **success-with-caveat**
+string, never a failure row — the ticker and its prices were stored either way.
+
+| Add outcome | Message |
+|---|---|
+| name present | `Added %s (%s) with %d days of price history.` |
+| no name, kind `null` | `Added %s with %d days of price history. No company name was available.` |
+| no name, kind non-null | `Added %s with %d days of price history. The company name could not be looked up right now.` |
+
+The caveat wording deliberately does **not** name the underlying kind. Threading
+`(rate limit)` into the sentence would make the string vary by kind and stop
+`WatchlistPresenterTest` pinning it with a single `assertEquals` — and the user cannot act on
+the distinction anyway, since the add already succeeded.
+
+The Phase 3 gate is therefore **11 failure strings + 8 success strings**. `plan/phases.md`,
+`plan/phase-3.md` and `agents/adapter.md` § Interface Contract were corrected before Agent C
+was spawned; all three are orchestrator-owned.
+
+### D3-b — the "before" screenshot is the owner's to capture
+
+`agents/view.md` § Presentation artifact asks Agent D to launch the app and screenshot it.
+A subagent cannot reliably drive a desktop window, and burning agent time discovering that
+helps nobody. Agent D was told to skip it; the orchestrator wrote
+`plan/handoffs/screenshots.md` with the command and a placeholder path for the owner to fill
+in **before Phase 4 wiring lands** — after that the artifact cannot be recreated.
+
+### D3-c — price-row ordering: `plan/phases.md` Phase 4 contradicts the frozen contract
+
+`plan/phases.md` § Phase 4 "Done when" says the price table fills **oldest-to-newest**.
+`WatchlistSnapshotFactory.priceRowsFor` (line 79) deliberately emits **newest-first** — "the
+order a user expects to read prices in" — and `WatchlistSnapshot`'s class javadoc documents
+that explicitly, noting it is purely presentational and does not weaken the oldest-to-newest
+guarantee `Stock` makes to the strategies. The two cannot both be right.
+
+Not resolved in Phase 3: the presenter maps snapshot rows straight through in the order they
+arrive, so this changes nothing about Agent C's or Agent D's work. It is a Phase 4 acceptance
+question — decide it at that gate rather than churning a frozen, tested contract mid-phase.
