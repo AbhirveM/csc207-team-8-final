@@ -147,6 +147,21 @@ public final class WatchlistPresenter
     /**
      * Renders the watchlist, with the requested selection applied.
      *
+     * <p>This is the one success path that <em>populates</em> {@code tickerFieldText}
+     * instead of clearing it, and the difference is deliberate - do not "fix" it back.
+     * Add, Remove and Refresh are text <em>submissions</em>: the user typed something, it
+     * was consumed, and leaving it behind would invite a double-submit, so those three
+     * clear the field. Show Watchlist is a <em>selection</em>: the user clicked a row to
+     * say "this is the ticker I mean". The view reads one ticker field for Add, Remove and
+     * Refresh alike, so if a selection left the field empty, clicking the AAPL row and
+     * pressing Refresh would answer {@code Enter a ticker symbol before continuing.} with
+     * the row plainly selected.
+     *
+     * <p>Putting the selected symbol in the field is what keeps a single source of truth
+     * for "which symbol is the user talking about" - the alternative was a second one in
+     * the view. The snapshot's selected symbol is already {@code ""} when nothing is
+     * selected, so an empty selection still clears the field.
+     *
      * @param outputData how many tickers are held and the watchlist as it stands
      * @throws NullPointerException if {@code outputData} is null
      */
@@ -163,7 +178,9 @@ public final class WatchlistPresenter
             status = "Your watchlist is empty. Add a ticker to begin.";
         }
 
-        publishSuccess(outputData.getSnapshot(), status);
+        final WatchlistSnapshot snapshot = outputData.getSnapshot();
+        Objects.requireNonNull(snapshot, "Snapshot cannot be null");
+        publishSuccess(snapshot, status, snapshot.getSelectedSymbol());
     }
 
     /**
@@ -267,18 +284,36 @@ public final class WatchlistPresenter
      * Writes a success into the view model: the snapshot's rows, the given prose, no error,
      * and a cleared ticker field.
      *
+     * <p>The default for a success is a cleared field, because Add, Remove and Refresh are
+     * text submissions whose input has been consumed. Only Show Watchlist overrides it, via
+     * {@link #publishSuccess(WatchlistSnapshot, String, String)}.
+     *
      * @param snapshot      the watchlist as the use case left it
      * @param statusMessage the sentence describing what just happened
      */
     private void publishSuccess(WatchlistSnapshot snapshot, String statusMessage) {
         Objects.requireNonNull(snapshot, "Snapshot cannot be null");
+        publishSuccess(snapshot, statusMessage, "");
+    }
+
+    /**
+     * Writes a success into the view model with an explicit ticker field.
+     *
+     * @param snapshot        the watchlist as the use case left it
+     * @param statusMessage   the sentence describing what just happened
+     * @param tickerFieldText what the ticker field should contain afterwards; {@code ""}
+     *                        for a consumed submission, and the selected symbol for a
+     *                        selection
+     */
+    private void publishSuccess(WatchlistSnapshot snapshot, String statusMessage,
+                                String tickerFieldText) {
         viewModel.setState(new WatchlistState(
                 toTickerRows(snapshot.getTickerRows()),
                 toPriceRows(snapshot.getSelectedPriceRows()),
                 snapshot.getSelectedSymbol(),
                 statusMessage,
                 "",
-                ""));
+                tickerFieldText));
     }
 
     /**

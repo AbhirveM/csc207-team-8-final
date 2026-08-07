@@ -396,6 +396,43 @@ class WatchlistPresenterTest {
     }
 
     @Test
+    void showWatchlistPutsTheSelectedSymbolIntoTheTickerFieldRatherThanClearingIt() {
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(
+                1, new WatchlistSnapshot(
+                        List.of(tickerRow("AAPL", "Apple Inc.", 100)), "AAPL", List.of())));
+
+        assertEquals("AAPL", viewModel.getState().getTickerFieldText());
+    }
+
+    @Test
+    void showWatchlistWithNoSelectionStillLeavesTheTickerFieldEmpty() {
+        viewModel.setState(populatedState("aapl"));
+
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(
+                1, new WatchlistSnapshot(
+                        List.of(tickerRow("AAPL", "Apple Inc.", 100)), "", List.of())));
+
+        assertEquals("", viewModel.getState().getTickerFieldText());
+    }
+
+    @Test
+    void addRemoveAndRefreshClearTheTickerFieldEvenWhenTheSnapshotHasASelection() {
+        final WatchlistSnapshot selected = new WatchlistSnapshot(
+                List.of(tickerRow("AAPL", "Apple Inc.", 100)), "AAPL", List.of());
+
+        presenter.prepareSuccessView(
+                new AddTickerOutputData("AAPL", "Apple Inc.", 100, selected));
+        assertEquals("", viewModel.getState().getTickerFieldText());
+
+        presenter.prepareSuccessView(new RemoveTickerOutputData("AAPL", selected));
+        assertEquals("", viewModel.getState().getTickerFieldText());
+
+        presenter.prepareSuccessView(
+                new RefreshTickerOutputData("AAPL", 100, "2024-05-31", selected));
+        assertEquals("", viewModel.getState().getTickerFieldText());
+    }
+
+    @Test
     void aSuccessAfterAFailureClearsTheErrorMessage() {
         presenter.prepareFailView(
                 new WatchlistFailure(WatchlistFailure.Kind.NETWORK, "AAPL"));
