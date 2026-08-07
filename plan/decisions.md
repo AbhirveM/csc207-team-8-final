@@ -161,3 +161,100 @@ guarantee `Stock` makes to the strategies. The two cannot both be right.
 Not resolved in Phase 3: the presenter maps snapshot rows straight through in the order they
 arrive, so this changes nothing about Agent C's or Agent D's work. It is a Phase 4 acceptance
 question — decide it at that gate rather than churning a frozen, tested contract mid-phase.
+
+### D3-d — D-N1 accepted, and scoped to Show Watchlist only
+
+Agent D filed the one cross-agent need of the phase. `WatchlistView` reads the ticker field
+for Add, Remove and Refresh alike, so the demo path "click the AAPL row, press Refresh"
+produced `Enter a ticker symbol before continuing.` with the row plainly selected — every
+success clears `tickerFieldText`, including Show Watchlist's.
+
+Agent D was right to file rather than absorb it: fixing it view-side needs a conditional on
+whether the field is empty plus a fallback to the table selection, which is a data conditional
+in the view (H6) and a second source of truth for "which symbol is the user talking about".
+
+**Accepted.** `prepareSuccessView(ShowWatchlistOutputData)` now sets `tickerFieldText` to the
+snapshot's selected symbol. That value is already `""` when nothing is selected, so the
+empty-selection behaviour is untouched.
+
+**Declined:** the optional half, extending the same to Add. Add, Remove and Refresh are text
+*submissions* and clearing the field after them is a pinned contract; Show Watchlist is a
+*selection*, so populating the field from it is coherent rather than contradictory. All
+existing clearing tests stand unchanged.
+
+Routed back to Agent C rather than patched by the orchestrator, so the change lands with its
+pinning test in the file's owner's hands.
+
+### D3-e — D-N2 accepted as a risk, not fixed
+
+"Load prices" must stop spending the daily quota at the first rate-limit failure (H5). The only
+signal reaching the view is the error prose, so `WatchlistView.RATE_LIMIT_PREFIX` matches the
+opening sentence of the `RATE_LIMIT` row. This is the single place the view depends on the
+*content* of a presenter string rather than merely displaying it: reword that sentence and the
+constant must be reworded with it, or "Load prices" keeps hammering the API after the quota is
+gone.
+
+The clean fix is a structured `boolean isQuotaExhausted()` on `WatchlistState`. Not taken this
+phase: `WatchlistState` is orchestrator-owned and its shape is frozen in `agents/orchestrator.md`
+§5.3, and widening a frozen contract after both agents have built against it is exactly the
+churn the freeze exists to prevent. `WatchlistPresenterTest` pins the sentence with
+`assertEquals`, so a reword breaks a test rather than silently breaking the quota guard — which
+is what makes the coupling survivable. Revisit in Phase 5 if the shape is being touched anyway.
+
+### D3-f — both agent worktrees were provisioned from the wrong commit
+
+Both C and D reported their worktree was created from `bff35db` (an old `feature/momentum-strategy`
+merge) rather than the `394d3fb` their briefs named — no `agents/`, no `plan/`, no
+`interface_adapter/watchlist/`. Both detected it independently, reset to `394d3fb` before
+reading or writing anything, and reported it unprompted. Verified after the fact:
+`git merge-base --is-ancestor 394d3fb <branch>` is true for both, and both merged with zero
+overlapping files.
+
+Recorded because the tooling will do it again. **Any future phase that fans out to worktrees
+must have the orchestrator verify each worktree's base commit before the agents start**, rather
+than relying on the agents to notice.
+
+---
+
+## Warnings carried forward from `plan/review-phase-3.md`
+
+Status **PASS WITH WARNINGS** — **zero criticals**, eleven warnings. Five were fixed
+immediately because they are orchestrator-owned contract drift, and Phase 4 and 5 agents read
+those documents to derive their briefs — the same reasoning that fixed W2-10 in Phase 2. The
+remaining six are logged here.
+
+**Fixed during Phase 3 close-out:** W3-1 (`agents/orchestrator.md` §5.6 and
+`agents/reviewer.md` still said "7 success messages"); W3-2 (three documents contradicted the
+shipped presenter on the failure `statusMessage` rule and on Show Watchlist's ticker-field
+behaviour — `agents/adapter.md`, `plan/phase-3.md` and orchestrator §5.3 all corrected);
+W3-3 (`WatchlistState`'s javadoc claimed value equality exists so the view model can skip a
+repaint, which is the exact opposite of what `setState` deliberately does); W3-4
+(`WatchlistViewModel.state` is now `volatile`); W3-9 (the one 101-character line, and the
+missing `hashCode` javadoc). W3-7's brief self-contradiction was also fixed — both agent
+briefs listed `plan/**` under Never Touch while instructing the agent to write into
+`plan/handoffs/`, so `plan/handoffs/<agent>-*.md` is now carved out explicitly in both.
+
+| # | Warning | Owner | Due |
+|---|---|---|---|
+| W3-5 | `prepareFailView` is a non-atomic read-modify-write on the view model, and a concurrent writer exists: `runInBackground` disables the four buttons but **not** the ticker table, so clicking a different row while a refresh is in flight drives `showWatchlist → setState` on the EDT concurrently with the worker's `setState`. Worst case is a lost update and a stale render — no crash, because `WatchlistState` is immutable. The one genuine race in the vertical, and invisible to the test suite. Cheapest fix: have `setButtonsEnabled(false)` also disable `tickerTable`. | D | Phase 4 |
+| W3-6 | The D-N2 tripwire fires but does not point anywhere. `WatchlistView.RATE_LIMIT_PREFIX` prefix-matches the presenter's `RATE_LIMIT` sentence, and D3-e argued the pinning `assertEquals` makes that safe. It does not: the test that breaks on a reword is `rateLimitFailureTellsTheUserToWaitAMinute`, whose message says nothing about the view constant, so the natural repair is to update the expected string and move on — leaving "Load prices" spending quota after it is exhausted. Fix: name `WatchlistView.RATE_LIMIT_PREFIX` in the presenter's `RATE_LIMIT` arm, or take the structured `isQuotaExhausted()` in Phase 5. | C, D | Phase 4 or 5 |
+| W3-8 | `WatchlistView.render` calls `tickerField.setText(...)` unconditionally on every state event, so a user typing the next symbol while a refresh is in flight loses it and the caret jumps. A consequence of D3-d making the field view-model-owned, not a mistake. Fix alongside W3-5, or guard the `setText` on the value actually differing. | D | Phase 4 |
+| W3-10 | `OrderedFocusTraversalPolicy` silently wraps on an unknown component: `order.indexOf(component)` returns `-1` and `Math.floorMod` turns that into a plausible index rather than a signal. Cannot throw, so a robustness nit — but a control added later and forgotten in `installFocusOrder` gives a focus order nobody can debug. | D | Phase 5 |
+| W3-11 | `WatchlistView` marks parameters `final` throughout; nothing else in the repo does. Defensible under §7 ("`final` locals wherever possible") but visibly inconsistent with `ComparisonView` and `WatchlistPresenter` next to it. Lowest priority. | D | Phase 5 |
+| W3-12 | Not every interactor is at 100% *method* coverage despite 100% lines — `RefreshTickerInteractor` shows one method and three instructions missed, `TickerSymbolValidator` one line. Phase 2 territory. Recorded so "all four interactors 100%" is not carried forward unqualified: it is true of lines, not of every JaCoCo axis. | A | Phase 5 |
+
+### D3-g — the coverage margin is thinner than the headline
+
+73.3% against a 70% target, with `WatchlistView`'s 171 uncovered lines already counted. Phase 4
+adds `Main`'s wiring block, also uncovered. The real margin is roughly **45 lines**. If Phase 5
+measures short the levers are already on the books and are not Swing tests (H6): W2-7's
+`apiKeyFrom(String)` extraction and W2-8's factory assertion.
+
+### D3-h — `plan/handoffs/` was cleared selectively, not emptied
+
+`/execute` step 5 says to delete the contents of `plan/handoffs/`. The four agent files
+(`adapter-done.md`, `view-done.md`, `view-needs.md`, and the needs file C never had to create)
+were removed — their content is now recorded in `plan/review-phase-3.md` and in D3-d/D3-e above.
+**`screenshots.md` was deliberately kept:** it carries an unfinished action item with an
+irreversible deadline, and Phase 5 populates this directory with the team hand-off notes anyway.
+Deleting a pending obligation to satisfy a cleanup step would be the wrong trade.

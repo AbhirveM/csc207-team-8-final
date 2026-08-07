@@ -17,8 +17,14 @@ import java.util.Objects;
  * buys a view with zero {@code use_case} imports, and gives the presenter the place it
  * needs to substitute human-readable placeholders.
  *
- * <p>Instances are immutable and have value semantics, so the view model can compare an
- * incoming state with the outgoing one and a test can assert on a whole state at once.
+ * <p>Instances are immutable and have value semantics so a test can assert on a whole state
+ * at once. Note that {@link WatchlistViewModel} deliberately does <em>not</em> use that
+ * equality to suppress a repaint - re-emitting an identical result must still fire an
+ * event, or the view silently misses a redraw. See that class's {@code setState}.
+ *
+ * <p>Deep immutability is also what makes the seam thread-safe: the presenter constructs a
+ * state on the background worker and the view reads it on the event dispatch thread, and
+ * every field being final means the reader can never observe a half-built instance.
  */
 public final class WatchlistState {
 
@@ -125,8 +131,9 @@ public final class WatchlistState {
     }
 
     /**
-     * Value equality, so the view model can skip a repaint when the presenter re-emits an
-     * identical state, and so a presenter test can assert on a whole state at once.
+     * Value equality, so a presenter test can assert on a whole state at once.
+     *
+     * <p>This is not used to skip repaints - see the class javadoc.
      *
      * @param other the object to compare with
      * @return whether {@code other} is a state with the same rows, selection and prose
@@ -148,6 +155,7 @@ public final class WatchlistState {
                 && tickerFieldText.equals(that.tickerFieldText);
     }
 
+    /** @return a hash consistent with {@link #equals(Object)} over all six fields. */
     @Override
     public int hashCode() {
         return Objects.hash(tickerRows, priceRows, selectedSymbol, statusMessage,

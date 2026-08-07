@@ -65,7 +65,8 @@ Three behaviours a test must pin, because getting them wrong is worse than the u
 error:
 - `prepareFailView` copies `tickerRows` / `priceRows` from the current state — a
   rate-limited refresh must never blank the user's watchlist.
-- `prepareFailView` preserves `tickerFieldText`; success clears it.
+- `prepareFailView` preserves `tickerFieldText`; Add/Remove/Refresh success clear it, and
+  Show Watchlist success sets it to the selected symbol (`plan/decisions.md` D3-d).
 - `priceCount == 0` renders as `"Not loaded"`, an empty date or close as `"—"`, and an
   absent company name as the symbol itself.
 

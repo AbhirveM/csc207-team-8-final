@@ -26,7 +26,8 @@ That is the entire ownership. This agent creates exactly one file.
 - `src/main/java/use_case/**` — Agent A. You must not even *import* from it.
 - `src/main/java/data_access/**` — Agent B
 - `src/main/java/entity/**` — frozen
-- `pom.xml`, `plan/**`, `agents/**`, `src/test/**`
+- `pom.xml`, `agents/**`, `src/test/**`, and `plan/**` — **except** `plan/handoffs/view-*.md`,
+  which you are required to write. Filing a cross-agent need is never an ownership violation.
 
 **`accessibility-report.md` is explicitly out of scope** for this plan (see
 `agents/orchestrator.md` §9). The accessibility *behaviour* below is still binding.
@@ -152,7 +153,7 @@ hidden, so the layout does not jump.
 **Keep this class dumb.** Hazard H6: `WatchlistView` will add ~250–350 uncovered lines to
 a project that must hit 70% overall. The less logic it contains, the less that costs. If
 you find yourself writing a conditional about *data*, it belongs in the presenter — file
-it in `plan/handoffs/agent-d-to-c.md`.
+it in `plan/handoffs/view-needs.md`.
 
 **Before finishing, verify:** `grep -n "use_case" src/main/java/view/WatchlistView.java`
 returns nothing.

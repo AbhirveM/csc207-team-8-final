@@ -29,7 +29,8 @@ Exceptions — orchestrator-owned, read-only to this agent (they are the C↔D s
 - `src/main/java/entity/**` — frozen
 - `interface_adapter/comparison/**`, `interface_adapter/persistence/**` — Member 4
 - `WatchlistViewModel.java`, `WatchlistState.java` — orchestrator
-- `pom.xml`, `plan/**`, `agents/**`
+- `pom.xml`, `agents/**`, and `plan/**` — **except** `plan/handoffs/adapter-*.md`, which
+  you are required to write. Filing a cross-agent need is never an ownership violation.
 
 **Do not attempt to reuse `RecordingWatchlistPresenter`.** It is package-private in
 `use_case.watchlist` and Agent A owns it. Your test constructs the real
@@ -170,11 +171,17 @@ Two behavioural rules on `prepareFailView` that a test must pin:
    blank the tables — the user's watchlist disappearing because a refresh was rate-limited
    is a worse bug than the rate limit.
 2. It **preserves `tickerFieldText`** so the user does not have to retype after a typo.
-   Success clears it.
+   Add, Remove and Refresh success clear it. **Show Watchlist success sets it to the
+   selected symbol instead** — that use case is a selection, not a text submission, and
+   populating the field is what arms Remove and Refresh after a row click
+   (`plan/decisions.md` D3-d).
 
 Every success path sets `errorMessage` to `""` and `statusMessage` to the row from the
-table above. Every failure path sets `statusMessage` to `""` and `errorMessage` to the
-failure row. `isErrorPresent()` is what the view uses to decide whether to show the error
+table above. Every failure path sets `errorMessage` to the failure row and **carries the
+previous `statusMessage` forward unchanged** — `WatchlistState` rejects a blank status,
+because an empty status label collapses and makes the layout jump, so a failure cannot
+empty it. Keeping the previous status also reads better: the footer shows what last
+succeeded above what just failed. `isErrorPresent()` is what the view uses to decide whether to show the error
 label — **errors are conveyed in words, never colour alone**.
 
 Use an exhaustive `switch` expression over `WatchlistFailure.Kind` with no `default`

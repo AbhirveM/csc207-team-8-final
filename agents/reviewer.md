@@ -128,6 +128,6 @@ a defect the phase claimed to close and did not.
 |---|---|
 | 1 | Are the frozen contracts actually frozen — do the signatures in `agents/orchestrator.md` §5 match the files byte for byte? A contract that drifts here breaks two agents in parallel later. |
 | 2 | All 13 defect IDs closed and each named in a commit. JaCoCo ≥90% on the four interactors and on the DAO + cache. Both `Recording*` doubles now have real callers. No test asserts a bug. |
-| 3 | Hazard H1 — does `WatchlistView.propertyChange` re-dispatch via `SwingUtilities.invokeLater` when off the EDT? Does the presenter pin all 11 failure kinds and all 7 success messages with `assertEquals`, not `contains`? Does the view contain zero formatting logic? |
+| 3 | Hazard H1 — does `WatchlistView.propertyChange` re-dispatch via `SwingUtilities.invokeLater` when off the EDT? Does the presenter pin all 11 failure kinds and all 8 success messages with `assertEquals`, not `contains`? Does the view contain zero formatting logic? |
 | 4 | Is the `Main.java` / `MainView.java` diff genuinely additive — no existing line deleted or reordered? Is `System.getenv` called exactly once, in `Main`? Does the app run with the key unset? Walk the `vision.md` §8 script yourself. |
 | 5 | Does the hand-off test produce a real BUY and a real SELL, not just HOLDs — i.e. does the fake's sample data genuinely oscillate? Is overall coverage ≥70% with exclusions documented? |

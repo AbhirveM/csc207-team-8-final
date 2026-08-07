@@ -27,8 +27,9 @@ public class WatchlistViewModel {
 
     /**
      * Headers for the watchlist table, in the order {@link WatchlistState.TickerRow}
-     * declares its components. They live here rather than in the view so the presenter and
-     * the view cannot drift; the length must stay equal to that record's component count.
+     * declares its components. They live here rather than in the view so the presenter
+     * and the view cannot drift; the length must stay equal to that record's component
+     * count.
      */
     public static final String[] TICKER_COLUMNS =
             {"Symbol", "Company", "Days of prices", "Latest date", "Latest close"};
@@ -42,9 +43,20 @@ public class WatchlistViewModel {
 
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    private WatchlistState state = WatchlistState.initial();
+    /*
+     * Volatile because this field is written on the view's background worker - the
+     * presenter is synchronous and runs there - and read on the event dispatch thread.
+     * Today the view re-enters through SwingUtilities.invokeLater, whose queue lock
+     * already supplies the happens-before edge, so this is belt and braces. It is one
+     * keyword, and it makes the guarantee a property of this class rather than of every
+     * future reader remembering to marshal.
+     */
+    private volatile WatchlistState state = WatchlistState.initial();
 
-    /** @return the current state; never null, and {@link WatchlistState#initial()} to begin with. */
+    /**
+     * @return the current state; never null, and {@link WatchlistState#initial()} until a
+     *         use case has run
+     */
     public WatchlistState getState() {
         return state;
     }

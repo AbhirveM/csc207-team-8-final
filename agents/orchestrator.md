@@ -244,7 +244,9 @@ String  getSelectedSymbol()         // "" when none
 String  getStatusMessage()          // never "" — "Ready." at minimum
 String  getErrorMessage()           // "" when no error
 boolean isErrorPresent()            // == !getErrorMessage().isEmpty()
-String  getTickerFieldText()        // "" after success; preserved after failure
+String  getTickerFieldText()        // preserved after failure; "" after Add/Remove/
+                                    // Refresh success; the selected symbol after Show
+                                    // Watchlist success (see plan/decisions.md D3-d)
 ```
 
 Two rules that make this contract load-bearing:
@@ -297,7 +299,7 @@ input boundaries in that order.
 
 ### 5.6 Failure and success prose
 
-The full 11-row failure table and 7 success messages are specified verbatim in
+The full 11-row failure table and 8 success messages are specified verbatim in
 `agents/adapter.md` §Interface Contract. Agent C must pin every one with a test. That
 table is the only place user-facing strings are allowed to exist.
 
