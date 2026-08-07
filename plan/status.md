@@ -1,12 +1,31 @@
 # Status
 
-Current phase: 3 — Adapter and View
-Active agents: none (Phase 3 spawns `adapter` C ∥ `view` D, but **only after** the
-orchestrator writes `WatchlistViewModel` and `WatchlistState` — that is what breaks the
-C↔D cycle, hazard H3)
+Current phase: 4 — Composition Root
+Active agents: none (Phase 4 is orchestrator-only — two append-only edits into Member 4's
+`app/Main.java` and `view/MainView.java`, per `agents/orchestrator.md` §6. Then reviewer.)
 Branch: `feature/watchlist-use-cases`
 
 ## Completed phases
+
+### Phase 3 — Adapter and View ✅ 2026-08-07
+
+- **Build:** `mvn -o clean verify` green — **403 tests**, 0 failures.
+- **Coverage:** project **73.3%**, above the Phase 5 70% target. The entire
+  `interface_adapter.watchlist` package is **100% line and 100% branch** — presenter
+  103/103 and 37/37, state 35/35 and 20/20, controller 14/14, view model 12/12. All six
+  Phase 2 ≥90% gates still hold. `WatchlistView` is 0% by design (hazard H6).
+- **Review:** `plan/review-phase-3.md` — **PASS WITH WARNINGS**, **zero criticals**, eleven
+  warnings. Five were fixed at close-out because they were orchestrator-owned contract
+  drift that Phase 4 and 5 agents would read as truth (W3-1, W3-2, W3-3, W3-4, W3-9), as
+  was W3-7's brief self-contradiction. The other six are logged as W3-5, W3-6, W3-8, W3-10,
+  W3-11, W3-12 in `plan/decisions.md`, mostly against Phase 4.
+- **Delivered:** `WatchlistPresenter` serving all four output boundaries, with an
+  exhaustive `switch` over `WatchlistFailure.Kind` and no `default`; `WatchlistController`
+  as four pass-throughs; `WatchlistView` with both halves of hazard H1; and the
+  orchestrator's `WatchlistViewModel`/`WatchlistState` seam. All 11 failure strings and all
+  8 success strings pinned byte-for-byte with `assertEquals`.
+- **Parallelism:** C and D again merged with **zero overlapping files**. One cross-agent
+  need (D-N1) was raised rather than absorbed and resolved in the presenter.
 
 ### Phase 2 — Core Remediation and Interactor Tests ✅ 2026-08-06
 
@@ -56,7 +75,59 @@ Branch: `feature/watchlist-use-cases`
   membership (A-N3). Reviewer verified the changed branch is unreachable through all four
   public boundaries.
 
+- **D3-a** — the add-success prose table has **eight** rows, not seven; the Phase 3 gate is
+  11 failure + 8 success strings. See `plan/decisions.md`.
+- **D3-b** — the `vision.md` §8 "before" screenshot moved from Agent D to the owner.
+  **Still uncaptured — see Next.**
+- **D3-c** — `plan/phases.md` Phase 4 "Done when" says the price table fills
+  oldest-to-newest; the frozen, tested contract emits newest-first. Deferred to the Phase 4
+  gate. Nothing in Phase 3 depends on the answer (verified by the reviewer: neither the
+  presenter nor the view sorts).
+- **D3-d** — D-N1 accepted and scoped to Show Watchlist only; the optional half (extending
+  it to Add) was declined.
+- **D3-e** — D-N2 accepted as a risk, not fixed. The reviewer then found the mitigation
+  weaker than claimed — see W3-6.
+- **D3-f** — **read before spawning any future parallel phase.** Both agent worktrees were
+  provisioned from the wrong commit (`bff35db`, not `394d3fb`). Both agents caught it
+  themselves and reset before writing, which is luck, not process. **The orchestrator must
+  verify each worktree's base commit before the agents start.**
+- **D3-g** — the coverage margin over 70% is ~45 lines once Phase 4's uncovered `Main`
+  wiring lands. Thinner than 73.3% suggests.
+- **D3-h** — `plan/handoffs/` was cleared *selectively*: the four agent files were removed,
+  `screenshots.md` was deliberately kept because it carries an unfinished obligation with an
+  irreversible deadline.
+
 ## Next
+
+Phase 4 — Composition Root. Orchestrator only, no agents. Two **append-only** edits into
+Member 4's files per `agents/orchestrator.md` §6: uncomment the nav-button template at
+`view/MainView.java:30-33` and replace the TODO at `app/Main.java:42-44` with the watchlist
+wiring block. `git diff` on both must be additive only.
+
+**Do this before the first Phase 4 commit — it is the one irreversible item on the board.**
+The `vision.md` §8 "before" screenshot is still uncaptured. `plan/handoffs/screenshots.md`
+has the run command and a placeholder path. Once the nav button is uncommented the shot
+cannot be retaken without a revert.
+
+Four things Phase 4 must know, all established in Phase 3:
+
+1. Use **one** `WatchlistPresenter` instance across all four interactors — it is what keeps
+   an add and a refresh from drifting into two different-sounding applications.
+2. Construct `WatchlistController` in the order `(add, remove, refresh, show)`.
+3. Constructing `WatchlistView` alone paints `WatchlistState.initial()` — `Ready.` with
+   empty tables. Call `watchlistController.showWatchlist("")` inside the existing
+   `SwingUtilities.invokeLater` or the restored watchlist never renders.
+4. Resolve **D3-c** at this gate. Recommended: correct the `plan/phases.md` sentence to
+   newest-first rather than change the frozen contract — it costs one line of prose and
+   breaks nothing, whereas the reverse also falsifies two `WatchlistPresenter` javadocs.
+
+W3-5 and W3-8 are both cheap to close while wiring: disabling `tickerTable` alongside the
+buttons in `WatchlistView.setButtonsEnabled` fixes the one genuine race in the vertical and
+the in-progress-typing loss at the same time.
+
+---
+
+## Superseded — Phase 3 pre-flight notes (kept for the record)
 
 Phase 3 — Adapter and View. Per `agents/orchestrator.md` §4 and phases.md, **write
 `interface_adapter/watchlist/WatchlistViewModel.java` and `WatchlistState.java` first,
