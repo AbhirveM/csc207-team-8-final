@@ -49,3 +49,6 @@ desktop.ini
 
 # ---- Local scratch / reference docs ----
 tmp/
+
+# Claude Code agent worktrees and local scratch
+.claude/
