@@ -90,3 +90,51 @@ None. Nothing was required from another agent's domain, so
 The worktree was initially created at `bff35db`, not at the `394d3fb` the brief names.
 It was reset to `394d3fb` (clean tree, nothing lost) before any work began, so this
 branch is a true child of the orchestrator's Phase 3 step-0 commit.
+
+---
+
+## D-N1 resolved — Show Watchlist arms Remove and Refresh
+
+Accepted from Agent D by the orchestrator after the first commit merged.
+
+**Problem.** `WatchlistView` reads one ticker field for Add, Remove and Refresh alike.
+Because every success cleared `tickerFieldText`, the demo path "click the AAPL row, press
+Refresh" answered `Enter a ticker symbol before continuing.` with the row plainly
+selected. Fixing it view-side would have needed a second source of truth for "which symbol
+is the user talking about", so it belongs here.
+
+**Change.** In `prepareSuccessView(ShowWatchlistOutputData)` only, `tickerFieldText` is
+now the snapshot's `getSelectedSymbol()` rather than `""`. That value is already `""` when
+nothing is selected, so the empty-selection behaviour is unchanged. `publishSuccess`
+gained a three-argument overload taking an explicit ticker field; the two-argument form
+still passes `""` and is what Add, Remove and Refresh call.
+
+**Scope, deliberately narrow.** Add, Remove and Refresh still clear the field. They are
+text *submissions* — the input was consumed, and leaving it behind invites a
+double-submit. Show Watchlist is a *selection*, so populating the field from it is
+coherent rather than contradictory. The method javadoc records this reasoning explicitly,
+because the next reader will otherwise "fix" it back.
+
+**Tests added** (three, all new):
+- `showWatchlistPutsTheSelectedSymbolIntoTheTickerFieldRatherThanClearingIt`
+- `showWatchlistWithNoSelectionStillLeavesTheTickerFieldEmpty`
+- `addRemoveAndRefreshClearTheTickerFieldEvenWhenTheSnapshotHasASelection` — the guard
+  against someone widening this to the other three paths
+
+Every pre-existing test passes unaltered, including `everySuccessClearsTheTickerFieldText`
+(its Show Watchlist fixture has no selection).
+
+**No prose changed.** All 11 failure strings and all 8 success strings are byte-for-byte
+identical; a `git diff` filtered to the message literals is empty.
+
+**Verify.** `mvn -o clean verify` green in this worktree. `WatchlistPresenterTest` 41
+tests, `WatchlistControllerTest` 11 tests, 0 failures, 0 errors.
+
+## D-N2 — noted, no action
+
+The "Load prices" stop condition prefix-matching the `RATE_LIMIT` sentence is an accepted
+risk, logged by the orchestrator in `plan/decisions.md`. A structured `isQuotaExhausted()`
+on `WatchlistState` would be cleaner, but that class is orchestrator-owned and frozen this
+phase. The `assertEquals` on the exact `RATE_LIMIT` string in `WatchlistPresenterTest` is
+what makes the coupling safe: changing that sentence breaks this test loudly rather than
+breaking the view silently.
