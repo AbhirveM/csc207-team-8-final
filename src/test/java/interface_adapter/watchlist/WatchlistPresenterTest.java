@@ -247,6 +247,18 @@ class WatchlistPresenterTest {
     }
 
     @Test
+    void refreshWithACountButNoLatestDateFallsBackToTheNoHistorySentence() {
+        // A count without a date is a contradiction the provider should never produce, but
+        // reporting it would render as a dangling "latest ." - so it degrades to the
+        // emptier sentence rather than to malformed prose.
+        presenter.prepareSuccessView(new RefreshTickerOutputData(
+                "AAPL", 100, "", snapshotWith(tickerRow("AAPL", "Apple Inc.", 100))));
+
+        assertEquals("Refreshed AAPL, but no price history was returned.",
+                viewModel.getState().getStatusMessage());
+    }
+
+    @Test
     void showWithTickersReportsHowManyAreOnTheWatchlist() {
         presenter.prepareSuccessView(new ShowWatchlistOutputData(
                 2, snapshotWith(tickerRow("AAPL", "Apple Inc.", 100),
@@ -311,6 +323,20 @@ class WatchlistPresenterTest {
         final WatchlistState.TickerRow row = viewModel.getState().getTickerRows().get(0);
         assertEquals("2024-05-31", row.latestDate());
         assertEquals("190.50", row.latestClose());
+    }
+
+    @Test
+    void nullSnapshotCellsRenderAsPlaceholdersRatherThanAsTheWordNull() {
+        // WatchlistSnapshot.TickerRow is a record with no null checking, so a null cell is
+        // reachable. It must never reach the table as the four letters "null".
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(
+                1, snapshotWith(new WatchlistSnapshot.TickerRow(
+                        "AAPL", null, 100, null, null))));
+
+        final WatchlistState.TickerRow row = viewModel.getState().getTickerRows().get(0);
+        assertEquals("AAPL", row.companyName());
+        assertEquals(ABSENT, row.latestDate());
+        assertEquals(ABSENT, row.latestClose());
     }
 
     @Test

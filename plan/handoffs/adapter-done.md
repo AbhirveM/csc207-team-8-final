@@ -138,3 +138,57 @@ on `WatchlistState` would be cleaner, but that class is orchestrator-owned and f
 phase. The `assertEquals` on the exact `RATE_LIMIT` string in `WatchlistPresenterTest` is
 what makes the coupling safe: changing that sentence breaks this test loudly rather than
 breaking the view silently.
+
+---
+
+## `WatchlistStateTest` — closing the 57.1% hole
+
+`WatchlistState` is orchestrator-owned, but it lives in this package and
+`src/test/java/interface_adapter/watchlist/**` is Agent C's, so the test was written here.
+The source file was **not** modified.
+
+**Created** `src/test/java/interface_adapter/watchlist/WatchlistStateTest.java` — 30 tests
+covering `initial()`, the full `equals`/`hashCode` contract (reflexive, two independently
+built equal states sharing a hash, one case per each of the six fields differing, null and
+unrelated type), defensive copying, list immutability, all seven constructor rejections
+asserted by message, `isErrorPresent()` in both directions, and `toString`.
+
+**One trap worth recording.** `assertNotEquals(expected, actual)` compares with
+`Objects.equals(expected, actual)`, which invokes `expected.equals(actual)`. Written as
+`assertNotEquals("WatchlistState", state)` the receiver is `String`, so
+`WatchlistState.equals` never runs and the `instanceof` branch stays uncovered — the test
+passes while proving nothing. The state must be the **first** argument. A comment above
+those two tests says so.
+
+**`toString` is asserted with `contains`, deliberately** — it is a debugging aid, not a
+deliverable, and pinning it byte-for-byte would be a brittle test that buys nothing. A
+comment marks this as the one place in the suite where `contains` is correct, precisely
+because it is the opposite of the rule governing the message table.
+
+## Two presenter branches closed while in the area
+
+JaCoCo showed `WatchlistPresenter` at 100% line but 35/37 branch. Both gaps were real
+defensive paths, now pinned:
+
+- `refreshWithACountButNoLatestDateFallsBackToTheNoHistorySentence` — a positive count with
+  an empty date is a contradiction the provider should never emit, but reporting it would
+  render as a dangling `latest .`, so it degrades to the emptier sentence.
+- `nullSnapshotCellsRenderAsPlaceholdersRatherThanAsTheWordNull` —
+  `WatchlistSnapshot.TickerRow` is a record with no null checking, so a null cell is
+  reachable; a null company name falls back to the symbol and a null date or close renders
+  as the em dash, never as the four letters `null`.
+
+## Final coverage for `interface_adapter/watchlist`
+
+| Class | Line | Branch |
+|---|---|---|
+| `WatchlistPresenter` | 103/103 (100%) | 37/37 (100%) |
+| `WatchlistController` | 14/14 (100%) | — |
+| `WatchlistState` | 35/35 (100%) | 20/20 (100%) |
+| `WatchlistViewModel` | 12/12 (100%) | — |
+
+`WatchlistState` went from 20/35 (57.1%) to 35/35 (100%), branches 20/20.
+
+**Verify.** `mvn -o clean verify` green. `WatchlistPresenterTest` 43,
+`WatchlistStateTest` 30, `WatchlistControllerTest` 11 — 84 tests in this package, 0
+failures, 0 errors.
