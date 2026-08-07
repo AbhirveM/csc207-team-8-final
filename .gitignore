@@ -46,3 +46,6 @@ desktop.ini
 # ---- Environment / secrets ----
 .env
 *.local
+
+# ---- Local scratch / reference docs ----
+tmp/
