@@ -1,18 +1,38 @@
 package app;
 
+import data_access.AlphaVantageMarketDataAccessObject;
+import data_access.CachingMarketDataGateway;
 import data_access.FileWatchlistDataAccessObject;
+import data_access.InMemoryMarketDataGateway;
+import data_access.InMemoryStockRepository;
+import entity.Watchlist;
 import view.*;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
 import interface_adapter.persistence.PersistencePresenter;
 import interface_adapter.persistence.PersistenceViewModel;
+import interface_adapter.watchlist.WatchlistController;
+import interface_adapter.watchlist.WatchlistPresenter;
+import interface_adapter.watchlist.WatchlistState;
+import interface_adapter.watchlist.WatchlistViewModel;
 import use_case.comparison.CompareStrategies;
 import use_case.persistence.LoadWatchlist;
 import use_case.persistence.SaveWatchlist;
 import use_case.persistence.WatchlistDataAccessInterface;
+import use_case.watchlist.AddTickerInputBoundary;
+import use_case.watchlist.AddTickerInteractor;
+import use_case.watchlist.MarketDataGateway;
+import use_case.watchlist.RefreshTickerInputBoundary;
+import use_case.watchlist.RefreshTickerInteractor;
+import use_case.watchlist.RemoveTickerInputBoundary;
+import use_case.watchlist.RemoveTickerInteractor;
+import use_case.watchlist.ShowWatchlistInputBoundary;
+import use_case.watchlist.ShowWatchlistInteractor;
+import use_case.watchlist.StockRepository;
 
 import javax.swing.*;
+import java.util.Optional;
 
 /**
  * Application builder: wires interactors, presenters, controllers, and views
@@ -39,9 +59,52 @@ public class Main {
                 new SaveWatchlist.Interactor(watchlistDataAccess, persistencePresenter);
         LoadWatchlist.InputBoundary loadWatchlistInteractor =
                 new LoadWatchlist.Interactor(watchlistDataAccess, persistencePresenter);
-        // TODO: pass saveWatchlistInteractor / loadWatchlistInteractor into whatever
-        // controller Member 1's watchlist view ends up using, e.g.:
-        // WatchlistController watchlistController = new WatchlistController(saveWatchlistInteractor, loadWatchlistInteractor, ...);
+        // --- Watchlist (Member 1) ---
+        // Gateway selection. This is the only place in the codebase that reads the
+        // environment: with no key configured the app runs fully offline against synthetic
+        // sample data rather than failing, so a grader without a key still sees the feature.
+        // There is no .env, no default key in code, and the key never appears in a message.
+        Optional<String> apiKey = AlphaVantageMarketDataAccessObject.apiKeyFromEnvironment();
+        MarketDataGateway marketDataGateway;
+        if (apiKey.isPresent()) {
+            marketDataGateway = new CachingMarketDataGateway(
+                    new AlphaVantageMarketDataAccessObject(apiKey.get()));
+        }
+        else {
+            marketDataGateway = InMemoryMarketDataGateway.withSampleData();
+        }
+
+        // Seed the watchlist from disk. This is what consumes loadWatchlistInteractor above;
+        // a load failure leaves the view model's watchlist null, which degrades to empty.
+        loadWatchlistInteractor.execute();
+        Watchlist watchlist = persistenceViewModel.getWatchlist();
+        if (watchlist == null) {
+            watchlist = new Watchlist();
+        }
+
+        StockRepository stockRepository = new InMemoryStockRepository();
+        WatchlistViewModel watchlistViewModel = new WatchlistViewModel();
+        // One presenter across all four interactors: a single instance is what keeps an add
+        // and a refresh from drifting into wording the user reads as two applications.
+        WatchlistPresenter watchlistPresenter = new WatchlistPresenter(watchlistViewModel);
+
+        // The constructor asymmetry is deliberate. Refresh changes prices, not membership, so
+        // it takes no SaveWatchlist; Show Watchlist performs no I/O at all, so it takes
+        // neither a gateway nor a save.
+        AddTickerInputBoundary addTicker = new AddTickerInteractor(
+                watchlist, marketDataGateway, stockRepository,
+                saveWatchlistInteractor, watchlistPresenter);
+        RemoveTickerInputBoundary removeTicker = new RemoveTickerInteractor(
+                watchlist, stockRepository, saveWatchlistInteractor, watchlistPresenter);
+        RefreshTickerInputBoundary refreshTicker = new RefreshTickerInteractor(
+                watchlist, marketDataGateway, stockRepository, watchlistPresenter);
+        ShowWatchlistInputBoundary showWatchlist = new ShowWatchlistInteractor(
+                watchlist, stockRepository, watchlistPresenter);
+
+        WatchlistController watchlistController =
+                new WatchlistController(addTicker, removeTicker, refreshTicker, showWatchlist);
+        WatchlistView watchlistView = new WatchlistView(watchlistViewModel, watchlistController);
+        mainView.addView(WatchlistViewModel.VIEW_NAME, watchlistView);
 
         // --- Strategy comparison (Member 4's own feature) ---
         ComparisonViewModel comparisonViewModel = new ComparisonViewModel();
@@ -53,6 +116,26 @@ public class Main {
         mainView.addView(ComparisonViewModel.VIEW_NAME, comparisonView);
 
         // --- Show the app ---
-        SwingUtilities.invokeLater(() -> mainView.setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            mainView.setVisible(true);
+            // Constructing WatchlistView alone paints WatchlistState.initial() - "Ready." with
+            // empty tables - so without this call a watchlist restored from disk would not
+            // render until the user's first action.
+            watchlistController.showWatchlist("");
+            // Applied after Show Watchlist, which writes its own status message. The notice is
+            // prepended to that message rather than replacing it: on a first launch there is
+            // no watchlist.dat, so Show Watchlist's line is "Your watchlist is empty. Add a
+            // ticker to begin." - the only thing on screen telling a new user what to do.
+            if (apiKey.isEmpty()) {
+                WatchlistState shown = watchlistViewModel.getState();
+                watchlistViewModel.setState(new WatchlistState(
+                        shown.getTickerRows(),
+                        shown.getPriceRows(),
+                        shown.getSelectedSymbol(),
+                        WatchlistViewModel.SAMPLE_DATA_STATUS + " " + shown.getStatusMessage(),
+                        shown.getErrorMessage(),
+                        shown.getTickerFieldText()));
+            }
+        });
     }
 }

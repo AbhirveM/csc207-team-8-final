@@ -46,3 +46,15 @@ desktop.ini
 # ---- Environment / secrets ----
 .env
 *.local
+
+# ---- Local scratch / reference docs ----
+tmp/
+
+# ---- Runtime data ----
+# The saved watchlist and the .corrupted-* files Member 4's recovery code renames it to.
+# User data written at runtime, not source.
+watchlist.dat
+watchlist.dat.corrupted-*
+
+# Claude Code agent worktrees and local scratch
+.claude/

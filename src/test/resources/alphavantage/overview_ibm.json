@@ -1,0 +1,13 @@
+{
+  "Symbol": "IBM",
+  "AssetType": "Common Stock",
+  "Name": "International Business Machines",
+  "Description": "International Business Machines Corporation provides integrated solutions and services worldwide.",
+  "CIK": "51143",
+  "Exchange": "NYSE",
+  "Currency": "USD",
+  "Country": "USA",
+  "Sector": "TECHNOLOGY",
+  "Industry": "COMPUTER & OFFICE EQUIPMENT",
+  "MarketCapitalization": "245000000000"
+}

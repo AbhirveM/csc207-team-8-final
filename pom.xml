@@ -22,6 +22,16 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+
+        <!--
+          JSON parsing for the Alpha Vantage market-data gateway. HTTP itself uses
+          the JDK's built-in java.net.http.HttpClient, so no HTTP dependency is needed.
+        -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -30,6 +40,34 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+            </plugin>
+
+            <!--
+              Line-coverage evidence for the testing rubric. Report only - the
+              "check" goal is deliberately NOT bound, so a coverage shortfall
+              never breaks the build. Run `mvn clean verify`, then open
+              target/site/jacoco/index.html.
+            -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <!-- 0.8.13 or newer is required to instrument on JDK 24. -->
+                <version>0.8.13</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
