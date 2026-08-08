@@ -31,12 +31,29 @@ public final class WatchlistState {
     /** The status line shown before any use case has run. */
     private static final String READY = "Ready.";
 
-    /** One row of the watchlist table, already formatted for display. */
+    /**
+     * One row of the watchlist table, already formatted for display.
+     *
+     * @param symbol      the ticker symbol
+     * @param companyName the company name, or a placeholder when it is unknown
+     * @param priceCount  how many days of price history are held, as text
+     * @param latestDate  the date of the most recent price, as text
+     * @param latestClose the most recent closing price, as text
+     */
     public record TickerRow(String symbol, String companyName, String priceCount,
                             String latestDate, String latestClose) {
     }
 
-    /** One row of the daily-price table, already formatted for display. */
+    /**
+     * One row of the daily-price table, already formatted for display.
+     *
+     * @param date   the trading date, as text
+     * @param open   the opening price, as text
+     * @param high   the session high, as text
+     * @param low    the session low, as text
+     * @param close  the closing price, as text
+     * @param volume the traded volume, as text
+     */
     public record PriceRow(String date, String open, String high, String low,
                            String close, String volume) {
     }

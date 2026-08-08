@@ -178,10 +178,10 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
         try {
             return httpClient.get(url);
         }
-        catch (IOException e) {
+        catch (IOException exception) {
             // The URL is omitted on purpose: it carries the API key.
             throw new MarketDataException(MarketDataException.Kind.NETWORK, symbol,
-                    "Could not reach the market data provider", e);
+                    "Could not reach the market data provider", exception);
         }
     }
 
@@ -229,11 +229,11 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
                         readVolume(row)));
             }
         }
-        catch (JSONException | DateTimeParseException | NumberFormatException e) {
+        catch (JSONException | DateTimeParseException | NumberFormatException exception) {
             // org.json throws unchecked, so it is converted here rather than being
             // allowed to escape the gateway and reach the interactor.
             throw new MarketDataException(MarketDataException.Kind.MALFORMED_RESPONSE, symbol,
-                    "Could not parse the daily price rows", e);
+                    "Could not parse the daily price rows", exception);
         }
 
         if (prices.isEmpty()) {
@@ -327,10 +327,10 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
         try {
             return new JSONObject(json);
         }
-        catch (JSONException e) {
+        catch (JSONException exception) {
             // A non-JSON body usually means an HTML error or maintenance page.
             throw new MarketDataException(MarketDataException.Kind.MALFORMED_RESPONSE, symbol,
-                    "The response was not valid JSON", e);
+                    "The response was not valid JSON", exception);
         }
     }
 

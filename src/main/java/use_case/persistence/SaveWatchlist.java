@@ -27,8 +27,8 @@ public class SaveWatchlist {
             try {
                 dataAccess.save(watchlist);
                 presenter.prepareSuccessView();
-            } catch (WatchlistDataAccessInterface.PersistenceException e) {
-                presenter.prepareFailView("Could not save watchlist: " + e.getMessage());
+            } catch (WatchlistDataAccessInterface.PersistenceException exception) {
+                presenter.prepareFailView("Could not save watchlist: " + exception.getMessage());
             }
         }
     }

@@ -6,7 +6,11 @@ import data_access.FileWatchlistDataAccessObject;
 import data_access.InMemoryMarketDataGateway;
 import data_access.InMemoryStockRepository;
 import entity.Watchlist;
-import view.*;
+import view.ComparisonView;
+import view.MainView;
+import view.ViewManager;
+import view.ViewManagerModel;
+import view.WatchlistView;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
@@ -31,7 +35,7 @@ import use_case.watchlist.ShowWatchlistInputBoundary;
 import use_case.watchlist.ShowWatchlistInteractor;
 import use_case.watchlist.StockRepository;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import java.util.Optional;
 
 /**

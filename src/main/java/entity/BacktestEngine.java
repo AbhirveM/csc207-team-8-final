@@ -70,8 +70,8 @@ public class BacktestEngine {
          * Therefore, the final day's signal cannot be executed.
          */
         for (int index = 0;
-             index < signals.size() - 1;
-             index++) {
+                index < signals.size() - 1;
+                index++) {
 
             final TradingSignal signal =
                     Objects.requireNonNull(
@@ -209,8 +209,8 @@ public class BacktestEngine {
             List<DailyPrice> prices) {
 
         for (int index = 0;
-             index < prices.size();
-             index++) {
+                index < prices.size();
+                index++) {
 
             final DailyPrice price =
                     Objects.requireNonNull(

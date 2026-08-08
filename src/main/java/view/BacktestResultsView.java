@@ -4,9 +4,13 @@ import entity.BacktestResult;
 import entity.Trade;
 import interface_adapter.backtest.BacktestViewModel;
 
-import javax.swing.*;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
 import java.beans.PropertyChangeEvent;
 
 /**

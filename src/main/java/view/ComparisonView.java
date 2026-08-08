@@ -4,9 +4,13 @@ import entity.BacktestResult;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonViewModel;
 
-import javax.swing.*;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
+import java.awt.BorderLayout;
 import java.beans.PropertyChangeEvent;
 import java.util.List;
 

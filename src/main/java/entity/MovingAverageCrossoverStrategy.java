@@ -73,8 +73,8 @@ public class MovingAverageCrossoverStrategy
         }
 
         for (int index = longWindow;
-             index < prices.size();
-             index++) {
+                index < prices.size();
+                index++) {
 
             final double previousShortAverage =
                     calculateAverage(
@@ -138,8 +138,8 @@ public class MovingAverageCrossoverStrategy
         double total = 0.0;
 
         for (int index = startInclusive;
-             index < endExclusive;
-             index++) {
+                index < endExclusive;
+                index++) {
             total += prices.get(index).getClose();
         }
 

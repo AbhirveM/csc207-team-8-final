@@ -1,7 +1,10 @@
 package view;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
 
 import interface_adapter.watchlist.WatchlistViewModel;
 

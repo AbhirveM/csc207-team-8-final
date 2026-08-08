@@ -43,6 +43,40 @@
             </plugin>
 
             <!--
+              Automated style enforcement. Bound to `validate`, so it runs at the
+              very start of every build - including `mvn test` - and fails the
+              build on any violation in src/main/java. Config: ./checkstyle.xml.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.3.1</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>10.14.2</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                    <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>error</violationSeverity>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>checkstyle-validate</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
               Line-coverage evidence for the testing rubric. Report only - the
               "check" goal is deliberately NOT bound, so a coverage shortfall
               never breaks the build. Run `mvn clean verify`, then open
