@@ -1,9 +1,17 @@
 package view;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Dimension;
 
 import interface_adapter.backtest.BacktestViewModel;
+import interface_adapter.comparison.ComparisonViewModel;
 import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
@@ -38,15 +46,18 @@ public class MainView extends JFrame {
         // One nav button per screen. Each switches the CardLayout via the shared
         // ViewManagerModel; the matching view is registered from app.Main by addView(...).
         JButton watchlistBtn = new JButton("Watchlist");
+        watchlistBtn.setMnemonic('W');
         watchlistBtn.addActionListener(
-                e -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
+                event -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
         navBar.add(watchlistBtn);
         JButton backtestBtn = new JButton("Backtest");
         backtestBtn.addActionListener(
                 e -> viewManagerModel.setActiveView(BacktestViewModel.VIEW_NAME));
         navBar.add(backtestBtn);
         JButton comparisonBtn = new JButton("Compare Strategies");
-        comparisonBtn.addActionListener(e -> viewManagerModel.setActiveView("comparison"));
+        comparisonBtn.setMnemonic('S');
+        comparisonBtn.addActionListener(
+                event -> viewManagerModel.setActiveView(ComparisonViewModel.VIEW_NAME));
         navBar.add(comparisonBtn);
 
         // Application-wide persistence status. Saving happens as a side effect of watchlist

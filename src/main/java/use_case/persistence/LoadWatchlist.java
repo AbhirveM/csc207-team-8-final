@@ -27,8 +27,8 @@ public class LoadWatchlist {
             try {
                 Watchlist watchlist = dataAccess.load();
                 presenter.presentWatchlist(watchlist);
-            } catch (WatchlistDataAccessInterface.PersistenceException e) {
-                presenter.prepareFailView("Could not load watchlist: " + e.getMessage());
+            } catch (WatchlistDataAccessInterface.PersistenceException exception) {
+                presenter.prepareFailView("Could not load watchlist: " + exception.getMessage());
             }
         }
     }

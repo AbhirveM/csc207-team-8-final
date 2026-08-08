@@ -22,17 +22,17 @@ public class MomentumConfiguration implements Serializable {
         }
 
         if (Double.isNaN(oversoldThreshold)
-        || oversoldThreshold < 0
-        || oversoldThreshold > 100) {
-    throw new IllegalArgumentException(
-            "Oversold threshold must be between 0 and 100");
+                || oversoldThreshold < 0
+                || oversoldThreshold > 100) {
+            throw new IllegalArgumentException(
+                    "Oversold threshold must be between 0 and 100");
         }
 
         if (Double.isNaN(overboughtThreshold)
-        || overboughtThreshold < 0
-        || overboughtThreshold > 100) {
-    throw new IllegalArgumentException(
-            "Overbought threshold must be between 0 and 100");
+                || overboughtThreshold < 0
+                || overboughtThreshold > 100) {
+            throw new IllegalArgumentException(
+                    "Overbought threshold must be between 0 and 100");
         }
 
         if (oversoldThreshold >= overboughtThreshold) {

@@ -10,6 +10,7 @@
 - [Usage](#usage)
 - [Project Structure](#project-structure)
 - [External APIs](#external-apis)
+- [Accessibility](accessibility-report.md)
 - [Feedback](#feedback)
 - [Contributing](#contributing)
 - [License](#license)
@@ -44,6 +45,20 @@ The project is developed for **CSC207: Software Design** at the University of To
 ---
 
 # Features
+
+> **Feature status.** This table is the honest summary of what a user can reach in the
+> application as it runs today.
+
+| Feature | Status |
+|---|---|
+| Watchlist management (add / remove / select tickers) | **Runs today** |
+| Historical market data from Alpha Vantage, with offline fallback | **Runs today** |
+| Watchlist persistence across restarts | **Runs today** |
+| Moving Average Crossover strategy | **Runs today** |
+| Momentum (RSI) strategy | **Runs today** |
+| Backtest engine and performance summary | **Runs today** |
+| Strategy comparison screen | **Runs today** |
+| Strategy configuration persistence | Not implemented |
 
 ## Watchlist Management
 
@@ -82,6 +97,9 @@ Market data is retrieved automatically from an external financial data provider.
 Users can test built-in trading strategies against stocks in their watchlist. On the Backtest
 screen, pick a ticker whose price history is loaded and a strategy, then run the backtest.
 
+Both strategies implement a shared `TradingStrategy` contract and produce trading signals from a
+`Stock`'s price history.
+
 Two strategies are available:
 
 ### Moving Average Crossover Strategy
@@ -103,7 +121,7 @@ threshold (70) or above.
 
 ## Performance Analysis
 
-After running a backtest, users receive:
+After running a backtest, the results screen shows:
 
 - Simulated trade history
 - Buy and sell points
@@ -112,16 +130,27 @@ After running a backtest, users receive:
 - Number of trades
 - Win rate
 
-Users can compare multiple strategies on the same stock to determine which strategy performed better historically.
+The comparison screen is reachable from the navigation bar and ranks completed backtests against
+each other. Run at least one backtest first; until then it shows its empty state.
 
 ---
 
 ## Data Persistence
 
 The application saves your watchlist — the set of ticker symbols you have added — to a local
-`watchlist.dat` file, so your tickers are still there when you reopen the app. Price history is
-not saved: it is re-fetched on demand, so a restored ticker reads as "Not loaded" until you
-refresh it. The window's status bar reports whether each save succeeded.
+`watchlist.dat` file, so your tickers are still there when you reopen the app. The write goes to a
+temporary file and is then moved atomically into place, and a corrupted save file is backed up and
+recovered from rather than blocking start-up. The window's status bar reports whether each save
+succeeded.
+
+Two honest limitations:
+
+- **Strategy configurations are not persisted.** `WatchlistEntry` does not yet carry a strategy
+  configuration; wiring that up is tracked in issue #7.
+- **Price history is not persisted.** Only ticker membership is saved, so prices are re-fetched
+  on demand after a restart. This is deliberate — the free API tier allows roughly twenty-five
+  requests a day, and hydrating a restored watchlist automatically would spend them at launch.
+  A restored ticker reads as "Not loaded" until you refresh it.
 
 ---
 
@@ -298,8 +327,13 @@ is cached and re-fetched on demand, so a restored row reads "Not loaded" until y
 
 ### Architecture and design documentation
 
+- [Architecture overview](docs/architecture.md) — the whole-project layer diagram, the Dependency
+  Rule, and where each use case sits.
 - [Add Ticker — full use case](docs/add-ticker-use-case.md) — class diagram, the Dependency Rule
   applied to this feature, and the before/after views of the screen.
+- [Accessibility report](accessibility-report.md) — the seven Principles of Universal Design as
+  they apply to MarketLens, our target users, and who may be excluded.
+- [Test coverage](plan/handoffs/coverage.md) — what is covered, what is not, and why.
 
 ---
 
@@ -450,4 +484,9 @@ This project was created as coursework for:
 **CSC207: Software Design**
 University of Toronto
 
-All rights reserved — this project is not licensed for external or commercial use.
+All rights reserved — this project is not licensed for external or commercial use. The full terms
+are in [LICENSE](LICENSE).
+
+Market data is provided by [Alpha Vantage](https://www.alphavantage.co/) and is subject to their own
+terms of service. This project is a learning tool: it does not place trades, hold funds, or
+constitute financial advice, and backtested results do not predict future returns.

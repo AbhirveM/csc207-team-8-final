@@ -22,6 +22,7 @@ import interface_adapter.backtest.BacktestViewModel;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
+import interface_adapter.comparison.CompletedBacktestStore;
 import use_case.backtest.RunBacktestInteractor;
 import use_case.backtest.RunBacktestOutputBoundary;
 import use_case.backtest.RunBacktestOutputData;
@@ -33,17 +34,16 @@ import use_case.watchlist.AddTickerOutputBoundary;
 import use_case.watchlist.AddTickerOutputData;
 import use_case.watchlist.StockRepository;
 import use_case.watchlist.WatchlistFailure;
-import view.MainAppState;
 
 /**
  * The end-to-end wiring the application builder assembles, exercised without Swing.
  *
  * <p>This is the integration proof for the single biggest presentation risk: every piece
  * of the backtest -> compare story was built and unit-tested, but nothing constructed the
- * chain, so {@code MainAppState.addCompletedResult} had no callers and the Compare screen
+ * chain, so {@link CompletedBacktestStore#add} had no callers and the Compare screen
  * only ever rendered its empty state. This test builds the same object graph {@code Main}
  * builds - sample market data -> Add Ticker -> {@link StockRepository} -> the backtest
- * controller wired through the {@code MainAppState}-feeding decorator -> the comparison
+ * controller wired through the store-feeding decorator -> the comparison
  * controller - and asserts a real result flows the whole way through.
  */
 class IntegrationWiringTest {
@@ -83,13 +83,13 @@ class IntegrationWiringTest {
         // --- The backtest half, wired exactly as Main wires it. ---
         final BacktestViewModel backtestViewModel = new BacktestViewModel();
         final BacktestPresenter backtestPresenter = new BacktestPresenter(backtestViewModel);
-        final MainAppState appState = MainAppState.getInstance();
-        final int resultsBefore = appState.getCompletedResults().size();
+        final CompletedBacktestStore completedBacktests = new CompletedBacktestStore();
+        final int resultsBefore = completedBacktests.getCompletedResults().size();
 
         final RunBacktestOutputBoundary backtestOutput = new RunBacktestOutputBoundary() {
             @Override
             public void prepareSuccessView(RunBacktestOutputData outputData) {
-                appState.addCompletedResult(outputData.getBacktestResult());
+                completedBacktests.add(outputData.getBacktestResult());
                 backtestPresenter.prepareSuccessView(outputData);
             }
 
@@ -106,24 +106,28 @@ class IntegrationWiringTest {
                 new MovingAverageCrossoverStrategy(new MovingAverageConfiguration(5, 20)),
                 stock.getDailyPrices());
 
-        // The presenter wrote a result, and the decorator filed it for comparison.
-        final BacktestResult result = backtestViewModel.getResult();
-        assertNotNull(result, "the wired backtest should produce a result");
+        // The presenter rendered a summary, and the decorator filed the result for comparison.
+        assertNotNull(backtestViewModel.getSummary(),
+                "the wired backtest should render a summary");
+        final List<BacktestResult> stored = completedBacktests.getCompletedResults();
+        assertEquals(resultsBefore + 1, stored.size(),
+                "a completed backtest should be filed into the shared store");
+        final BacktestResult result = stored.get(stored.size() - 1);
         assertEquals("AAPL", result.getTicker().getSymbol());
-        assertEquals(resultsBefore + 1, appState.getCompletedResults().size(),
-                "a completed backtest should be filed into the shared app state");
 
-        // --- The comparison half reads from the same shared app state. ---
+        // --- The comparison half reads from the same shared store. ---
         final ComparisonViewModel comparisonViewModel = new ComparisonViewModel();
         final ComparisonController comparisonController = new ComparisonController(
                 new CompareStrategies.Interactor(
-                        new ComparisonPresenter(comparisonViewModel)));
+                        new ComparisonPresenter(comparisonViewModel)),
+                completedBacktests);
 
-        comparisonController.compare(appState.getCompletedResults());
+        comparisonController.compare();
 
         assertTrue(comparisonViewModel.getErrorMessage().isEmpty(),
                 "comparison should succeed once a backtest has been run");
-        final List<BacktestResult> ranked = comparisonViewModel.getRankedResults();
+        final List<ComparisonViewModel.ResultRow> ranked = comparisonViewModel.getRankedResults();
         assertFalse(ranked.isEmpty(), "the comparison screen should have rows to show");
+        assertEquals("AAPL", ranked.get(0).ticker());
     }
 }
