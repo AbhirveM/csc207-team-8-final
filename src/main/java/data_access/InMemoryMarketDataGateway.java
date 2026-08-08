@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * An offline {@link MarketDataGateway} holding pre-canned market data.
@@ -41,8 +42,11 @@ public class InMemoryMarketDataGateway implements MarketDataGateway {
     private final Map<String, String> companyNamesBySymbol = new HashMap<>();
     private final Map<String, MarketDataException> priceFailures = new HashMap<>();
     private final Map<String, MarketDataException> companyNameFailures = new HashMap<>();
-    private final Map<String, Integer> priceCallCounts = new HashMap<>();
-    private final Map<String, Integer> companyNameCallCounts = new HashMap<>();
+    // Mutated on the read path, which the caching gateway hits concurrently on a cold-cache
+    // race, so these two must be thread-safe; the maps above are seeded single-threaded and
+    // then only read, so a plain HashMap is fine for them.
+    private final Map<String, Integer> priceCallCounts = new ConcurrentHashMap<>();
+    private final Map<String, Integer> companyNameCallCounts = new ConcurrentHashMap<>();
 
     /**
      * Builds a gateway carrying deterministic sample data for three well-known symbols.
