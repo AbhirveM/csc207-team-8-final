@@ -183,12 +183,25 @@ cd csc207-team-8-final
 This project uses the [Alpha Vantage API](https://www.alphavantage.co/documentation/) to retrieve market data.
 
 1. Get a free API key: https://www.alphavantage.co/support/#api-key
-2. Set it as an environment variable (do **not** hard-code it or commit it to GitHub):
+2. Set it as an environment variable (do **not** hard-code it or commit it to GitHub).
+
+   macOS / Linux:
    ```bash
    export ALPHA_VANTAGE_API_KEY=your_key_here
    ```
    Add this line to your shell profile (`~/.zshrc` or `~/.bash_profile`) to persist it across terminal sessions.
-3. The application reads this key at runtime via `System.getenv("ALPHA_VANTAGE_API_KEY")`.
+
+   Windows (PowerShell) — the first line sets it for the current session, the second persists it:
+   ```powershell
+   $env:ALPHA_VANTAGE_API_KEY = "your_key_here"
+   setx ALPHA_VANTAGE_API_KEY "your_key_here"
+   ```
+   After `setx`, open a new terminal for the change to take effect.
+3. The application reads this key at runtime via `System.getenv("ALPHA_VANTAGE_API_KEY")`, at the
+   composition root only. There is no `.env` file and no default key in the source.
+
+**This step is optional.** See [Running without an API key](#running-without-an-api-key) — the
+application is fully functional offline without one.
 
 ⚠️ Never commit your API key. If you accidentally do, rotate it immediately from your Alpha Vantage account.
 
@@ -206,13 +219,35 @@ mvn clean install
 mvn test
 ```
 
+To also generate the line-coverage report, run `mvn clean verify` and open
+`target/site/jacoco/index.html`.
+
 ## Run the Application
 
+Compile, then launch `app.Main` with the `org.json` dependency on the classpath:
+
 ```bash
-mvn exec:java -Dexec.mainClass="app.Main"
+mvn clean compile
 ```
 
-*(If `exec:java` isn't available, build first with `mvn clean package`, then run the packaged jar with `java -cp target/classes app.Main`.)*
+macOS / Linux:
+
+```bash
+java -cp "target/classes:$HOME/.m2/repository/org/json/json/20240303/json-20240303.jar" app.Main
+```
+
+Windows (PowerShell) — note the `;` separator rather than `:`:
+
+```powershell
+java -cp "target/classes;$env:USERPROFILE\.m2\repository\org\json\json\20240303\json-20240303.jar" app.Main
+```
+
+The application runs **without an API key**. If `ALPHA_VANTAGE_API_KEY` is not set, it falls back to
+a built-in offline data source with sample history for AAPL, MSFT and TSLA, so the app is fully
+usable with no key and no network connection. The status line says so when this fallback is active.
+
+> **Note:** `mvn exec:java` will not work — this project does not declare the `exec-maven-plugin`.
+> Use the commands above.
 
 ---
 
@@ -320,14 +355,41 @@ Handles the Swing user interface and the application's entry point / dependency 
 
 ## Alpha Vantage
 
-Alpha Vantage provides historical stock market data used by the application.
+Alpha Vantage provides historical stock market data used by the application. Two endpoints are
+called:
 
-- `TIME_SERIES_DAILY` — daily open, high, low, close, and volume data
+- `TIME_SERIES_DAILY` — daily open, high, low, close, and volume data, requested with
+  `outputsize=compact`
 - `OVERVIEW` — company name and identifying information
 
-Documentation:
+Technical indicators are **not** requested from the API; they are computed locally by the strategy
+classes from the daily price series.
 
-https://www.alphavantage.co/documentation/
+Documentation: https://www.alphavantage.co/documentation/
+
+### Known limitations
+
+These are properties of the free tier and of the data itself, not defects:
+
+- **Roughly the latest 100 trading days.** `outputsize=compact` returns about 100 daily records;
+  full history requires a premium plan. A strategy needs `longWindow + 1` records, so **keep moving
+  average long windows at or below about 90** — above that there is not enough history and signal
+  generation fails.
+- **About 25 requests per day.** Responses are cached in memory to conserve the quota. When the
+  limit is reached the application reports it in words rather than failing silently.
+- **Prices are unadjusted.** Closing prices are as-traded and are not adjusted for stock splits or
+  dividends. A split will appear as a large single-day price jump, which can distort long
+  comparisons. This is expected behaviour, not a bug in the strategy calculations.
+- **Company names are optional.** `OVERVIEW` returns an empty response for many valid symbols
+  (ETFs especially), and it is the first request dropped when the quota runs out. A missing company
+  name never blocks adding a ticker — the application falls back to the symbol.
+
+### Running without an API key
+
+If `ALPHA_VANTAGE_API_KEY` is not set, the application uses a built-in offline data source with
+deterministic sample history for AAPL, MSFT and TSLA. Every feature works, no network is required,
+and no quota is consumed. All automated tests use this path or canned JSON fixtures — **no test ever
+calls the live API**.
 
 ---
 
