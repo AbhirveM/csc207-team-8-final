@@ -80,6 +80,7 @@ public class BacktestResultsView extends JPanel {
         final String[] columns = {
                 "Entry Date",
                 "Entry Price",
+                "Quantity",
                 "Exit Date",
                 "Exit Price",
                 "Return %"
@@ -186,6 +187,7 @@ public class BacktestResultsView extends JPanel {
                             String.format(
                                     "$%.2f",
                                     trade.getEntryPrice()),
+                            trade.getQuantity(),
                             trade.getExitDate(),
                             String.format(
                                     "$%.2f",
