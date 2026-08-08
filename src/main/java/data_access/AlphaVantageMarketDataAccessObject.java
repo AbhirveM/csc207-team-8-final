@@ -56,13 +56,43 @@ public class AlphaVantageMarketDataAccessObject implements MarketDataGateway {
     private final String apiKey;
     private final HttpJsonClient httpClient;
 
-    /** @return the configured API key, or empty when the variable is unset or blank. */
+    /**
+     * Reads {@value #API_KEY_ENV_VARIABLE} and applies the key policy to it.
+     *
+     * <p>This method is deliberately a one-line delegate to
+     * {@link #apiKeyFrom(String)}. The environment read is the one thing a test cannot
+     * control - a test that called this and branched on whether the variable happened to
+     * be set would assert whichever branch it landed in and prove nothing. So the
+     * untestable line stays here alone, and the whole of the testable policy lives in the
+     * pure method next to it, where it is pinned directly.
+     *
+     * @return the configured API key, or empty when the variable is unset or blank
+     */
     public static Optional<String> apiKeyFromEnvironment() {
-        final String key = System.getenv(API_KEY_ENV_VARIABLE);
-        if (key == null || key.isBlank()) {
-            return Optional.empty();
+        return apiKeyFrom(System.getenv(API_KEY_ENV_VARIABLE));
+    }
+
+    /**
+     * Decides what a raw environment value means as an API key.
+     *
+     * <p>Absent and blank are the same answer - an unset variable and a variable set to
+     * spaces are both "no key configured", and the composition root picks the offline
+     * sample gateway for either. Stripping matters: a value pasted with a trailing
+     * newline is a usable key, and passing it through unstripped would put whitespace in
+     * the request URL.
+     *
+     * @param rawValue the raw environment value; may be null
+     * @return the stripped key, or empty when {@code rawValue} is null or blank
+     */
+    static Optional<String> apiKeyFrom(String rawValue) {
+        final Optional<String> key;
+        if (rawValue == null || rawValue.isBlank()) {
+            key = Optional.empty();
         }
-        return Optional.of(key.strip());
+        else {
+            key = Optional.of(rawValue.strip());
+        }
+        return key;
     }
 
     /**
