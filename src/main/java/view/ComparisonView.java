@@ -25,6 +25,12 @@ public class ComparisonView extends JPanel {
             @Override public boolean isCellEditable(int row, int col) { return false; }
         };
         JTable table = new JTable(tableModel);
+        // Release Tab / Shift+Tab so focus can leave the table instead of cycling its cells.
+        // JTable installs its own traversal keys (Tab moves between cells); without this a
+        // keyboard-only user who tabs into the table can never tab back out. Arrow keys still
+        // move between cells. Same fix WatchlistView applies to its tables.
+        table.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, null);
+        table.setFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, null);
         add(new JScrollPane(table), BorderLayout.CENTER);
 
         JPanel topPanel = new JPanel(new BorderLayout());

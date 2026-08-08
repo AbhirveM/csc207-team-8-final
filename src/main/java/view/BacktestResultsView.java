@@ -103,6 +103,14 @@ public class BacktestResultsView extends JPanel {
         final JTable table =
                 new JTable(tableModel);
 
+        // Release Tab / Shift+Tab so keyboard focus can leave the trade-log table rather
+        // than cycling its cells forever. Arrow keys still move between cells. Same fix
+        // WatchlistView applies to its tables.
+        table.setFocusTraversalKeys(
+                KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, null);
+        table.setFocusTraversalKeys(
+                KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, null);
+
         add(
                 new JScrollPane(table),
                 BorderLayout.CENTER);
