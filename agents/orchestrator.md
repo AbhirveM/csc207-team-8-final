@@ -275,6 +275,11 @@ public static final String[] TICKER_COLUMNS =
 public static final String[] PRICE_COLUMNS =
     {"Date", "Open", "High", "Low", "Close", "Volume"};
 
+// Added in Phase 4. The one status sentence the composition root supplies rather than
+// the presenter: which gateway got wired is a fact only Main knows, and no use-case
+// result can carry it. Main prepends it to Show Watchlist's own status at launch.
+public static final String SAMPLE_DATA_STATUS = "Sample data is in use - ...";
+
 WatchlistState getState()
 void setState(WatchlistState state)   // fires STATE_PROPERTY
 void addPropertyChangeListener(PropertyChangeListener listener)
@@ -364,7 +369,12 @@ scope), the reviewer enforces these by reading.
 - Inside `data_access`, failures are `MarketDataException` with an explicit `Kind`.
 - Unchecked exceptions must not escape `XInteractor.execute`. Anything a collaborator can
   throw — including `Stock`'s `IllegalArgumentException` — is caught and mapped.
-- User-facing prose exists only in `WatchlistPresenter`.
+- User-facing prose exists only in `WatchlistPresenter`, with exactly one documented
+  exception: `WatchlistViewModel.SAMPLE_DATA_STATUS`, added in Phase 4. Which gateway got
+  wired is a fact only the composition root knows and no use-case result can carry it, so
+  there is no presenter method it could belong to. It lives on the view model rather than in
+  `app/Main.java` so the string stays in the interface-adapter layer next to the column
+  headers. Any *further* exception needs the same kind of justification.
 
 **Environment config:** `ALPHA_VANTAGE_API_KEY`, read only at the composition root, only
 via `System.getenv`. No `.env` file, no default value, no key in any message.

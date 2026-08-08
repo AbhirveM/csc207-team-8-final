@@ -3,6 +3,8 @@ package view;
 import javax.swing.*;
 import java.awt.*;
 
+import interface_adapter.watchlist.WatchlistViewModel;
+
 /**
  * The main application window: a nav bar + a CardLayout panel that
  * ViewManager swaps between. Add each member's real view to cardPanel
@@ -28,9 +30,10 @@ public class MainView extends JFrame {
         JPanel navBar = new JPanel();
         add(navBar, BorderLayout.NORTH);
         // Add nav buttons for each screen here, e.g.:
-        // JButton watchlistBtn = new JButton("Watchlist");
-        // watchlistBtn.addActionListener(e -> viewManagerModel.setActiveView("watchlist"));
-        // navBar.add(watchlistBtn);
+        JButton watchlistBtn = new JButton("Watchlist");
+        watchlistBtn.addActionListener(
+                e -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
+        navBar.add(watchlistBtn);
         JButton comparisonBtn = new JButton("Compare Strategies");
         comparisonBtn.addActionListener(e -> viewManagerModel.setActiveView("comparison"));
         navBar.add(comparisonBtn);

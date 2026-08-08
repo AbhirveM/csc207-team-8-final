@@ -258,3 +258,88 @@ were removed — their content is now recorded in `plan/review-phase-3.md` and i
 **`screenshots.md` was deliberately kept:** it carries an unfinished action item with an
 irreversible deadline, and Phase 5 populates this directory with the team hand-off notes anyway.
 Deleting a pending obligation to satisfy a cleanup step would be the wrong trade.
+
+---
+
+## Phase 4 — Composition Root
+
+Review: `plan/review-phase-4.md` — **PASS WITH WARNINGS**, **zero criticals**, nine warnings.
+Build green: `mvn -o clean verify`, 403 tests, 0 failures. Four warnings were fixed at
+close-out (W4-2, W4-6, W4-7's over-length line, W4-8); the rest carry to Phase 5 below.
+
+### D4-a — a third file was touched, and it is orchestrator-owned
+
+`plan/phase-4.md` said "Shared interfaces to write first: none". One was needed after all:
+`WatchlistViewModel.SAMPLE_DATA_STATUS`, the offline notice. §6 requires "a visible status line
+stating that sample data is in use", but every existing status string is written by
+`WatchlistPresenter` from a use-case result, and *which gateway got wired* is not in any result
+— it is knowledge only the composition root has. The three candidates were a presenter method
+(cleanest by §7, but `WatchlistPresenter.java` is Agent C's and Phase 4 spawns no agents), a
+literal in `app/Main.java` (puts user-facing prose in `app/`, the one thing §7 forbids), and a
+constant on the orchestrator-owned view model, which already holds user-facing column headers.
+The third was taken. §7 now records it as the single documented exception, so a future reader
+does not read it as the rule eroding.
+
+### D4-b — `WatchlistView.java` was edited with no agents active
+
+W3-5 was booked to Agent D and due in Phase 4 — a phase that spawns no agents, so nobody owned
+the fix. The orchestrator made the one-line change (`setButtonsEnabled` also disables
+`tickerTable`) rather than carry the vertical's only genuine race for another phase. The
+reviewer confirmed the crossing is a warning and not a FAIL: the reviewer brief's critical is
+"two agents touching one file in one phase", and Phase 4 has none.
+
+The reviewer also verified the fix empirically against a realized `JFrame` rather than by
+reading: on a disabled `JTable` a dispatched left-click and a `VK_DOWN` both leave
+`selectedRow` unchanged with zero `ListSelectionListener` fires, while programmatic
+`setRowSelectionInterval` still works, so `restoreSelection` is unaffected. **W3-5 is closed.
+W3-8 is not — see W4-1.**
+
+### D4-c — the documented launch recipe did not work offline
+
+`plan/phase-4.md` verification step 4 said `mvn exec:java`; `plan/handoffs/screenshots.md` said
+`mvn -o dependency:build-classpath`. Neither plugin is in the local repository and `-o` forbids
+fetching one, so both fail. Adding `exec-maven-plugin` would be a shared `pom.xml` edit (§2:
+one isolated edit, announced first). Both documents now name the single runtime dependency
+directly instead: `java -cp "target/classes;<org.json jar>" app.Main`.
+
+### D4-d — D3-c resolved: newest-first
+
+`plan/phases.md` Phase 4 "Done when" said the price table fills oldest-to-newest; the frozen,
+tested `WatchlistSnapshotFactory` contract emits newest-first. The prose was corrected, not the
+contract — the reverse would also have falsified two `WatchlistPresenter` javadocs and
+`WatchlistSnapshot`'s. Confirmed empirically at this gate: a harness replaying the §8 script
+through the exact graph `Main` builds returned 2026-08-05 first and 2026-02-19 last.
+
+### D4-e — the watchlist is now the launch card
+
+Nothing calls `ViewManagerModel.setActiveView` at startup, so `CardLayout` shows whichever card
+was added first. The wiring block sits between Persistence and Comparison per §6, so
+`WatchlistView` is added before `ComparisonView` and is what the user sees on launch — where
+Member 4's Comparison view used to be. Accepted deliberately: the §8 walkthrough and the "after"
+screenshot both want the vertical visible immediately. It is a behaviour change to a teammate's
+screen and belongs in the ping `vision.md` §9 asks for.
+
+### D4-f — the manual §8 walkthrough is verified by harness, not yet by hand
+
+`plan/phase-4.md` verification items 4–7 are a human script. What has been machine-verified: the
+app launches offline with `ALPHA_VANTAGE_API_KEY` unset with no exception, and a throwaway
+harness replayed the whole §8 sequence through the real object graph — `aapl` → `AAPL`, company
+name resolved, 120 rows newest-first, Refresh updated count and latest date, a row selection
+repopulated the price table, Remove dropped the row, `!!junk!!` produced the specific worded
+error with the surviving row untouched.
+
+**Still owed by hand, and this is the honest gap in the Phase 4 gate:** the visual items — resize
+behaviour, Tab order against visual order, the restart-persistence round trip through a real
+`watchlist.dat`, and the **"after" screenshot** for the individual presentation. `screenshots.md`
+carries the launch recipe and the "before" path.
+
+### Carried warnings — Phase 4
+
+| # | Warning | Owner | Due |
+|---|---|---|---|
+| W4-1 | **W3-8 is not closed, contrary to `plan/status.md`'s Phase 3 prediction that one edit would fix it alongside W3-5.** Disabling `tickerTable` stops a *selection* from overwriting the ticker field, but `tickerField` itself stays enabled and `render` still calls `setText` unconditionally, so text typed while a worker is in flight is still lost when the success state arrives wanting `""`. The guard suggested in W3-8 (skip `setText` when the value matches) fixes only the caret jump, not the loss; a real fix needs the field to track whether it is user-dirty, which is more than a close-out edit. Left open deliberately rather than claimed closed. | D | Phase 5 |
+| W4-3 | `Main` hand-assembles a `WatchlistState` from six positional arguments, four of them interchangeable `String`s, with no test covering it. A `WatchlistState.withStatusMessage(...)` copy method would remove the hazard. Deferred rather than taken at close-out: `WatchlistState.java` is orchestrator-owned but its test is Agent C's, and adding an untested method would thin the coverage margin W4-10 already flags. | orchestrator, C | Phase 5 |
+| W4-4 | Tab dies on the disabled `tickerTable` while a worker is in flight — `OrderedFocusTraversalPolicy` ignores `accept()`. Transient, but pairs with the still-open W3-10 and should be fixed in the same edit. | D | Phase 5 |
+| W4-5 | A disabled `JTable` gives no visual cue that it is frozen. The freeze is correct (W3-5) but silent, so a user mid-refresh reads an unresponsive table as a bug. | D | Phase 5 |
+| W4-9 | `PersistenceViewModel` is bound to no view, so a save or load failure is invisible: the presenter says "Added AAPL…" while the write to `watchlist.dat` failed silently. Inherited from Member 4's `void` persistence boundary, not introduced here. Belongs in the Phase 5 hand-off notes rather than being absorbed (§9). | Member 4 / hand-off | Phase 5 |
+| W4-10 | **The coverage margin is now ~22 lines, not D3-g's ~45.** Project line coverage fell 73.3% → **71.6%** (1004/1403), because `Main`'s wiring block is 47 uncovered lines rather than the ~35 estimated. Still above the 70% target, but Phase 5 cannot add uncovered production code without tests landing beside it. The levers remain non-Swing (H6): W2-7's `apiKeyFrom(String)` extraction and W2-8's factory assertion. | orchestrator, A, B | Phase 5 |

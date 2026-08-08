@@ -13,13 +13,16 @@ None.
 
 ## Files to modify
 
-Both belong to Member 4. Touch them **append-only**, in the spots his own comments
+The first two belong to Member 4. Touch them **append-only**, in the spots his own comments
 designate, and ping him (`vision.md` §9).
 
-| File | Change |
-|---|---|
-| `view/MainView.java` lines 30–33 | uncomment the watchlist nav-button template; use `WatchlistViewModel.VIEW_NAME` instead of a string literal |
-| `app/Main.java` lines 42–44 | replace the TODO with the `// --- Watchlist (Member 1) ---` wiring block |
+| File | Owner | Change |
+|---|---|---|
+| `view/MainView.java` lines 30–33 | Member 4 | uncomment the watchlist nav-button template; use `WatchlistViewModel.VIEW_NAME` instead of a string literal |
+| `app/Main.java` lines 42–44 | Member 4 | replace the TODO with the `// --- Watchlist (Member 1) ---` wiring block |
+| `interface_adapter/watchlist/WatchlistViewModel.java` | orchestrator (§2) | add `SAMPLE_DATA_STATUS` — the offline notice. See §7's one documented prose exception |
+| `view/WatchlistView.java` | **Agent D** | one line in `setButtonsEnabled` to also disable `tickerTable`, closing W3-5. An ownership crossing in an agent-less phase; recorded as a deviation |
+| `plan/phases.md`, `plan/phase-4.md` | orchestrator | D3-c prose fix, and this table |
 
 Do not restructure `MainView`'s constructor. There is no `addNavButton` API and adding one
 is out of scope.
@@ -75,10 +78,14 @@ Never a `.env`, never a default key in code, never a key in a message. This call
 3. `grep -rn "System.getenv" src/main/java` returns exactly one hit, in
    `AlphaVantageMarketDataAccessObject.apiKeyFromEnvironment()`, called only from `Main`.
 4. **Walk the `vision.md` §8 script by hand, with `ALPHA_VANTAGE_API_KEY` unset:**
-   - `mvn exec:java -Dexec.mainClass="app.Main"` launches; a Watchlist nav button is
-     present; the status line says sample data is in use.
+   - Launch it. There is no `exec-maven-plugin` in `pom.xml` and adding one is a shared
+     `pom.xml` edit (`agents/orchestrator.md` §2), so use the recipe already recorded in
+     `plan/handoffs/screenshots.md` — `mvn -o clean compile`, then
+     `mvn -o dependency:build-classpath -Dmdep.outputFile=target/cp.txt -q`, then
+     `java -cp "target/classes;$(cat target/cp.txt)" app.Main` — or run `app.Main` from
+     IntelliJ. A Watchlist nav button is present; the status line says sample data is in use.
    - Type `aapl` → Add → it normalizes to `AAPL`, the company name resolves, the price
-     table fills with oldest-to-newest rows.
+     table fills with newest-first rows (D3-c, resolved at this gate).
    - Refresh → the day count and latest date update.
    - Click a different row → the price table repopulates. *(This is the whole reason
      `ShowWatchlist` exists.)*

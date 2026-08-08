@@ -92,7 +92,7 @@ work back to the owning agent; the next phase does not start.
   - `mvn -o clean verify` is green.
   - With `ALPHA_VANTAGE_API_KEY` unset, launching the app shows a Watchlist nav button,
     and the `vision.md` §8 walkthrough passes end to end: type `aapl` → normalizes to
-    `AAPL` → company name resolves → price table fills with oldest-to-newest rows →
+    `AAPL` → company name resolves → price table fills with newest-first rows →
     Refresh updates the count and latest date → Remove drops the row → a junk symbol
     shows a specific worded error → restart still shows the watchlist.
   - Clicking a different row in the watchlist table repopulates the price table

@@ -306,14 +306,24 @@ public class WatchlistView extends JPanel {
     }
 
     /**
-     * Enables or disables every button at once.
+     * Enables or disables every control that can start a use case.
      *
-     * @param enabled whether the buttons should accept input
+     * <p>The watchlist table is disabled alongside the buttons, and that is not cosmetic:
+     * selecting a row drives Show Watchlist, so a click landing while a worker is in flight
+     * would push a second {@code setState} from the event thread concurrently with the
+     * worker's own. {@code prepareFailView} reads the current state and writes a derived one,
+     * which is not atomic, so the interleaving loses an update and renders something stale.
+     * Freezing the table for the duration is the cheapest way to remove the only genuine race
+     * in this vertical, and it incidentally stops a selection from overwriting a symbol the
+     * user is midway through typing.
+     *
+     * @param enabled whether the controls should accept input
      */
     private void setButtonsEnabled(final boolean enabled) {
         for (final JButton button : buttons) {
             button.setEnabled(enabled);
         }
+        tickerTable.setEnabled(enabled);
     }
 
     /**

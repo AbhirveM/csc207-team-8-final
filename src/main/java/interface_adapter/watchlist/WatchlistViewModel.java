@@ -41,6 +41,24 @@ public class WatchlistViewModel {
     public static final String[] PRICE_COLUMNS =
             {"Date", "Open", "High", "Low", "Close", "Volume"};
 
+    /**
+     * The status line shown at launch when no market data API key is configured and the
+     * offline sample gateway was wired in instead.
+     *
+     * <p>This is the one piece of user-facing prose that does not come from
+     * {@code WatchlistPresenter}, and the exception is deliberate: which gateway got wired
+     * is a fact only the composition root knows, and no use case has a result that could
+     * carry it. It lives here rather than in {@code app.Main} so that the string stays in
+     * the interface-adapter layer alongside {@link #TICKER_COLUMNS}, where a reviewer
+     * looking for user-facing text will find it.
+     *
+     * <p>The notice is transient by design - the next use case to succeed replaces it -
+     * because by then the user has seen it and the synthetic prices are self-evident.
+     */
+    public static final String SAMPLE_DATA_STATUS =
+            "Sample data is in use - no market data API key is configured, "
+                    + "so these prices are synthetic.";
+
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     /*

@@ -17,9 +17,15 @@ The repo has no `exec-maven-plugin`, so either:
 
 ```
 mvn -o clean compile
-mvn -o dependency:build-classpath -Dmdep.outputFile=target/cp.txt -q
-java -cp "target/classes;$(cat target/cp.txt)" app.Main
+java -cp "target/classes;C:\Users\abhir\.m2\repository\org\json\json\20240303\json-20240303.jar" app.Main
 ```
+
+**Corrected in Phase 4.** This file previously suggested
+`mvn -o dependency:build-classpath -Dmdep.outputFile=target/cp.txt -q` to assemble the
+classpath. That does not work here: `maven-dependency-plugin` is not in the local repository
+and `-o` forbids fetching it, and `mvn exec:java` fails the same way. Naming the one runtime
+dependency directly avoids both. `org.json` is the only non-test dependency in `pom.xml`;
+if that ever changes, this line has to change with it.
 
 `ALPHA_VANTAGE_API_KEY` does not need to be set — nothing on the current `main` behaviour
 reads it. The window should show **only** the Compare Strategies tab, with no Watchlist nav
@@ -34,6 +40,6 @@ The full application window, at default size, with the Compare Strategies tab se
 Save it **outside the repo** (screenshots do not belong in version control here) and record
 the absolute path below.
 
-- **Path:** _(to be filled in by the owner)_
-- **Captured on:** _(date)_
-- **Git SHA at capture:** _(output of `git rev-parse --short HEAD`)_
+- **Path:** `C:\Users\abhir\Pictures\Screenshots\Screenshot 2026-08-08 113636.png`
+- **Captured on:** 2026-08-08
+- **Git SHA at capture:** `fc27b3c`
