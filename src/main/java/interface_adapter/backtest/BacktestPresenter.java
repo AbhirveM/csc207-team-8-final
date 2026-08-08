@@ -43,6 +43,7 @@ public class BacktestPresenter implements RunBacktestOutputBoundary {
             tradeRows.add(new BacktestViewModel.TradeRow(
                     String.valueOf(trade.getEntryDate()),
                     String.format(MONEY_FORMAT, trade.getEntryPrice()),
+                    String.valueOf(trade.getQuantity()),
                     String.valueOf(trade.getExitDate()),
                     String.format(MONEY_FORMAT, trade.getExitPrice()),
                     String.format(PLAIN_FORMAT, trade.getReturnPercent())));

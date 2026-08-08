@@ -52,7 +52,8 @@ class BacktestPresenterTest {
         final Trade trade = new Trade(
                 new Ticker("TEST", "Test Company"),
                 LocalDate.of(2026, 1, 5), 100.0,
-                LocalDate.of(2026, 1, 9), 110.0);
+                LocalDate.of(2026, 1, 9), 110.0,
+                7);
 
         presenter.prepareSuccessView(new RunBacktestOutputData(resultWith(List.of(trade))));
 
@@ -60,6 +61,7 @@ class BacktestPresenterTest {
         final BacktestViewModel.TradeRow row = viewModel.getTradeRows().get(0);
         assertEquals("2026-01-05", row.entryDate());
         assertEquals("$100.00", row.entryPrice());
+        assertEquals("7", row.quantity());
         assertEquals("2026-01-09", row.exitDate());
         assertEquals("$110.00", row.exitPrice());
         assertEquals("10.00", row.returnPercent());

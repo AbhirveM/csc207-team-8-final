@@ -53,7 +53,8 @@ public class BacktestResultsView extends JPanel {
         summaryPanel.add(winRateLabel);
         add(summaryPanel, BorderLayout.NORTH);
 
-        final String[] columns = {"Entry Date", "Entry Price", "Exit Date", "Exit Price", "Return %"};
+        final String[] columns = {"Entry Date", "Entry Price", "Quantity", "Exit Date",
+                "Exit Price", "Return %"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -101,8 +102,8 @@ public class BacktestResultsView extends JPanel {
         winRateLabel.setText(WIN_RATE_LABEL + summary.winRate());
 
         for (final BacktestViewModel.TradeRow row : viewModel.getTradeRows()) {
-            tableModel.addRow(new Object[] {row.entryDate(), row.entryPrice(), row.exitDate(),
-                    row.exitPrice(), row.returnPercent()});
+            tableModel.addRow(new Object[] {row.entryDate(), row.entryPrice(), row.quantity(),
+                    row.exitDate(), row.exitPrice(), row.returnPercent()});
         }
     }
 

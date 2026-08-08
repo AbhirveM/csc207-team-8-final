@@ -36,12 +36,13 @@ public class BacktestViewModel {
      *
      * @param entryDate     the date the position was opened, as text
      * @param entryPrice    the price it was opened at, as text
+     * @param quantity      how many shares were traded, as text
      * @param exitDate      the date the position was closed, as text
      * @param exitPrice     the price it was closed at, as text
      * @param returnPercent the trade's return as a percentage, as text
      */
-    public record TradeRow(String entryDate, String entryPrice, String exitDate,
-                           String exitPrice, String returnPercent) {
+    public record TradeRow(String entryDate, String entryPrice, String quantity,
+                           String exitDate, String exitPrice, String returnPercent) {
     }
 
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);

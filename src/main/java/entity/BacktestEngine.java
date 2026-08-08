@@ -115,7 +115,8 @@ public class BacktestEngine {
                                 entryDate,
                                 entryPrice,
                                 executionDay.getDate(),
-                                executionPrice));
+                                executionPrice,
+                                shares));
 
                 shares = 0;
                 entryDate = null;
@@ -147,7 +148,8 @@ public class BacktestEngine {
                             entryDate,
                             entryPrice,
                             finalDay.getDate(),
-                            exitPrice));
+                            exitPrice,
+                            shares));
         }
 
         final double finalCapital = cash;
