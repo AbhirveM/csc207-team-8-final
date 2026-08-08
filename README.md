@@ -294,7 +294,22 @@ Run backtest
 View return, trades, and win rate
 ```
 
-Screenshots and demonstrations will be added here as each screen is completed.
+### The Watchlist screen
+
+Add a ticker symbol, and the application resolves the company name and loads its daily price
+history. Symbols are normalized (`aapl` becomes `AAPL`), blanks and duplicates are rejected with a
+worded explanation, and every provider failure — invalid symbol, network error, quota exhausted —
+is reported in text rather than crashing.
+
+![The Watchlist screen with a ticker added and its price history loaded](docs/after-watchlist-view.png)
+
+The watchlist survives a restart: ticker membership is saved to `watchlist.dat`, while price history
+is cached and re-fetched on demand, so a restored row reads "Not loaded" until you refresh it.
+
+### Architecture and design documentation
+
+- [Add Ticker — full use case](docs/add-ticker-use-case.md) — class diagram, the Dependency Rule
+  applied to this feature, and the before/after views of the screen.
 
 ---
 

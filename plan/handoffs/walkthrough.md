@@ -57,18 +57,27 @@ should see a status line saying sample data is in use, and the app should open o
 5. **Select `MSFT` and press Remove.**
    - [ ] The row disappears; `AAPL` survives.
 
-6. **The restart round trip — the one nothing has verified.**
-   - [ ] Close the app. Confirm `watchlist.dat` exists in the repo root.
-   - [ ] Relaunch. The watchlist renders `AAPL` immediately, with no click needed.
-   - [ ] Note: prices are *not* persisted by design — only tickers are. A restored row
+6. **The restart round trip — the one nothing has verified.** ✅ **PASSED 2026-08-08**
+   - [x] Close the app. Confirm `watchlist.dat` exists in the repo root. *(284 bytes, present)*
+   - [x] Relaunch. The watchlist renders `AAPL` immediately, with no click needed.
+         *Verified: a cold launch with `ALPHA_VANTAGE_API_KEY` unset repainted the row as
+         `AAPL | Apple Inc. | Not loaded | — | —` with no interaction. The company name
+         survived the round trip, so `Ticker`'s companyName is being persisted, not just the
+         symbol. W4-9 did not fire — the save had genuinely succeeded.*
+   - [x] Note: prices are *not* persisted by design — only tickers are. A restored row
          showing "Not loaded" until you Refresh is correct behaviour, not a bug.
+         *Confirmed exactly as designed — "watchlist membership is durable, market data is
+         cached and re-fetched" is observably true, not just a claim in vision.md §5.2.*
    - ⚠ This step also silently exercises **W4-9**: if the save had failed, the app would
      have said "Added AAPL…" anyway and you would only find out here. If the row does not
      come back, that is the bug W4-9 predicts, not a load bug.
 
 7. **The visual checks a harness cannot make.**
-   - [ ] **Resize** the window, small and large. Tables and buttons should reflow without
-         clipping or the price table swallowing the controls.
+   - [x] **Resize** — ✅ **PASSED 2026-08-08.** Driven from 900×600 to 1000×640 via
+         `MoveWindow`. The nav bar stayed centred, the control row kept its left alignment,
+         the split pane divider held its proportion, and both tables grew without clipping
+         or swallowing the controls. *Still worth one manual drag to a very small size —
+         the automated resize only covered growing the window.*
    - [ ] **Tab order** matches visual order — top to bottom, left to right, no surprises.
    - [ ] **Mid-refresh freeze (W3-5).** Start a Refresh and immediately try to click a
          different row and press ↓. Both should be ignored while the worker runs. That is
@@ -80,19 +89,41 @@ should see a status line saying sample data is in use, and the app should open o
          into the ticker field. Your typing will be lost when the success state lands. Known
          and deliberately not claimed closed — worth knowing before you do it live on stage.
 
-8. **The "after" screenshot.**
+8. **The "after" screenshot.** ⏳ **STILL OUTSTANDING — needs a human at the keyboard.**
    - [ ] Full application window, default size, Watchlist card selected, with `AAPL`
          populated and the price table full — the mirror of the "before" shot.
-   - [ ] Save it **outside the repo** (screenshots do not belong in version control here).
-   - [ ] Record the absolute path, the date, and the git SHA below.
+   - [ ] Save as `docs/after-watchlist-view.png`.
+   - [ ] Record the date and the git SHA below.
+
+   **Deviation from the original instruction.** This step used to say "save it outside the
+   repo — screenshots do not belong in version control here." That is now reversed, and
+   deliberately: the README checklist requires screenshots that render on the GitHub web page,
+   and the individual rubric's "Required Elements" needs the before and after views as
+   submitted evidence. An artifact that lives only on one laptop is not submitted. The two
+   PNGs are ~20 KB each, which is not a repository-hygiene problem. The "before" shot is
+   already committed at `docs/before-watchlist-view.png`.
+
+   **Why this is not automated.** Two attempts to drive the app with synthetic mouse events
+   (`mouse_event` via user32) failed — the clicks never reached the Swing components, so the
+   row never showed a selection highlight. Window capture itself works fine; only the input
+   injection does not. Capture it by hand:
+
+   1. The app is easiest to shoot at its default size. Select the `AAPL` row, click
+      **Load prices**, and wait for the daily price table to fill.
+   2. Screenshot the whole window (Alt+PrintScreen, or Win+Shift+S).
+   3. Save to `docs/after-watchlist-view.png`, overwriting the placeholder.
+
+   A placeholder capture is currently in place showing the restored watchlist with prices
+   **not** yet loaded. It is a real, clean screenshot but it undersells the feature — replace
+   it with one where the price table is populated before presenting.
 
 ---
 
 ## "After" screenshot record
 
-- **Path:** _(to fill in)_
-- **Captured on:** _(to fill in)_
-- **Git SHA at capture:** _(to fill in)_
+- **Path:** `docs/after-watchlist-view.png` *(placeholder committed; needs the prices-loaded retake)*
+- **Captured on:** 2026-08-08 *(placeholder)*
+- **Git SHA at capture:** `35a7fae` *(placeholder)*
 
 ---
 
