@@ -5,8 +5,12 @@ import data_access.CachingMarketDataGateway;
 import data_access.FileWatchlistDataAccessObject;
 import data_access.InMemoryMarketDataGateway;
 import data_access.InMemoryStockRepository;
+import entity.BacktestEngine;
 import entity.Watchlist;
 import view.*;
+import interface_adapter.backtest.BacktestController;
+import interface_adapter.backtest.BacktestPresenter;
+import interface_adapter.backtest.BacktestViewModel;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
@@ -16,6 +20,9 @@ import interface_adapter.watchlist.WatchlistController;
 import interface_adapter.watchlist.WatchlistPresenter;
 import interface_adapter.watchlist.WatchlistState;
 import interface_adapter.watchlist.WatchlistViewModel;
+import use_case.backtest.RunBacktestInteractor;
+import use_case.backtest.RunBacktestOutputBoundary;
+import use_case.backtest.RunBacktestOutputData;
 import use_case.comparison.CompareStrategies;
 import use_case.persistence.LoadWatchlist;
 import use_case.persistence.SaveWatchlist;
@@ -105,6 +112,34 @@ public class Main {
                 new WatchlistController(addTicker, removeTicker, refreshTicker, showWatchlist);
         WatchlistView watchlistView = new WatchlistView(watchlistViewModel, watchlistController);
         mainView.addView(WatchlistViewModel.VIEW_NAME, watchlistView);
+
+        // --- Backtesting (Member 3's engine, wired by Member 4's integration) ---
+        // Every piece below already existed and was tested; nothing constructed them, so
+        // MainAppState.addCompletedResult had no callers and the Compare screen stayed empty.
+        BacktestEngine backtestEngine = new BacktestEngine();
+        BacktestViewModel backtestViewModel = new BacktestViewModel();
+        BacktestPresenter backtestPresenter = new BacktestPresenter(backtestViewModel);
+        // A thin decorator over the presenter: on a successful run it also files the result
+        // into the shared MainAppState the Comparison feature reads from, so "run a backtest"
+        // and "compare completed backtests" are joined without either feature knowing the other.
+        RunBacktestOutputBoundary backtestOutput = new RunBacktestOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RunBacktestOutputData outputData) {
+                MainAppState.getInstance().addCompletedResult(outputData.getBacktestResult());
+                backtestPresenter.prepareSuccessView(outputData);
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                backtestPresenter.prepareFailView(errorMessage);
+            }
+        };
+        RunBacktestInteractor runBacktest =
+                new RunBacktestInteractor(backtestEngine, backtestOutput);
+        BacktestController backtestController = new BacktestController(runBacktest);
+        BacktestView backtestView =
+                new BacktestView(backtestViewModel, backtestController, stockRepository);
+        mainView.addView(BacktestViewModel.VIEW_NAME, backtestView);
 
         // --- Strategy comparison (Member 4's own feature) ---
         ComparisonViewModel comparisonViewModel = new ComparisonViewModel();

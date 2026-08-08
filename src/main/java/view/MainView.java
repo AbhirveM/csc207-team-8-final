@@ -3,6 +3,7 @@ package view;
 import javax.swing.*;
 import java.awt.*;
 
+import interface_adapter.backtest.BacktestViewModel;
 import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
@@ -39,6 +40,10 @@ public class MainView extends JFrame {
         watchlistBtn.addActionListener(
                 e -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
         navBar.add(watchlistBtn);
+        JButton backtestBtn = new JButton("Backtest");
+        backtestBtn.addActionListener(
+                e -> viewManagerModel.setActiveView(BacktestViewModel.VIEW_NAME));
+        navBar.add(backtestBtn);
         JButton comparisonBtn = new JButton("Compare Strategies");
         comparisonBtn.addActionListener(e -> viewManagerModel.setActiveView("comparison"));
         navBar.add(comparisonBtn);
