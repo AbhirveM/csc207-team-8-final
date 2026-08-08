@@ -12,6 +12,7 @@ import java.awt.Dimension;
 
 import interface_adapter.backtest.BacktestViewModel;
 import interface_adapter.comparison.ComparisonViewModel;
+import interface_adapter.momentum.MomentumViewModel;
 import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
@@ -50,6 +51,10 @@ public class MainView extends JFrame {
         watchlistBtn.addActionListener(
                 event -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
         navBar.add(watchlistBtn);
+        JButton momentumBtn = new JButton("Momentum Strategy");
+        momentumBtn.addActionListener(
+                e -> viewManagerModel.setActiveView(MomentumViewModel.VIEW_NAME));
+        navBar.add(momentumBtn);
         JButton backtestBtn = new JButton("Backtest");
         backtestBtn.addActionListener(
                 e -> viewManagerModel.setActiveView(BacktestViewModel.VIEW_NAME));

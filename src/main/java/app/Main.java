@@ -10,6 +10,7 @@ import entity.Watchlist;
 import view.BacktestView;
 import view.ComparisonView;
 import view.MainView;
+import view.MomentumConfigurationView;
 import view.ViewManager;
 import view.ViewManagerModel;
 import view.WatchlistView;
@@ -20,6 +21,9 @@ import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
 import interface_adapter.comparison.CompletedBacktestStore;
+import interface_adapter.momentum.MomentumController;
+import interface_adapter.momentum.MomentumPresenter;
+import interface_adapter.momentum.MomentumViewModel;
 import interface_adapter.persistence.PersistencePresenter;
 import interface_adapter.persistence.PersistenceViewModel;
 import interface_adapter.watchlist.WatchlistController;
@@ -30,6 +34,8 @@ import use_case.backtest.RunBacktestInteractor;
 import use_case.backtest.RunBacktestOutputBoundary;
 import use_case.backtest.RunBacktestOutputData;
 import use_case.comparison.CompareStrategies;
+import use_case.momentum.ConfigureMomentumInputBoundary;
+import use_case.momentum.ConfigureMomentumInteractor;
 import use_case.persistence.LoadWatchlist;
 import use_case.persistence.SaveWatchlist;
 import use_case.persistence.WatchlistDataAccessInterface;
@@ -70,6 +76,27 @@ public class Main {
         ViewManagerModel viewManagerModel = new ViewManagerModel();
         MainView mainView = new MainView(viewManagerModel);
         new ViewManager(mainView.getCardPanel(), mainView.getCardLayout(), viewManagerModel);
+
+        // --- Momentum strategy configuration (Member 3) ---
+        MomentumViewModel momentumViewModel = new MomentumViewModel();
+
+        MomentumPresenter momentumPresenter =
+                new MomentumPresenter(momentumViewModel);
+
+        ConfigureMomentumInputBoundary momentumInteractor =
+                new ConfigureMomentumInteractor(momentumPresenter);
+
+        MomentumController momentumController =
+                new MomentumController(momentumInteractor);
+
+        MomentumConfigurationView momentumView =
+                new MomentumConfigurationView(
+                        momentumViewModel,
+                        momentumController);
+
+        mainView.addView(
+                MomentumViewModel.VIEW_NAME,
+                momentumView);
 
         // --- Persistence (Member 4) ---
         WatchlistDataAccessInterface watchlistDataAccess =
