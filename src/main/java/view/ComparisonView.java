@@ -1,6 +1,5 @@
 package view;
 
-import entity.BacktestResult;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonViewModel;
 
@@ -12,9 +11,15 @@ import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.beans.PropertyChangeEvent;
-import java.util.List;
 
+/**
+ * The Swing panel for comparing completed backtests.
+ *
+ * <p>Every value arrives from {@link ComparisonViewModel} already formatted, so this panel imports
+ * no entities and does no formatting of its own.
+ */
 public class ComparisonView extends JPanel {
+
     private final DefaultTableModel tableModel;
     private final JLabel bestStrategyLabel;
     private final JLabel statusLabel;
@@ -24,49 +29,47 @@ public class ComparisonView extends JPanel {
         this.viewModel = viewModel;
         setLayout(new BorderLayout(8, 8));
 
-        String[] columns = {"Ticker", "Strategy", "Total Return %", "# Trades", "Win Rate %"};
+        final String[] columns = {"Ticker", "Strategy", "Total Return %", "# Trades", "Win Rate %"};
         tableModel = new DefaultTableModel(columns, 0) {
-            @Override public boolean isCellEditable(int row, int col) { return false; }
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
         };
-        JTable table = new JTable(tableModel);
+        final JTable table = new JTable(tableModel);
+        table.getAccessibleContext().setAccessibleName("Strategy comparison");
         add(new JScrollPane(table), BorderLayout.CENTER);
 
-        JPanel topPanel = new JPanel(new BorderLayout());
+        final JPanel topPanel = new JPanel(new BorderLayout());
         bestStrategyLabel = new JLabel("Run a backtest for at least one ticker, then click Compare.");
-        JButton compareButton = new JButton("Compare Completed Backtests");
+        final JButton compareButton = new JButton("Compare Completed Backtests");
+        compareButton.setMnemonic('C');
+        compareButton.setToolTipText("Rank every backtest completed this session by total return.");
         topPanel.add(bestStrategyLabel, BorderLayout.CENTER);
         topPanel.add(compareButton, BorderLayout.EAST);
         add(topPanel, BorderLayout.NORTH);
 
         statusLabel = new JLabel(" ");
+        statusLabel.getAccessibleContext().setAccessibleName("Status");
         add(statusLabel, BorderLayout.SOUTH);
 
-        // Wire the button to the controller - MainView is responsible for supplying
-        // the actual list of completed BacktestResults (it owns overall app state).
-        compareButton.addActionListener(e -> {
-            List<BacktestResult> completed = MainAppState.getInstance().getCompletedResults();
-            controller.compare(completed);
-        });
+        compareButton.addActionListener(event -> controller.compare());
 
         viewModel.addPropertyChangeListener(this::onViewModelChanged);
     }
 
-    private void onViewModelChanged(PropertyChangeEvent evt) {
+    private void onViewModelChanged(PropertyChangeEvent event) {
         tableModel.setRowCount(0);
         if (!viewModel.getErrorMessage().isEmpty()) {
+            bestStrategyLabel.setText("Run a backtest for at least one ticker, then click Compare.");
             statusLabel.setText(viewModel.getErrorMessage());
             return;
         }
         statusLabel.setText(" ");
         bestStrategyLabel.setText("Best performing strategy: " + viewModel.getBestStrategyName());
-        for (BacktestResult r : viewModel.getRankedResults()) {
-            tableModel.addRow(new Object[]{
-                    r.getTicker().getSymbol(),
-                    r.getStrategyName(),
-                    String.format("%.2f", r.getTotalReturn()),
-                    r.getNumberOfTrades(),
-                    String.format("%.2f", r.getWinRate())
-            });
+        for (final ComparisonViewModel.ResultRow row : viewModel.getRankedResults()) {
+            tableModel.addRow(new Object[] {row.ticker(), row.strategyName(), row.totalReturn(),
+                    row.numberOfTrades(), row.winRate()});
         }
     }
 }

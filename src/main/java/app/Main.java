@@ -14,6 +14,7 @@ import view.WatchlistView;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
+import interface_adapter.comparison.CompletedBacktestStore;
 import interface_adapter.persistence.PersistencePresenter;
 import interface_adapter.persistence.PersistenceViewModel;
 import interface_adapter.watchlist.WatchlistController;
@@ -114,7 +115,12 @@ public class Main {
         ComparisonViewModel comparisonViewModel = new ComparisonViewModel();
         CompareStrategies.OutputBoundary comparisonPresenter = new ComparisonPresenter(comparisonViewModel);
         CompareStrategies.InputBoundary comparisonInteractor = new CompareStrategies.Interactor(comparisonPresenter);
-        ComparisonController comparisonController = new ComparisonController(comparisonInteractor);
+        // Nothing adds to this store yet, because the run-backtest use case is not constructed
+        // here - see plan/handoffs/team-raise-2026-08-08.md. Until it is, Compare Strategies
+        // correctly shows its empty state.
+        CompletedBacktestStore completedBacktests = new CompletedBacktestStore();
+        ComparisonController comparisonController =
+                new ComparisonController(comparisonInteractor, completedBacktests);
 
         ComparisonView comparisonView = new ComparisonView(comparisonViewModel, comparisonController);
         mainView.addView(ComparisonViewModel.VIEW_NAME, comparisonView);
