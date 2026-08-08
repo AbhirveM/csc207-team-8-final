@@ -343,3 +343,105 @@ carries the launch recipe and the "before" path.
 | W4-5 | A disabled `JTable` gives no visual cue that it is frozen. The freeze is correct (W3-5) but silent, so a user mid-refresh reads an unresponsive table as a bug. | D | Phase 5 |
 | W4-9 | `PersistenceViewModel` is bound to no view, so a save or load failure is invisible: the presenter says "Added AAPL…" while the write to `watchlist.dat` failed silently. Inherited from Member 4's `void` persistence boundary, not introduced here. Belongs in the Phase 5 hand-off notes rather than being absorbed (§9). | Member 4 / hand-off | Phase 5 |
 | W4-10 | **The coverage margin is now ~22 lines, not D3-g's ~45.** Project line coverage fell 73.3% → **71.6%** (1004/1403), because `Main`'s wiring block is 47 uncovered lines rather than the ~35 estimated. Still above the 70% target, but Phase 5 cannot add uncovered production code without tests landing beside it. The levers remain non-Swing (H6): W2-7's `apiKeyFrom(String)` extraction and W2-8's factory assertion. | orchestrator, A, B | Phase 5 |
+
+---
+
+## Phase 5 — Hand-off Proof and Close-out
+
+Review: `plan/review-phase-5.md` — **PASS WITH WARNINGS**, **zero criticals**, seven warnings.
+Build green: `mvn -o clean verify`, **415 tests**, 0 failures. Project line coverage
+**71.69%** (1008/1406). All four Phase 5 "Done when" criteria met, verified item by item by
+the reviewer rather than asserted.
+
+### D5-a — scope was deliberately narrowed, and sixteen warnings are knowingly unclosed
+
+Sixteen warnings from Phases 2–4 were booked "due Phase 5". The owner scoped this phase to the
+Phase 5 exit criteria plus the two named **coverage levers** — W2-7 and W2-8 — and nothing else.
+
+The reasoning: most of the rest belong to Agents C and D, who are not active in Phase 5 (fixing
+them would mean crossing ownership with no agent to route through, the D4-b situation repeated
+fourteen times); several are real design work on frozen contracts; and the coverage margin was
+too thin to absorb untested production changes. A wider diff would also have made this phase's
+review — the last one this plan gets — materially harder.
+
+**The register below is the point of this entry.** These are not fixed, and this plan is
+ending, so nothing will come along later to close them. They are recorded here as the standing
+list for whoever picks the code up.
+
+| # | Warning | Owner |
+|---|---|---|
+| W2-1 | `concurrentReadersDoNotCorruptTheCache` drives a fake whose call counters are plain `HashMap`s — the one test proving thread safety races on unsynchronised maps. Latent flake. | B |
+| W2-2 | `CachingMarketDataGateway.getCachedNameCount` javadoc promises a bound the non-atomic size-check → clear → put sequence does not hold under concurrency. | B |
+| W2-3 | Exception variables still named `e`: `RefreshTickerInteractor:64`, `AlphaVantageMarketDataAccessObject:151,202,300`, `JsonFixtures:27`. | A, B |
+| W2-4 | All four `data_access` files order imports project-first, inverting §7, while `use_case` next door was reordered *into* the correct form. Explicitly left alone in Phase 5 to keep W2-7's diff narrow. | B |
+| W2-5 | 26 lines over the ~100-char guidance. Two survive in `AlphaVantageMarketDataAccessObject` at 206 and 266. | A, B |
+| W2-6 | `InMemoryStockRepository:27-29` hand-rolls `new NullPointerException(...)` instead of `Objects.requireNonNull(x, "...")`. | B |
+| W2-9 | The four interactor tests import `data_access` implementations. Note the nuance Phase 5 adds: `MarketDataHandoffTest` does this **deliberately and correctly** — the offline fake is what the app runs on, so the import is the point. W2-9 is about the *other* four. | A |
+| W2-11 | D4's `catch (IllegalArgumentException exception)` in Add and Refresh binds and never reads it, discarding which invariant broke. Needs a decision (`WatchlistFailure` has no field for it), not a one-liner. | A |
+| W2-12 | The four `data_access` classes are not `final` while every `use_case` counterpart is. | B |
+| W3-6 | `WatchlistView.RATE_LIMIT_PREFIX` prefix-matches presenter prose, and the test that breaks on a reword says nothing about the view constant — so the natural repair leaves "Load prices" spending quota after it is exhausted. | C, D |
+| W3-10 | `OrderedFocusTraversalPolicy` silently wraps on an unknown component (`indexOf` → −1 → `floorMod`). | D |
+| W3-11 | `WatchlistView` marks parameters `final` throughout; nothing else in the repo does. | D |
+| W4-1 | **W3-8 is still open.** Text typed into `tickerField` while a worker is in flight is lost when the success state lands. Needs the field to track user-dirty state. Called out in `plan/handoffs/walkthrough.md` step 7 so it is not discovered live. | D |
+| W4-3 | `Main` hand-assembles a `WatchlistState` from six positional arguments, four interchangeable `String`s, untested. A `withStatusMessage(...)` copy method would remove the hazard. | orchestrator, C |
+| W4-4 | Tab dies on the disabled `tickerTable` while a worker is in flight. Pairs with W3-10. | D |
+| W4-5 | A disabled `JTable` gives no visual cue it is frozen; a user mid-refresh reads it as a hang. | D |
+
+### D5-b — `MarketDataHandoffTest` is a second sanctioned ownership crossing
+
+`src/test/java/use_case/watchlist/MarketDataHandoffTest.java` sits inside Agent A's glob and
+was written by the orchestrator. This is sanctioned twice over — `agents/orchestrator.md` §4
+assigns the hand-off test to the orchestrator in Phase 5, and `plan/phase-5.md` § Files to
+create names the exact path — but it is the same shape as D4-b and is recorded so the pattern
+stays visible. Agent A was told explicitly not to create the file and did not; the reviewer
+confirmed zero overlap. Not the reviewer brief's critical, which is *two agents* touching one
+file in one phase.
+
+### D5-c — a fourth deliverable, `plan/handoffs/walkthrough.md`
+
+`plan/phase-5.md` § Files to create lists three files; four were produced. The extra is the
+owner's manual checklist for the `vision.md` §8 script that D4-f left owed by hand — the
+restart round trip, resize, Tab order, the W3-5 freeze check, and the "after" screenshot. It
+was split out of `team-notes.md` because the audience is different: team notes go to Members
+2, 3 and 4; the walkthrough is a task list for the owner alone. Its cross-references to
+`screenshots.md` were verified by the reviewer.
+
+### D5-d — `plan/handoffs/` was again cleared selectively (as in D3-h)
+
+`/execute` step 5 says to delete the contents of `plan/handoffs/`. The two agent files
+(`use-case-done.md`, `data-access-done.md`) were removed — their content is recorded in
+`plan/review-phase-5.md` and above. **The four deliverables were kept:** `team-notes.md`,
+`coverage.md`, `walkthrough.md` and `screenshots.md`. They are what this phase exists to
+produce, and `walkthrough.md` and `screenshots.md` both carry unfinished obligations. Deleting
+this phase's own output to satisfy a cleanup step would invert the purpose of the step.
+
+### Warnings from `plan/review-phase-5.md`
+
+**Fixed at close-out** — all four documentation-truth findings, because these documents go to
+teammates and to a grader and a confidently-worded wrong claim is worse than an omission (the
+same reasoning that fixed W2-10 and the five Phase 3 doc warnings):
+
+- **W5-1** — `team-notes.md` claimed the ceiling test would break the build if someone raised a
+  strategy window past ~90. It would not: the test hard-codes 100/99 against its own series and
+  no production code configures a window. Reworded to say what the test genuinely pins (the
+  arithmetic of the cliff) and to say plainly that it is not a guard on anyone's configuration.
+- **W5-2** — `coverage.md` gave a ~24-line margin and then drew a conclusion about *adding*
+  uncovered code, where the correct figure is 34 (new code grows the denominator too). Both
+  numbers are now stated, each against the case it applies to.
+- **W5-4** — off-by-one in the window table: a 50-day window against 100 records leaves 50
+  signal days, not 49. Inherited verbatim from `plan/phase-5.md:73`.
+- **W5-5** — "the seven `Serializable` entities" miscounted the types. There are eight; seven
+  lack an explicit UID because `MovingAverageConfiguration` already declares one. The advice was
+  sound but the miscount sat in the one paragraph whose whole purpose is to stop carelessness.
+
+Also fixed, both in the orchestrator's own new file: **W5-3** (the ceiling test's `assertThrows`
+lambda had two throw sites — the configuration and strategy are now hoisted above it, so the
+intent is structural rather than dependent on the message assertion) and **W5-6** (`final` on
+the two loop variables, matching Agent B's new test in the same phase).
+
+**Left open:**
+
+| # | Warning | Owner |
+|---|---|---|
+| W5-7 | `WatchlistSnapshotFactoryTest.buildRejectsNullCollaborators` pins null `watchlist` and null `stocks` but not null `selectedSymbol`, leaving the factory's behaviour on a null selection unspecified by any test. Three lines. Left because the file is Agent A's and no agent is active — the same reason sixteen other warnings are on the register above. | A |
+| W5-8 | `agents/reviewer.md`'s Clean-Architecture checklist says `System.getenv` "appears in exactly one place: the composition root". It appears exactly once, in `AlphaVantageMarketDataAccessObject.apiKeyFromEnvironment()`, which `Main` calls. The spirit holds and this is unchanged since Phase 4, but the sentence is imprecise. | orchestrator |

@@ -1,11 +1,58 @@
 # Status
 
-Current phase: 5 — Hand-off Proof and Close-out
-Active agents: orchestrator, with `use-case` (A) and `data-access` (B) **on call** — the
-coverage margin (W4-10) makes it likely they are needed, not merely available. Then reviewer.
+Current phase: **none — all five phases complete.**
+Active agents: none.
 Branch: `feature/watchlist-use-cases`
 
+**The plan is finished. Two things are still owed, and both are the owner's, by hand:**
+
+1. **The `vision.md` §8 manual walkthrough** — `plan/handoffs/walkthrough.md` is the
+   checklist. The data path is machine-verified through the exact object graph `Main`
+   builds; what no machine has checked is the restart round trip through a real
+   `watchlist.dat`, resize behaviour, Tab order against visual order, and the W3-5
+   mid-refresh freeze.
+2. **The "after" screenshot** for the individual presentation. `screenshots.md` holds the
+   "before" shot (captured, SHA `fc27b3c`) and `walkthrough.md` step 8 has the recipe and a
+   blank record to fill in.
+
+Everything else the rubric and `vision.md` §8 ask for is landed and verified.
+
 ## Completed phases
+
+### Phase 5 — Hand-off Proof and Close-out ✅ 2026-08-08
+
+- **Build:** `mvn -o clean verify` green — **415 tests**, 0 failures (up from 403).
+- **Coverage:** project **71.69%** (1008/1406), *up* from 71.5% — the phase widened the
+  margin rather than spending it. All six ≥90% gates hold: the four interactors at **100%**
+  lines, `AlphaVantageMarketDataAccessObject` 98.9%, `CachingMarketDataGateway` 100%. The
+  whole `interface_adapter.watchlist` package is 100%. **No JaCoCo exclusions are
+  configured** — that is the raw whole-project number, which is the stronger claim.
+- **Review:** `plan/review-phase-5.md` — **PASS WITH WARNINGS**, **zero criticals**, seven
+  warnings. The reviewer re-measured every number independently and checked the Phase 5
+  "Done when" criteria item by item; all four are MET. Six warnings were fixed at close-out
+  (W5-1…W5-6), two left open (W5-7, W5-8).
+- **Delivered — the graded artifact:** `MarketDataHandoffTest` drives
+  `InMemoryMarketDataGateway.withSampleData()` → `AddTickerInteractor` →
+  `StockRepository.findBySymbol` and feeds the result *straight* into a real
+  `MovingAverageCrossoverStrategy(5, 20)` — the reviewer confirmed the list handed to the
+  strategy is the identical reference `Stock` exposes, with no reshaping. It asserts a real
+  **BUY and a real SELL**, not merely that the call did not throw, plus the three
+  preconditions and the H8 compact-response ceiling (100 records: a 100 window throws, a 99
+  window does not — the cliff located exactly, not approximately).
+- **Also delivered:** `plan/handoffs/team-notes.md` (the ~100-day ceiling, unadjusted
+  prices, the hand-off surface, D4-e and W4-9 for Member 4, the three unowned gaps, the
+  missing backtest engine), `coverage.md`, `walkthrough.md`.
+- **Coverage levers closed:** W2-7 by Agent B (pure `apiKeyFrom(String)` extracted; the DAO
+  went from 4 uncovered lines to 1, and `apiKeyFromEnvironment()` stays uncovered *by
+  design* — covering it needs the `System.getenv` tautology D13 already removed once) and
+  W2-8 by Agent A (a `WatchlistSnapshotFactory.build(...)` assertion that genuinely
+  discriminates A-N3's behaviour; Agent A verified this by temporarily reverting the factory
+  and confirming exactly one test failed).
+- **Parallelism:** A and B merged with **zero overlapping files** for the third time — the
+  layer split held in every phase that used it. Worktree base commits were verified before
+  spawning this time, per D3-f.
+- **Deviations:** D5-a…D5-d. **Read D5-a** — it carries the register of sixteen warnings
+  that are knowingly unclosed now that the plan is ending.
 
 ### Phase 4 — Composition Root ✅ 2026-08-08
 
@@ -117,50 +164,33 @@ Branch: `feature/watchlist-use-cases`
   `screenshots.md` was deliberately kept because it carries an unfinished obligation with an
   irreversible deadline.
 
-## Next
+## Next — the plan is complete; these are the human items it cannot do
 
-Phase 5 — Hand-off Proof and Close-out. See `plan/phase-5.md` and phases.md § Phase 5.
-
-**Two items are owed from Phase 4 and one of them is a presentation artifact.**
-
-1. **The `vision.md` §8 manual walkthrough (D4-f).** The data path is machine-verified — a
-   harness replayed the whole §8 sequence through the exact object graph `Main` builds and
-   every step produced the right state, and the app launches offline with no exception. What
-   nobody has done by hand: the restart round trip through a real `watchlist.dat`, resize
-   behaviour, Tab order against visual order, and the disabled-table check from W3-5.
-2. **The "after" screenshot.** Not captured. Unlike the "before" shot this one is *not*
-   irreversible, so it is a task rather than a deadline — but the individual presentation
-   needs both. `plan/handoffs/screenshots.md` holds the "before" path and the launch recipe.
-
-Launch it with (D4-c — `mvn exec:java` and `dependency:build-classpath` both fail offline,
-neither plugin is in the local repository):
+**1. Run `plan/handoffs/walkthrough.md` by hand, and capture the "after" screenshot.**
+The full checklist and the launch recipe are in that file. Short version (D4-c —
+`mvn exec:java` and `dependency:build-classpath` both fail offline, neither plugin is in the
+local repository):
 
 ```
 mvn -o clean compile
 java -cp "target/classes;C:\Users\abhir\.m2\repository\org\json\json\20240303\json-20240303.jar" app.Main
 ```
 
-Three things Phase 5 must know:
+Do not set `ALPHA_VANTAGE_API_KEY` — running offline is the point.
 
-1. **The coverage margin is ~20 lines, not ~45 (W4-10).** 71.5% against a 70% target. Any
-   uncovered production code added in Phase 5 needs tests landing beside it or the rubric
-   number goes under. The levers are already on the books and are **not** Swing tests (H6):
-   W2-7's `apiKeyFrom(String)` extraction and W2-8's factory assertion. This is why A and B
-   are on call rather than merely available.
-2. **The hand-off test is the graded deliverable of this phase** — feed this vertical's
-   `Stock.getDailyPrices()` straight into `MovingAverageCrossoverStrategy.generateSignals(...)`
-   and assert at least one BUY *and* one SELL come back, not just HOLDs. Mind H8: the compact
-   response is ~100 trading days, so a long window above ~90 silently violates the
-   `size() >= longWindow + 1` precondition.
-3. **`plan/handoffs/` needs the team notes**, including the three gaps this vertical
-   deliberately did not absorb (§9: Checkstyle config, `accessibility-report.md`,
-   `serialVersionUID`) and the H8 ceiling. **W4-9 belongs in those notes too** — Member 4's
-   `void` persistence boundary means a failed save to `watchlist.dat` is invisible while the
-   presenter says "Added AAPL…".
+**2. Post `plan/handoffs/team-notes.md` to the team.** This is the ping `vision.md` §9 asks
+for, and it carries the three things teammates most need: the ~100-trading-day ceiling
+(Members 2 and 3), the fact that the app now opens on the Watchlist card and that save
+failures are currently invisible (Member 4, D4-e and W4-9), and the three unowned gaps —
+Checkstyle, `accessibility-report.md`, `serialVersionUID`.
 
-Also owed: the ping `vision.md` §9 asks for. Member 4's app now opens on the Watchlist card
-instead of his Comparison view (D4-e), and two of his comments in `MainView.java` are stale as
-a consequence of touching that file append-only (W4-7).
+**3. Still needed for the individual presentation, beyond the screenshots:** the interactor's
+code and a class diagram of the full use case (`vision.md` §8). Neither is in this plan's
+scope.
+
+**Before touching this code again, read `plan/decisions.md` § Phase 5 D5-a.** It is the
+register of sixteen warnings that are knowingly unclosed. The plan ending is what makes that
+register load-bearing: nothing will come along later to close them.
 
 ---
 
