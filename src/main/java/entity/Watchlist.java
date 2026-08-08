@@ -12,7 +12,9 @@ public class Watchlist implements Serializable {
     private final List<WatchlistEntry> entries = new ArrayList<>();
 
     public void addTicker(Ticker ticker) {
-        if (contains(ticker)) return;
+        if (contains(ticker)) {
+            return;
+        }
         entries.add(new WatchlistEntry(ticker));
     }
 

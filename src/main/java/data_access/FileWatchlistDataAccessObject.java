@@ -3,7 +3,14 @@ package data_access;
 import entity.Watchlist;
 import use_case.persistence.WatchlistDataAccessInterface;
 
-import java.io.*;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InvalidClassException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,9 +51,9 @@ public class FileWatchlistDataAccessObject implements WatchlistDataAccessInterfa
                 out.writeObject(watchlist);
             }
             moveIntoPlace(temp, target);
-        } catch (IOException e) {
+        } catch (IOException exception) {
             deleteQuietly(temp);
-            throw new PersistenceException("Failed to write watchlist to " + filePath, e);
+            throw new PersistenceException("Failed to write watchlist to " + filePath, exception);
         }
     }
 
@@ -59,7 +66,7 @@ public class FileWatchlistDataAccessObject implements WatchlistDataAccessInterfa
         }
 
         try (FileInputStream fis = new FileInputStream(file);
-             ObjectInputStream in = new ObjectInputStream(fis)) {
+                ObjectInputStream in = new ObjectInputStream(fis)) {
             Object loaded = in.readObject();
             if (!(loaded instanceof Watchlist watchlist)) {
                 // The file deserialized fine but isn't a Watchlist - throw rather
@@ -71,7 +78,7 @@ public class FileWatchlistDataAccessObject implements WatchlistDataAccessInterfa
                         "file does not contain a Watchlist");
             }
             return watchlist;
-        } catch (ObjectStreamException | EOFException | ClassNotFoundException e) {
+        } catch (ObjectStreamException | EOFException | ClassNotFoundException exception) {
             // The save file itself is corrupted/unreadable as a Watchlist -
             // recover by backing it up and starting fresh, instead of
             // blocking the user from ever opening the app again.
@@ -79,10 +86,10 @@ public class FileWatchlistDataAccessObject implements WatchlistDataAccessInterfa
             // InvalidClass and the other malformed-stream cases in one clause.)
             backUpCorruptedFile(file);
             return new Watchlist();
-        } catch (IOException e) {
+        } catch (IOException exception) {
             // Anything else (permission denied, disk error, etc.) is a real
             // problem the user should know about - don't silently reset their data.
-            throw new PersistenceException("Failed to read watchlist from " + filePath, e);
+            throw new PersistenceException("Failed to read watchlist from " + filePath, exception);
         }
     }
 
@@ -98,11 +105,11 @@ public class FileWatchlistDataAccessObject implements WatchlistDataAccessInterfa
                 backupPath = Path.of(base + "-" + suffix);
             }
             Files.move(file.toPath(), backupPath);
-        } catch (IOException e) {
+        } catch (IOException exception) {
             // If we can't even back up the corrupted file (e.g. permission denied),
             // that's a real problem the user should know about - don't silently
             // reset their data and leave the corrupted file untouched.
-            throw new PersistenceException("Failed to back up corrupted watchlist at " + filePath, e);
+            throw new PersistenceException("Failed to back up corrupted watchlist at " + filePath, exception);
         }
     }
 
@@ -110,7 +117,7 @@ public class FileWatchlistDataAccessObject implements WatchlistDataAccessInterfa
     private static void moveIntoPlace(Path temp, Path target) throws IOException {
         try {
             Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException e) {
+        } catch (AtomicMoveNotSupportedException exception) {
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }

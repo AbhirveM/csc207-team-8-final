@@ -1,15 +1,22 @@
 package view;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
 
+import interface_adapter.comparison.ComparisonViewModel;
 import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
  * The main application window: a nav bar + a CardLayout panel that
- * ViewManager swaps between. Add each member's real view to cardPanel
- * with cardPanel.add(view, ViewName.VIEW_NAME) as they're finished -
- * for now only the Comparison view (yours) is wired in.
+ * ViewManager swaps between. Register each finished view with
+ * {@link #addView(String, java.awt.Component)} and add a nav button for it here.
+ *
+ * <p>Two screens are reachable today: Watchlist and Compare Strategies. The
+ * backtest results screen exists but has no nav button because nothing
+ * constructs it yet - see the note on {@code app.Main}.
  */
 public class MainView extends JFrame {
     private final JPanel cardPanel;
@@ -29,13 +36,16 @@ public class MainView extends JFrame {
 
         JPanel navBar = new JPanel();
         add(navBar, BorderLayout.NORTH);
-        // Add nav buttons for each screen here, e.g.:
+        // Add a nav button for each screen here.
         JButton watchlistBtn = new JButton("Watchlist");
+        watchlistBtn.setMnemonic('W');
         watchlistBtn.addActionListener(
-                e -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
+                event -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
         navBar.add(watchlistBtn);
         JButton comparisonBtn = new JButton("Compare Strategies");
-        comparisonBtn.addActionListener(e -> viewManagerModel.setActiveView("comparison"));
+        comparisonBtn.setMnemonic('S');
+        comparisonBtn.addActionListener(
+                event -> viewManagerModel.setActiveView(ComparisonViewModel.VIEW_NAME));
         navBar.add(comparisonBtn);
     }
 

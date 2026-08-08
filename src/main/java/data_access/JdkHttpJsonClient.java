@@ -49,10 +49,10 @@ public class JdkHttpJsonClient implements HttpJsonClient {
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException exception) {
             // Restore the flag so an interrupt is not silently swallowed.
             Thread.currentThread().interrupt();
-            throw new IOException("Request was interrupted", e);
+            throw new IOException("Request was interrupted", exception);
         }
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
