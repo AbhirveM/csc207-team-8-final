@@ -7,9 +7,9 @@ import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
  * The main application window: a nav bar + a CardLayout panel that
- * ViewManager swaps between. Add each member's real view to cardPanel
- * with cardPanel.add(view, ViewName.VIEW_NAME) as they're finished -
- * for now only the Comparison view (yours) is wired in.
+ * ViewManager swaps between. Each member's real view is registered with
+ * addView(name, view) from the application builder ({@code app.Main}); the
+ * nav bar below carries one button per registered screen.
  */
 public class MainView extends JFrame {
     private final JPanel cardPanel;
@@ -22,6 +22,10 @@ public class MainView extends JFrame {
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 600);
+        // Below ~700px wide the control row stops fitting and the watchlist's
+        // "Load prices" button clips off the right edge. A floor keeps every
+        // control reachable by mouse; each one already has a mnemonic for the keyboard.
+        setMinimumSize(new Dimension(820, 500));
 
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
@@ -29,7 +33,8 @@ public class MainView extends JFrame {
 
         JPanel navBar = new JPanel();
         add(navBar, BorderLayout.NORTH);
-        // Add nav buttons for each screen here, e.g.:
+        // One nav button per screen. Each switches the CardLayout via the shared
+        // ViewManagerModel; the matching view is registered from app.Main by addView(...).
         JButton watchlistBtn = new JButton("Watchlist");
         watchlistBtn.addActionListener(
                 e -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
