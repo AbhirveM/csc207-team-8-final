@@ -62,6 +62,15 @@ public class Main {
                 new FileWatchlistDataAccessObject("watchlist.dat");
         PersistenceViewModel persistenceViewModel = new PersistenceViewModel();
         PersistencePresenter persistencePresenter = new PersistencePresenter(persistenceViewModel);
+        // Bind the persistence view model to the window's status bar. Without this the view
+        // model fired into the void, so a failed save was invisible: the watchlist reported
+        // "Added AAPL..." while nothing reached watchlist.dat. Saves run on the watchlist's
+        // background worker, so setPersistenceStatus marshals back onto the event thread.
+        persistenceViewModel.addPropertyChangeListener(event -> {
+            if (PersistenceViewModel.STATUS_PROPERTY.equals(event.getPropertyName())) {
+                mainView.setPersistenceStatus(persistenceViewModel.getStatusMessage());
+            }
+        });
         SaveWatchlist.InputBoundary saveWatchlistInteractor =
                 new SaveWatchlist.Interactor(watchlistDataAccess, persistencePresenter);
         LoadWatchlist.InputBoundary loadWatchlistInteractor =

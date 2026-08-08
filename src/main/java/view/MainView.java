@@ -16,6 +16,7 @@ public class MainView extends JFrame {
     private final JPanel cardPanel;
     private final CardLayout cardLayout;
     private final ViewManagerModel viewManagerModel;
+    private final JLabel persistenceStatusLabel = new JLabel(" ");
 
     public MainView(ViewManagerModel viewManagerModel) {
         super("Market Watchlist & Backtester");
@@ -47,11 +48,34 @@ public class MainView extends JFrame {
         JButton comparisonBtn = new JButton("Compare Strategies");
         comparisonBtn.addActionListener(e -> viewManagerModel.setActiveView("comparison"));
         navBar.add(comparisonBtn);
+
+        // Application-wide persistence status. Saving happens as a side effect of watchlist
+        // actions and its view model was previously bound to nothing, so a failed write to
+        // watchlist.dat was completely silent - the watchlist still said "Added AAPL..." while
+        // nothing had been saved. This one line is the surface Main binds PersistenceViewModel
+        // to; the message is carried in words, never colour alone.
+        persistenceStatusLabel.setBorder(BorderFactory.createEmptyBorder(2, 8, 4, 8));
+        persistenceStatusLabel.getAccessibleContext().setAccessibleName("Save status");
+        add(persistenceStatusLabel, BorderLayout.SOUTH);
     }
 
     /** Register a finished view under the given name so the nav bar / ViewManager can show it. */
     public void addView(String name, JPanel view) {
         cardPanel.add(view, name);
+    }
+
+    /**
+     * Shows the latest persistence status (a save/load success or an error) in the window's
+     * status bar. Safe to call from any thread; it marshals onto the event dispatch thread.
+     *
+     * @param message the status text to display; a blank message clears the bar
+     */
+    public void setPersistenceStatus(String message) {
+        final String text = message == null || message.isBlank() ? " " : message;
+        SwingUtilities.invokeLater(() -> {
+            persistenceStatusLabel.setText(text);
+            persistenceStatusLabel.getAccessibleContext().setAccessibleDescription(text);
+        });
     }
 
     public CardLayout getCardLayout() { return cardLayout; }
