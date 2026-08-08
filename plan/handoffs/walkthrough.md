@@ -78,7 +78,23 @@ should see a status line saying sample data is in use, and the app should open o
          the split pane divider held its proportion, and both tables grew without clipping
          or swallowing the controls. *Still worth one manual drag to a very small size —
          the automated resize only covered growing the window.*
-   - [ ] **Tab order** matches visual order — top to bottom, left to right, no surprises.
+   - [x] **Tab order** — ✅ **PASSES after a fix. A real defect was found here 2026-08-08.**
+
+         Tab reached the ticker field, the four buttons and the watchlist table in the right
+         order, and then **trapped**. `JTable` installs its own focus traversal key sets so
+         that Tab moves between *cells* instead of between components, so Tab cycled across
+         the single AAPL row's five columns forever. A keyboard-only user could enter either
+         table and never leave it — and could never reach the status line, which is where
+         every error message is announced.
+
+         This is a keyboard trap (WCAG 2.1.2), not a cosmetic ordering problem, and it
+         silently defeated the `OrderedFocusTraversalPolicy` that was already installed: the
+         policy was correct all along, but Tab never reached it.
+
+         **Fix:** `WatchlistView.buildTablePanel` now clears both tables' traversal key
+         overrides with `setFocusTraversalKeys(..., null)`, which makes them inherit the
+         container's Tab / Shift+Tab so the existing policy runs. Arrow keys still move
+         between cells, so no table navigation was lost.
    - [ ] **Mid-refresh freeze (W3-5).** Start a Refresh and immediately try to click a
          different row and press ↓. Both should be ignored while the worker runs. That is
          correct and deliberate — but note **W4-5**: the frozen table gives no visual cue,
@@ -89,11 +105,13 @@ should see a status line saying sample data is in use, and the app should open o
          into the ticker field. Your typing will be lost when the success state lands. Known
          and deliberately not claimed closed — worth knowing before you do it live on stage.
 
-8. **The "after" screenshot.** ⏳ **STILL OUTSTANDING — needs a human at the keyboard.**
-   - [ ] Full application window, default size, Watchlist card selected, with `AAPL`
-         populated and the price table full — the mirror of the "before" shot.
-   - [ ] Save as `docs/after-watchlist-view.png`.
-   - [ ] Record the date and the git SHA below.
+8. **The "after" screenshot.** ✅ **CAPTURED 2026-08-08.**
+   - [x] Full application window, Watchlist card selected, with `AAPL` populated and the
+         price table full — the mirror of the "before" shot. Shows the company name resolved
+         to "Apple Inc.", 120 days of history, latest 2026-08-05 at 249.68, the full OHLCV
+         table, and the worded status line "Refreshed AAPL: 120 days of price history,
+         latest 2026-08-05."
+   - [x] Saved as `docs/after-watchlist-view.png`.
 
    **Deviation from the original instruction.** This step used to say "save it outside the
    repo — screenshots do not belong in version control here." That is now reversed, and
@@ -103,27 +121,18 @@ should see a status line saying sample data is in use, and the app should open o
    PNGs are ~20 KB each, which is not a repository-hygiene problem. The "before" shot is
    already committed at `docs/before-watchlist-view.png`.
 
-   **Why this is not automated.** Two attempts to drive the app with synthetic mouse events
-   (`mouse_event` via user32) failed — the clicks never reached the Swing components, so the
-   row never showed a selection highlight. Window capture itself works fine; only the input
-   injection does not. Capture it by hand:
-
-   1. The app is easiest to shoot at its default size. Select the `AAPL` row, click
-      **Load prices**, and wait for the daily price table to fill.
-   2. Screenshot the whole window (Alt+PrintScreen, or Win+Shift+S).
-   3. Save to `docs/after-watchlist-view.png`, overwriting the placeholder.
-
-   A placeholder capture is currently in place showing the restored watchlist with prices
-   **not** yet loaded. It is a real, clean screenshot but it undersells the feature — replace
-   it with one where the price table is populated before presenting.
+   It was captured by hand. Two attempts to drive the app with synthetic mouse events
+   (`mouse_event` via user32) had failed — the clicks never reached the Swing components, so
+   the row never showed a selection highlight. Window capture works; input injection does not.
 
 ---
 
 ## "After" screenshot record
 
-- **Path:** `docs/after-watchlist-view.png` *(placeholder committed; needs the prices-loaded retake)*
-- **Captured on:** 2026-08-08 *(placeholder)*
-- **Git SHA at capture:** `35a7fae` *(placeholder)*
+- **Path:** `docs/after-watchlist-view.png`
+- **Captured on:** 2026-08-08
+- **Git SHA at capture:** `a02affc`
+- **Source:** `C:\Users\abhir\Pictures\Screenshots\Screenshot 2026-08-08 132457.png`
 
 ---
 
