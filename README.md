@@ -10,6 +10,7 @@
 - [Usage](#usage)
 - [Project Structure](#project-structure)
 - [External APIs](#external-apis)
+- [Accessibility](accessibility-report.md)
 - [Feedback](#feedback)
 - [Contributing](#contributing)
 - [License](#license)
@@ -24,9 +25,10 @@ The purpose of this application is to help users understand and compare trading 
 The application supports:
 - Managing a personalized stock watchlist
 - Retrieving historical market data
-- Running trading strategy simulations
-- Comparing strategy performance
-- Saving user preferences between sessions
+- Saving the watchlist between sessions
+- Running trading strategy simulations *(implemented and tested; integration into the user
+  interface is the remaining work — see the feature status table below)*
+- Comparing strategy performance *(same)*
 
 The project is developed for **CSC207: Software Design** at the University of Toronto and follows **Clean Architecture principles**.
 
@@ -44,6 +46,22 @@ The project is developed for **CSC207: Software Design** at the University of To
 ---
 
 # Features
+
+> **Feature status.** This table is the honest summary of what a user can reach in the
+> application as it runs today. "Implemented and tested" means the code exists, is unit-tested and
+> passes, but is not yet reachable from the user interface — those features are wired up as the
+> remaining integration work, and we would rather state that plainly than have you discover it.
+
+| Feature | Status |
+|---|---|
+| Watchlist management (add / remove / select tickers) | **Runs today** |
+| Historical market data from Alpha Vantage, with offline fallback | **Runs today** |
+| Watchlist persistence across restarts | **Runs today** |
+| Moving Average Crossover strategy | Implemented and tested; not yet reachable from the UI |
+| Momentum (RSI) strategy | Implemented and tested; not yet reachable from the UI |
+| Backtest engine and performance summary | Implemented and tested; not yet reachable from the UI |
+| Strategy comparison screen | Screen reachable; shows its empty state until backtests can be run |
+| Strategy configuration persistence | Not implemented |
 
 ## Watchlist Management
 
@@ -79,7 +97,12 @@ Market data is retrieved automatically from an external financial data provider.
 
 ## Trading Strategy Backtesting
 
-Users can test different trading strategies against stocks in their watchlist.
+> **Status: implemented and tested, not yet reachable from the user interface.** The strategies,
+> the backtest engine and the results screen all exist and are covered by unit tests, but no
+> navigation path constructs them yet. The description below is of the implemented behaviour.
+
+Both strategies implement a shared `TradingStrategy` contract and produce trading signals from a
+`Stock`'s price history.
 
 Supported strategies include:
 
@@ -110,7 +133,11 @@ The strategy identifies possible buying and selling opportunities based on momen
 
 ## Performance Analysis
 
-After running a backtest, users receive:
+> **Status: implemented and tested, not yet reachable from the user interface.** `BacktestEngine`
+> computes all of the figures below and `BacktestResultsView` renders them, but nothing yet
+> constructs them in response to a user action.
+
+After running a backtest, the results screen shows:
 
 - Simulated trade history
 - Buy and sell points
@@ -119,18 +146,25 @@ After running a backtest, users receive:
 - Number of trades
 - Win rate
 
-Users can compare multiple strategies on the same stock to determine which strategy performed better historically.
+The comparison screen is reachable from the navigation bar and ranks completed backtests against
+each other. Because backtests cannot yet be started from the interface, it currently shows its
+empty state ("Run at least one backtest before comparing strategies.").
 
 ---
 
 ## Data Persistence
 
-The application saves:
-- User watchlists
-- Strategy configurations
-- User preferences
+The application saves the **user's watchlist** — which tickers are on it — to `watchlist.dat` and
+restores it on the next launch. The write goes to a temporary file and is then moved atomically
+into place, and a corrupted save file is backed up and recovered from rather than blocking start-up.
 
-Users can close and reopen the application without losing their previous setup.
+Two honest limitations:
+
+- **Strategy configurations are not persisted.** `WatchlistEntry` does not yet carry a strategy
+  configuration; wiring that up is tracked in issue #7.
+- **Price history is not persisted.** Only ticker membership is saved, so prices are re-fetched
+  on demand after a restart. This is deliberate — the free API tier allows roughly twenty-five
+  requests a day, and hydrating a restored watchlist automatically would spend them at launch.
 
 ---
 
@@ -269,30 +303,36 @@ Confirm the `ALPHA_VANTAGE_API_KEY` environment variable is set in the same term
 
 # Usage
 
-1. Set up your API key (see Installation above).
-2. Launch the application (`mvn exec:java -Dexec.mainClass="app.Main"`).
-3. Create or modify your stock watchlist.
-4. Add desired stock tickers.
-5. Retrieve historical market data.
-6. Select a trading strategy.
-7. Configure strategy parameters.
-8. Run the backtest.
-9. Review trade history and performance statistics.
+## What you can do today
 
-Example workflow:
+1. Launch the application using the command in [Run the Application](#run-the-application). An API
+   key is optional — without one you get the offline sample data for AAPL, MSFT and TSLA.
+2. Add stock tickers to your watchlist.
+3. Select a ticker to see its daily price history.
+4. Use **Load prices** to fetch history for every ticker on the watchlist.
+5. Remove tickers you no longer want.
+6. Close and reopen the application — your watchlist is restored.
 
 ```
 Add TSLA to watchlist
         ↓
-Select Moving Average Crossover
+Select TSLA in the watchlist table
         ↓
-Set short window = 10 days
-Set long window = 50 days
+Read its open / high / low / close / volume history
         ↓
-Run backtest
-        ↓
-View return, trades, and win rate
+Close and reopen - TSLA is still there
 ```
+
+## What the finished application will add
+
+The following steps are **not yet reachable from the interface**, though the code behind each one is
+written and unit-tested. They are the remaining integration work:
+
+7. Select a trading strategy (Moving Average Crossover or Momentum).
+8. Configure strategy parameters.
+9. Run the backtest.
+10. Review trade history and performance statistics.
+11. Compare strategies against each other.
 
 ### The Watchlist screen
 
@@ -308,8 +348,13 @@ is cached and re-fetched on demand, so a restored row reads "Not loaded" until y
 
 ### Architecture and design documentation
 
+- [Architecture overview](docs/architecture.md) — the whole-project layer diagram, the Dependency
+  Rule, and where each use case sits.
 - [Add Ticker — full use case](docs/add-ticker-use-case.md) — class diagram, the Dependency Rule
   applied to this feature, and the before/after views of the screen.
+- [Accessibility report](accessibility-report.md) — the seven Principles of Universal Design as
+  they apply to MarketLens, our target users, and who may be excluded.
+- [Test coverage](plan/handoffs/coverage.md) — what is covered, what is not, and why.
 
 ---
 
@@ -460,4 +505,9 @@ This project was created as coursework for:
 **CSC207: Software Design**
 University of Toronto
 
-All rights reserved — this project is not licensed for external or commercial use.
+All rights reserved — this project is not licensed for external or commercial use. The full terms
+are in [LICENSE](LICENSE).
+
+Market data is provided by [Alpha Vantage](https://www.alphavantage.co/) and is subject to their own
+terms of service. This project is a learning tool: it does not place trades, hold funds, or
+constitute financial advice, and backtested results do not predict future returns.
