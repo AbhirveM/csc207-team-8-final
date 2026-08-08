@@ -50,6 +50,21 @@ summary — **still has no working path through the UI**, even though every piec
 This is the single biggest functionality risk for the presentation and it is a wiring job, not new
 logic. Whoever owns integration (issue #9) should pick it up today.
 
+### 2b. One line for whoever owns `MainView` (Ziyad)
+
+The window has no minimum size — `MainView` only calls `setSize(900, 600)`. Shrink it below about
+700px wide and the control row stops fitting, so the "Load prices" button clips off the right edge.
+It is not a trap (every button has a mnemonic, so it is still Alt+L), and it is invisible at demo
+size, but a one-line `setMinimumSize(new Dimension(820, 500))` closes it. I did not touch `MainView`
+since it is your file.
+
+While testing this I also found and fixed a genuine keyboard trap in my own view: `JTable` overrides
+Tab to move between cells, so Tab entered either table and cycled through its cells forever, never
+reaching the status line where errors are announced. Worth checking your own tables for the same
+thing — it is one line per table, `setFocusTraversalKeys(..., null)`. If you are claiming keyboard
+accessibility in the presentation, this is the kind of thing that is true of the code and false of
+the running app until someone actually presses Tab.
+
 ### 3. `refactor/cave-layer-folder-names` needs to be redone
 
 That branch renames `view/` → `views/` and `data_access/` → `database/`. It was cut before my work
