@@ -440,4 +440,52 @@ class AlphaVantageMarketDataAccessObjectTest {
                 assertThrows(MarketDataException.class,
                         () -> gateway.fetchCompanyName("  ")).getKind());
     }
+
+    // --- API key policy --------------------------------------------------------
+    //
+    // apiKeyFromEnvironment() itself stays uncovered on purpose: it reads the real
+    // environment, and a test that branched on whether the variable happened to be set
+    // would pass either way and prove nothing. The policy it delegates to is pure, so it
+    // is pinned here directly instead.
+
+    /** An unset variable arrives as null, and null means "no key configured". */
+    @Test
+    void aNullEnvironmentValueYieldsNoApiKey() {
+        assertEquals(Optional.empty(),
+                AlphaVantageMarketDataAccessObject.apiKeyFrom(null));
+    }
+
+    /**
+     * A variable that is exported but empty, or set to nothing but whitespace, is the
+     * same answer as an unset one - the composition root must fall back to the offline
+     * sample gateway rather than send a blank key and pay quota for the provider's
+     * "Error Message" to say so.
+     */
+    @Test
+    void aBlankEnvironmentValueYieldsNoApiKey() {
+        for (final String blank : List.of("", "   ", "\t", "\n", " \t\n ")) {
+            assertEquals(Optional.empty(),
+                    AlphaVantageMarketDataAccessObject.apiKeyFrom(blank), "[" + blank + "]");
+        }
+    }
+
+    @Test
+    void aNormalEnvironmentValueYieldsThatExactKey() {
+        assertEquals(Optional.of("ABC123XYZ"),
+                AlphaVantageMarketDataAccessObject.apiKeyFrom("ABC123XYZ"));
+    }
+
+    /**
+     * The case the composition root's gateway selection actually depends on: a key
+     * pasted into a shell profile commonly carries a trailing newline or stray spaces.
+     * It is a usable key, and it must arrive stripped - unstripped whitespace would be
+     * percent-encoded straight into the request URL and rejected by the provider.
+     */
+    @Test
+    void aPaddedEnvironmentValueYieldsTheStrippedKey() {
+        assertEquals(Optional.of("ABC123XYZ"),
+                AlphaVantageMarketDataAccessObject.apiKeyFrom("  ABC123XYZ  "));
+        assertEquals(Optional.of("ABC123XYZ"),
+                AlphaVantageMarketDataAccessObject.apiKeyFrom("\tABC123XYZ\n"));
+    }
 }
