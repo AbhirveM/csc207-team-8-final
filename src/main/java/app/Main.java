@@ -44,9 +44,17 @@ import java.util.Optional;
  * together (dependency injection by hand). This is where Member 4's
  * "connecting all modules through the application builder" responsibility lives.
  *
- * As Members 1-3 finish their features, add their controller/presenter/view
- * construction here the same way the Comparison feature is wired below,
- * then register their view with mainView.addView(...).
+ * <p>Wired and reachable today: the four watchlist use cases, watchlist
+ * persistence, and the Compare Strategies screen.
+ *
+ * <p><strong>Not yet wired:</strong> the run-backtest use case and the
+ * configure-moving-average use case. Both are implemented and unit-tested, but
+ * nothing here constructs them, so no user path reaches a backtest and the
+ * Compare screen has nothing to rank. Add their controller/presenter/view
+ * construction below the same way the Comparison feature is wired, register the
+ * view with mainView.addView(...), add a nav button in MainView, and have
+ * BacktestPresenter record each finished run in the CompletedBacktestStore that
+ * is already constructed here. See plan/handoffs/team-raise-2026-08-08.md.
  */
 public class Main {
     public static void main(String[] args) {
