@@ -1,11 +1,31 @@
 # Status
 
-Current phase: 4 — Composition Root
-Active agents: none (Phase 4 is orchestrator-only — two append-only edits into Member 4's
-`app/Main.java` and `view/MainView.java`, per `agents/orchestrator.md` §6. Then reviewer.)
+Current phase: 5 — Hand-off Proof and Close-out
+Active agents: orchestrator, with `use-case` (A) and `data-access` (B) **on call** — the
+coverage margin (W4-10) makes it likely they are needed, not merely available. Then reviewer.
 Branch: `feature/watchlist-use-cases`
 
 ## Completed phases
+
+### Phase 4 — Composition Root ✅ 2026-08-08
+
+- **Commit:** `575e3ad`.
+- **Build:** `mvn -o clean verify` green — **403 tests**, 0 failures.
+- **Coverage:** project **71.5%**, down from 73.3% because `Main`'s wiring block is 47
+  uncovered lines. Still over the 70% target, but the margin is now **~20 lines** — see
+  **W4-10**, which supersedes D3-g's ~45-line estimate.
+- **Review:** `plan/review-phase-4.md` — **PASS WITH WARNINGS**, **zero criticals**, nine
+  warnings. Four fixed at close-out (W4-2, W4-6, W4-7's over-length line, W4-8); five carried
+  to Phase 5 as W4-1, W4-3, W4-4, W4-5, W4-9, W4-10 in `plan/decisions.md`.
+- **Delivered:** the feature runs offline with no API key. Gateway selection is the only
+  environment read in the codebase; one `WatchlistPresenter` serves all four interactors;
+  `showWatchlist("")` at launch renders a restored watchlist. `git diff` on Member 4's two
+  files touches only the integration points his own comments designate — the reviewer checked
+  each of the seven changed lines against §6.
+- **Also closed:** W3-5, the vertical's only genuine race, verified against a realized
+  `JFrame` rather than by reading (D4-b). **W3-8 was not closed** despite the Phase 3
+  prediction that one edit would fix both — see W4-1.
+- **Deviations:** D4-a…D4-f. Read **D4-f** before starting Phase 5.
 
 ### Phase 3 — Adapter and View ✅ 2026-08-07
 
@@ -99,31 +119,48 @@ Branch: `feature/watchlist-use-cases`
 
 ## Next
 
-Phase 4 — Composition Root. Orchestrator only, no agents. Two **append-only** edits into
-Member 4's files per `agents/orchestrator.md` §6: uncomment the nav-button template at
-`view/MainView.java:30-33` and replace the TODO at `app/Main.java:42-44` with the watchlist
-wiring block. `git diff` on both must be additive only.
+Phase 5 — Hand-off Proof and Close-out. See `plan/phase-5.md` and phases.md § Phase 5.
 
-**Do this before the first Phase 4 commit — it is the one irreversible item on the board.**
-The `vision.md` §8 "before" screenshot is still uncaptured. `plan/handoffs/screenshots.md`
-has the run command and a placeholder path. Once the nav button is uncommented the shot
-cannot be retaken without a revert.
+**Two items are owed from Phase 4 and one of them is a presentation artifact.**
 
-Four things Phase 4 must know, all established in Phase 3:
+1. **The `vision.md` §8 manual walkthrough (D4-f).** The data path is machine-verified — a
+   harness replayed the whole §8 sequence through the exact object graph `Main` builds and
+   every step produced the right state, and the app launches offline with no exception. What
+   nobody has done by hand: the restart round trip through a real `watchlist.dat`, resize
+   behaviour, Tab order against visual order, and the disabled-table check from W3-5.
+2. **The "after" screenshot.** Not captured. Unlike the "before" shot this one is *not*
+   irreversible, so it is a task rather than a deadline — but the individual presentation
+   needs both. `plan/handoffs/screenshots.md` holds the "before" path and the launch recipe.
 
-1. Use **one** `WatchlistPresenter` instance across all four interactors — it is what keeps
-   an add and a refresh from drifting into two different-sounding applications.
-2. Construct `WatchlistController` in the order `(add, remove, refresh, show)`.
-3. Constructing `WatchlistView` alone paints `WatchlistState.initial()` — `Ready.` with
-   empty tables. Call `watchlistController.showWatchlist("")` inside the existing
-   `SwingUtilities.invokeLater` or the restored watchlist never renders.
-4. Resolve **D3-c** at this gate. Recommended: correct the `plan/phases.md` sentence to
-   newest-first rather than change the frozen contract — it costs one line of prose and
-   breaks nothing, whereas the reverse also falsifies two `WatchlistPresenter` javadocs.
+Launch it with (D4-c — `mvn exec:java` and `dependency:build-classpath` both fail offline,
+neither plugin is in the local repository):
 
-W3-5 and W3-8 are both cheap to close while wiring: disabling `tickerTable` alongside the
-buttons in `WatchlistView.setButtonsEnabled` fixes the one genuine race in the vertical and
-the in-progress-typing loss at the same time.
+```
+mvn -o clean compile
+java -cp "target/classes;C:\Users\abhir\.m2\repository\org\json\json\20240303\json-20240303.jar" app.Main
+```
+
+Three things Phase 5 must know:
+
+1. **The coverage margin is ~20 lines, not ~45 (W4-10).** 71.5% against a 70% target. Any
+   uncovered production code added in Phase 5 needs tests landing beside it or the rubric
+   number goes under. The levers are already on the books and are **not** Swing tests (H6):
+   W2-7's `apiKeyFrom(String)` extraction and W2-8's factory assertion. This is why A and B
+   are on call rather than merely available.
+2. **The hand-off test is the graded deliverable of this phase** — feed this vertical's
+   `Stock.getDailyPrices()` straight into `MovingAverageCrossoverStrategy.generateSignals(...)`
+   and assert at least one BUY *and* one SELL come back, not just HOLDs. Mind H8: the compact
+   response is ~100 trading days, so a long window above ~90 silently violates the
+   `size() >= longWindow + 1` precondition.
+3. **`plan/handoffs/` needs the team notes**, including the three gaps this vertical
+   deliberately did not absorb (§9: Checkstyle config, `accessibility-report.md`,
+   `serialVersionUID`) and the H8 ceiling. **W4-9 belongs in those notes too** — Member 4's
+   `void` persistence boundary means a failed save to `watchlist.dat` is invisible while the
+   presenter says "Added AAPL…".
+
+Also owed: the ping `vision.md` §9 asks for. Member 4's app now opens on the Watchlist card
+instead of his Comparison view (D4-e), and two of his comments in `MainView.java` are stale as
+a consequence of touching that file append-only (W4-7).
 
 ---
 
