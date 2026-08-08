@@ -3,6 +3,7 @@ package view;
 import javax.swing.*;
 import java.awt.*;
 
+import interface_adapter.momentum.MomentumViewModel;
 import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
@@ -34,6 +35,10 @@ public class MainView extends JFrame {
         watchlistBtn.addActionListener(
                 e -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
         navBar.add(watchlistBtn);
+        JButton momentumBtn = new JButton("Momentum Strategy");
+        momentumBtn.addActionListener(
+                e -> viewManagerModel.setActiveView(MomentumViewModel.VIEW_NAME));
+        navBar.add(momentumBtn);
         JButton comparisonBtn = new JButton("Compare Strategies");
         comparisonBtn.addActionListener(e -> viewManagerModel.setActiveView("comparison"));
         navBar.add(comparisonBtn);
