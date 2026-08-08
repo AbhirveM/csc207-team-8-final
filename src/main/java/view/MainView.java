@@ -13,6 +13,7 @@ import java.awt.Dimension;
 import interface_adapter.backtest.BacktestViewModel;
 import interface_adapter.comparison.ComparisonViewModel;
 import interface_adapter.momentum.MomentumViewModel;
+import interface_adapter.moving_average.MovingAverageViewModel;
 import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
@@ -51,6 +52,10 @@ public class MainView extends JFrame {
         watchlistBtn.addActionListener(
                 event -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
         navBar.add(watchlistBtn);
+        JButton movingAverageBtn = new JButton("Moving Average Strategy");
+        movingAverageBtn.addActionListener(
+                e -> viewManagerModel.setActiveView(MovingAverageViewModel.VIEW_NAME));
+        navBar.add(movingAverageBtn);
         JButton momentumBtn = new JButton("Momentum Strategy");
         momentumBtn.addActionListener(
                 e -> viewManagerModel.setActiveView(MomentumViewModel.VIEW_NAME));

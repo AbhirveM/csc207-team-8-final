@@ -22,6 +22,15 @@ public class RSIMomentumStrategy implements TradingStrategy {
         return "RSI Momentum Strategy";
     }
 
+    /**
+     * Returns the configuration this strategy runs with.
+     *
+     * @return the momentum configuration
+     */
+    public MomentumConfiguration getConfiguration() {
+        return configuration;
+    }
+
     @Override
     public List<TradingSignal> generateSignals(List<DailyPrice> prices) {
         Objects.requireNonNull(prices, "Prices cannot be null");

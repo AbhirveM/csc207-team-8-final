@@ -35,6 +35,15 @@ public class MovingAverageCrossoverStrategy
         return STRATEGY_NAME;
     }
 
+    /**
+     * Returns the configuration this strategy runs with.
+     *
+     * @return the short- and long-window configuration
+     */
+    public MovingAverageConfiguration getConfiguration() {
+        return configuration;
+    }
+
     @Override
     public List<TradingSignal> generateSignals(
             List<DailyPrice> prices) {

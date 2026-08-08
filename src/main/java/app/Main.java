@@ -11,6 +11,7 @@ import view.BacktestView;
 import view.ComparisonView;
 import view.MainView;
 import view.MomentumConfigurationView;
+import view.MovingAverageConfigurationView;
 import view.ViewManager;
 import view.ViewManagerModel;
 import view.WatchlistView;
@@ -24,6 +25,9 @@ import interface_adapter.comparison.CompletedBacktestStore;
 import interface_adapter.momentum.MomentumController;
 import interface_adapter.momentum.MomentumPresenter;
 import interface_adapter.momentum.MomentumViewModel;
+import interface_adapter.moving_average.MovingAverageController;
+import interface_adapter.moving_average.MovingAveragePresenter;
+import interface_adapter.moving_average.MovingAverageViewModel;
 import interface_adapter.persistence.PersistencePresenter;
 import interface_adapter.persistence.PersistenceViewModel;
 import interface_adapter.watchlist.WatchlistController;
@@ -36,6 +40,8 @@ import use_case.backtest.RunBacktestOutputData;
 import use_case.comparison.CompareStrategies;
 import use_case.momentum.ConfigureMomentumInputBoundary;
 import use_case.momentum.ConfigureMomentumInteractor;
+import use_case.moving_average.ConfigureMovingAverageInputBoundary;
+import use_case.moving_average.ConfigureMovingAverageInteractor;
 import use_case.persistence.LoadWatchlist;
 import use_case.persistence.SaveWatchlist;
 import use_case.persistence.WatchlistDataAccessInterface;
@@ -97,6 +103,27 @@ public class Main {
         mainView.addView(
                 MomentumViewModel.VIEW_NAME,
                 momentumView);
+
+        // --- Moving Average strategy configuration (Member 2) ---
+        MovingAverageViewModel movingAverageViewModel = new MovingAverageViewModel();
+
+        MovingAveragePresenter movingAveragePresenter =
+                new MovingAveragePresenter(movingAverageViewModel);
+
+        ConfigureMovingAverageInputBoundary movingAverageInteractor =
+                new ConfigureMovingAverageInteractor(movingAveragePresenter);
+
+        MovingAverageController movingAverageController =
+                new MovingAverageController(movingAverageInteractor);
+
+        MovingAverageConfigurationView movingAverageView =
+                new MovingAverageConfigurationView(
+                        movingAverageViewModel,
+                        movingAverageController);
+
+        mainView.addView(
+                MovingAverageViewModel.VIEW_NAME,
+                movingAverageView);
 
         // --- Persistence (Member 4) ---
         WatchlistDataAccessInterface watchlistDataAccess =
@@ -191,8 +218,12 @@ public class Main {
         RunBacktestInteractor runBacktest =
                 new RunBacktestInteractor(backtestEngine, backtestOutput);
         BacktestController backtestController = new BacktestController(runBacktest);
-        BacktestView backtestView =
-                new BacktestView(backtestViewModel, backtestController, stockRepository);
+        // The backtest reads the strategy parameters the user saved on the two configuration
+        // screens (falling back to sensible defaults until they do), so a run reflects the
+        // Momentum / Moving Average settings rather than hardcoded numbers.
+        BacktestView backtestView = new BacktestView(
+                backtestViewModel, backtestController, stockRepository,
+                momentumViewModel, movingAverageViewModel);
         mainView.addView(BacktestViewModel.VIEW_NAME, backtestView);
 
         // --- Strategy comparison (Member 4's own feature) ---

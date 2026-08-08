@@ -22,6 +22,9 @@ import entity.Ticker;
 import entity.TradingStrategy;
 import interface_adapter.backtest.BacktestController;
 import interface_adapter.backtest.BacktestViewModel;
+import interface_adapter.momentum.MomentumViewModel;
+import interface_adapter.moving_average.MovingAverageState;
+import interface_adapter.moving_average.MovingAverageViewModel;
 import use_case.watchlist.StockRepository;
 
 /**
@@ -39,15 +42,29 @@ import use_case.watchlist.StockRepository;
  * rendered by an embedded {@link BacktestResultsView} bound to the same
  * {@link BacktestViewModel} the controller's presenter writes to, so this class never
  * touches a {@code BacktestResult} directly.
+ *
+ * <p>The strategy parameters are not hardcoded here: they are read from the two
+ * configuration screens' view models ({@link MomentumViewModel} and
+ * {@link MovingAverageViewModel}) so a run reflects whatever the user saved there. Until
+ * they configure a strategy, each falls back to a default that fits the free tier's
+ * ~100-day history.
  */
 public class BacktestView extends JPanel {
 
     /** The strategy options offered in the dropdown, in the order they appear. */
-    private static final String MOVING_AVERAGE = "Moving Average Crossover (5 / 20)";
-    private static final String RSI_MOMENTUM = "RSI Momentum (period 14, 30 / 70)";
+    private static final String MOVING_AVERAGE = "Moving Average Crossover";
+    private static final String RSI_MOMENTUM = "RSI Momentum";
+
+    /** Defaults used when the user has not saved a configuration on the strategy screens. */
+    private static final MovingAverageConfiguration DEFAULT_MOVING_AVERAGE =
+            new MovingAverageConfiguration(5, 20);
+    private static final MomentumConfiguration DEFAULT_MOMENTUM =
+            new MomentumConfiguration(14, 30.0, 70.0);
 
     private final StockRepository stockRepository;
     private final BacktestController controller;
+    private final MomentumViewModel momentumViewModel;
+    private final MovingAverageViewModel movingAverageViewModel;
 
     private final JComboBox<String> tickerBox = new JComboBox<>();
     private final JComboBox<String> strategyBox =
@@ -58,17 +75,27 @@ public class BacktestView extends JPanel {
     /**
      * Builds the panel and wires its controls to the run-backtest use case.
      *
-     * @param viewModel       the observable the embedded results view paints; must be non-null
-     * @param controller      the boundary the Run button calls; must be non-null
-     * @param stockRepository where price history is read from by symbol; must be non-null
+     * @param viewModel              the observable the embedded results view paints; must be non-null
+     * @param controller             the boundary the Run button calls; must be non-null
+     * @param stockRepository        where price history is read from by symbol; must be non-null
+     * @param momentumViewModel      the Momentum configuration screen's view model, read for the
+     *                               saved RSI parameters; must be non-null
+     * @param movingAverageViewModel the Moving Average configuration screen's view model, read for
+     *                               the saved window sizes; must be non-null
      * @throws NullPointerException if any argument is null
      */
     public BacktestView(BacktestViewModel viewModel,
                         BacktestController controller,
-                        StockRepository stockRepository) {
+                        StockRepository stockRepository,
+                        MomentumViewModel momentumViewModel,
+                        MovingAverageViewModel movingAverageViewModel) {
         this.controller = Objects.requireNonNull(controller, "Controller cannot be null");
         this.stockRepository =
                 Objects.requireNonNull(stockRepository, "Stock repository cannot be null");
+        this.momentumViewModel =
+                Objects.requireNonNull(momentumViewModel, "Momentum view model cannot be null");
+        this.movingAverageViewModel = Objects.requireNonNull(
+                movingAverageViewModel, "Moving average view model cannot be null");
         Objects.requireNonNull(viewModel, "View model cannot be null");
 
         setLayout(new BorderLayout(8, 8));
@@ -187,18 +214,51 @@ public class BacktestView extends JPanel {
 
 
     /**
-     * Builds the strategy the dropdown currently names, with the parameters shown in its
-     * label. Both defaults sit comfortably inside the free tier's ~100-trading-day
-     * compact response, so neither throws on a freshly loaded ticker.
+     * Builds the strategy the dropdown currently names, using the parameters the user saved
+     * on that strategy's configuration screen. When they have not configured it yet, the
+     * default is used - both defaults sit inside the free tier's ~100-trading-day compact
+     * response, so neither throws on a freshly loaded ticker.
      *
-     * @return the chosen, fully configured strategy
+     * @return the chosen, configured strategy
      */
     private TradingStrategy buildStrategy() {
         if (RSI_MOMENTUM.equals(strategyBox.getSelectedItem())) {
-            return new RSIMomentumStrategy(
-                    new MomentumConfiguration(14, 30.0, 70.0));
+            return new RSIMomentumStrategy(momentumConfiguration());
         }
-        return new MovingAverageCrossoverStrategy(
-                new MovingAverageConfiguration(5, 20));
+        return new MovingAverageCrossoverStrategy(movingAverageConfiguration());
+    }
+
+    /**
+     * The Momentum configuration the user saved on the Momentum screen, or the default when
+     * they have not configured one this session.
+     *
+     * <p>Package-private so {@code BacktestViewTest} can assert the saved configuration is
+     * read rather than a hardcoded one.
+     *
+     * @return the configuration to run the RSI Momentum strategy with
+     */
+    MomentumConfiguration momentumConfiguration() {
+        final MomentumConfiguration saved = momentumViewModel.getState().getConfiguration();
+        return saved != null ? saved : DEFAULT_MOMENTUM;
+    }
+
+    /**
+     * The Moving Average configuration the user saved on the Moving Average screen, or the
+     * default when they have not configured one this session. The screen stores its windows
+     * as separate integers, so both must be present before they are used.
+     *
+     * <p>Package-private so {@code BacktestViewTest} can assert the saved configuration is
+     * read rather than a hardcoded one.
+     *
+     * @return the configuration to run the Moving Average Crossover strategy with
+     */
+    MovingAverageConfiguration movingAverageConfiguration() {
+        final MovingAverageState state = movingAverageViewModel.getState();
+        final Integer shortWindow = state.getConfiguredShortWindow();
+        final Integer longWindow = state.getConfiguredLongWindow();
+        if (shortWindow != null && longWindow != null) {
+            return new MovingAverageConfiguration(shortWindow, longWindow);
+        }
+        return DEFAULT_MOVING_AVERAGE;
     }
 }
