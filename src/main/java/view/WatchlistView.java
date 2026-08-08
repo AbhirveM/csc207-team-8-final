@@ -7,6 +7,7 @@ import java.awt.Container;
 import java.awt.FlowLayout;
 import java.awt.FocusTraversalPolicy;
 import java.awt.GridLayout;
+import java.awt.KeyboardFocusManager;
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -191,6 +192,27 @@ public class WatchlistView extends JPanel {
         headingLabel.setLabelFor(table);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getAccessibleContext().setAccessibleName(heading);
+
+        /*
+         * Release Tab and Shift+Tab back to the focus traversal policy.
+         *
+         * JTable installs its own traversal key sets so that Tab moves between
+         * *cells* rather than between components. In a grid that is arguably
+         * useful; here it is a keyboard trap. The watchlist normally holds a
+         * handful of rows, so Tab walks the cells and returns to the first one
+         * forever, and a keyboard-only user can enter either table but never
+         * leave it. With a single ticker it is unmissable: Tab just cycles
+         * across that one row's five columns.
+         *
+         * Passing null does not disable traversal - it clears JTable's override
+         * so the component inherits the container's keys, which is exactly the
+         * Tab / Shift+Tab that installFocusOrder's policy already sequences.
+         * Arrow keys still move between cells, so nothing is lost.
+         */
+        table.setFocusTraversalKeys(
+                KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, null);
+        table.setFocusTraversalKeys(
+                KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, null);
 
         final JPanel panel = new JPanel(new BorderLayout(0, 4));
         panel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
