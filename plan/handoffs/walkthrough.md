@@ -73,11 +73,21 @@ should see a status line saying sample data is in use, and the app should open o
      come back, that is the bug W4-9 predicts, not a load bug.
 
 7. **The visual checks a harness cannot make.**
-   - [x] **Resize** — ✅ **PASSED 2026-08-08.** Driven from 900×600 to 1000×640 via
-         `MoveWindow`. The nav bar stayed centred, the control row kept its left alignment,
-         the split pane divider held its proportion, and both tables grew without clipping
-         or swallowing the controls. *Still worth one manual drag to a very small size —
-         the automated resize only covered growing the window.*
+   - [x] **Resize** — ✅ **PASSED growing, ⚠️ one finding shrinking. Tested 2026-08-08.**
+
+         Grown to 1000×640: the nav bar stayed centred, the control row kept its left
+         alignment, the split pane divider held its proportion, and both tables grew without
+         clipping or swallowing the controls.
+
+         Shrunk to 560×420: table columns truncate with ellipsis, which is correct. But the
+         control row does not wrap, so **the "Load prices" button clips off the right edge**
+         and becomes unclickable below roughly 700px wide.
+
+         Not fixed, deliberately, and not serious: every button carries a mnemonic, so Load
+         prices stays operable as **Alt+L** even when it is not visible — the window degrades
+         rather than trapping the user. The real fix is a minimum size on the frame, and the
+         frame is `view/MainView.java`, which is Member 4's file. Raised for him rather than
+         patched here. It is also invisible at demo size; the app opens at 900×600.
    - [x] **Tab order** — ✅ **PASSES after a fix. A real defect was found here 2026-08-08.**
 
          Tab reached the ticker field, the four buttons and the watchlist table in the right
