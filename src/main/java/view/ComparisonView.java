@@ -10,6 +10,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.KeyboardFocusManager;
 import java.beans.PropertyChangeEvent;
 
 /**
@@ -38,6 +39,12 @@ public class ComparisonView extends JPanel {
         };
         final JTable table = new JTable(tableModel);
         table.getAccessibleContext().setAccessibleName("Strategy comparison");
+        // Release Tab / Shift+Tab so focus can leave the table instead of cycling its cells.
+        // JTable installs its own traversal keys (Tab moves between cells); without this a
+        // keyboard-only user who tabs into the table can never tab back out. Arrow keys still
+        // move between cells. Same fix WatchlistView applies to its tables.
+        table.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, null);
+        table.setFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, null);
         add(new JScrollPane(table), BorderLayout.CENTER);
 
         final JPanel topPanel = new JPanel(new BorderLayout());

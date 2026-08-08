@@ -25,10 +25,9 @@ The purpose of this application is to help users understand and compare trading 
 The application supports:
 - Managing a personalized stock watchlist
 - Retrieving historical market data
-- Saving the watchlist between sessions
-- Running trading strategy simulations *(implemented and tested; integration into the user
-  interface is the remaining work — see the feature status table below)*
-- Comparing strategy performance *(same)*
+- Running trading strategy simulations
+- Comparing strategy performance
+- Saving your watchlist between sessions
 
 The project is developed for **CSC207: Software Design** at the University of Toronto and follows **Clean Architecture principles**.
 
@@ -48,19 +47,17 @@ The project is developed for **CSC207: Software Design** at the University of To
 # Features
 
 > **Feature status.** This table is the honest summary of what a user can reach in the
-> application as it runs today. "Implemented and tested" means the code exists, is unit-tested and
-> passes, but is not yet reachable from the user interface — those features are wired up as the
-> remaining integration work, and we would rather state that plainly than have you discover it.
+> application as it runs today.
 
 | Feature | Status |
 |---|---|
 | Watchlist management (add / remove / select tickers) | **Runs today** |
 | Historical market data from Alpha Vantage, with offline fallback | **Runs today** |
 | Watchlist persistence across restarts | **Runs today** |
-| Moving Average Crossover strategy | Implemented and tested; not yet reachable from the UI |
-| Momentum (RSI) strategy | Implemented and tested; not yet reachable from the UI |
-| Backtest engine and performance summary | Implemented and tested; not yet reachable from the UI |
-| Strategy comparison screen | Screen reachable; shows its empty state until backtests can be run |
+| Moving Average Crossover strategy | **Runs today** |
+| Momentum (RSI) strategy | **Runs today** |
+| Backtest engine and performance summary | **Runs today** |
+| Strategy comparison screen | **Runs today** |
 | Strategy configuration persistence | Not implemented |
 
 ## Watchlist Management
@@ -97,45 +94,32 @@ Market data is retrieved automatically from an external financial data provider.
 
 ## Trading Strategy Backtesting
 
-> **Status: implemented and tested, not yet reachable from the user interface.** The strategies,
-> the backtest engine and the results screen all exist and are covered by unit tests, but no
-> navigation path constructs them yet. The description below is of the implemented behaviour.
+Users can test built-in trading strategies against stocks in their watchlist. On the Backtest
+screen, pick a ticker whose price history is loaded and a strategy, then run the backtest.
 
 Both strategies implement a shared `TradingStrategy` contract and produce trading signals from a
 `Stock`'s price history.
 
-Supported strategies include:
+Two strategies are available:
 
 ### Moving Average Crossover Strategy
 
-Users can configure:
-- Short-term moving average window
-- Long-term moving average window
+Signals a buy when the short-term moving average of closing prices crosses above the long-term
+average, and a sell when it crosses back below. It runs with a 5-day short window and a 20-day
+long window.
 
-Example:
+### RSI Momentum Strategy
 
-```
-Short window: 10 days
-Long window: 50 days
-```
+Uses the Relative Strength Index over a 14-day period to flag momentum extremes: a buy when RSI
+falls to the oversold threshold (30) or below, and a sell when it reaches the overbought
+threshold (70) or above.
 
----
-
-### Momentum Strategy
-
-Users can configure:
-- Overbought threshold
-- Oversold threshold
-
-The strategy identifies possible buying and selling opportunities based on momentum indicators.
+> The strategy parameters above are fixed defaults chosen to stay within the free-tier
+> ~100-day history limit. They are not yet configurable from the UI.
 
 ---
 
 ## Performance Analysis
-
-> **Status: implemented and tested, not yet reachable from the user interface.** `BacktestEngine`
-> computes all of the figures below and `BacktestResultsView` renders them, but nothing yet
-> constructs them in response to a user action.
 
 After running a backtest, the results screen shows:
 
@@ -147,16 +131,17 @@ After running a backtest, the results screen shows:
 - Win rate
 
 The comparison screen is reachable from the navigation bar and ranks completed backtests against
-each other. Because backtests cannot yet be started from the interface, it currently shows its
-empty state ("Run at least one backtest before comparing strategies.").
+each other. Run at least one backtest first; until then it shows its empty state.
 
 ---
 
 ## Data Persistence
 
-The application saves the **user's watchlist** — which tickers are on it — to `watchlist.dat` and
-restores it on the next launch. The write goes to a temporary file and is then moved atomically
-into place, and a corrupted save file is backed up and recovered from rather than blocking start-up.
+The application saves your watchlist — the set of ticker symbols you have added — to a local
+`watchlist.dat` file, so your tickers are still there when you reopen the app. The write goes to a
+temporary file and is then moved atomically into place, and a corrupted save file is backed up and
+recovered from rather than blocking start-up. The window's status bar reports whether each save
+succeeded.
 
 Two honest limitations:
 
@@ -165,6 +150,7 @@ Two honest limitations:
 - **Price history is not persisted.** Only ticker membership is saved, so prices are re-fetched
   on demand after a restart. This is deliberate — the free API tier allows roughly twenty-five
   requests a day, and hydrating a restored watchlist automatically would spend them at launch.
+  A restored ticker reads as "Not loaded" until you refresh it.
 
 ---
 
@@ -303,36 +289,29 @@ Confirm the `ALPHA_VANTAGE_API_KEY` environment variable is set in the same term
 
 # Usage
 
-## What you can do today
+1. Set up your API key (optional — see Installation above; the app runs fully offline without one).
+2. Launch the application with the `java -cp ...` command in [Run the Application](#run-the-application)
+   (`mvn exec:java` is **not** configured for this project).
+3. On the Watchlist screen, add stock tickers and load their price history.
+4. Open the Backtest screen.
+5. Choose a ticker and one of the built-in strategies.
+6. Run the backtest.
+7. Review the trade history and performance statistics.
+8. Open Compare Strategies to rank the backtests you have run.
 
-1. Launch the application using the command in [Run the Application](#run-the-application). An API
-   key is optional — without one you get the offline sample data for AAPL, MSFT and TSLA.
-2. Add stock tickers to your watchlist.
-3. Select a ticker to see its daily price history.
-4. Use **Load prices** to fetch history for every ticker on the watchlist.
-5. Remove tickers you no longer want.
-6. Close and reopen the application — your watchlist is restored.
+Example workflow:
 
 ```
-Add TSLA to watchlist
+Add TSLA on the Watchlist screen, then Load prices
         ↓
-Select TSLA in the watchlist table
+Backtest screen: choose TSLA + Moving Average Crossover
         ↓
-Read its open / high / low / close / volume history
+Run backtest
         ↓
-Close and reopen - TSLA is still there
+View return, trades, and win rate
+        ↓
+Compare Strategies to rank multiple runs
 ```
-
-## What the finished application will add
-
-The following steps are **not yet reachable from the interface**, though the code behind each one is
-written and unit-tested. They are the remaining integration work:
-
-7. Select a trading strategy (Moving Average Crossover or Momentum).
-8. Configure strategy parameters.
-9. Run the backtest.
-10. Review trade history and performance statistics.
-11. Compare strategies against each other.
 
 ### The Watchlist screen
 

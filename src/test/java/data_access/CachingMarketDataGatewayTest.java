@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -293,6 +294,10 @@ class CachingMarketDataGatewayTest {
         final int readsPerThread = 200;
         final CountDownLatch start = new CountDownLatch(1);
         final AtomicInteger failures = new AtomicInteger();
+        // Any throwable a worker fails to catch - notably an unchecked
+        // ConcurrentModificationException from a plain-HashMap merge - would otherwise just
+        // kill that thread and leave the test green. Record them all and assert none occurred.
+        final List<Throwable> uncaught = Collections.synchronizedList(new ArrayList<>());
         final List<Thread> threads = new ArrayList<>(threadCount);
 
         for (int index = 0; index < threadCount; index++) {
@@ -313,6 +318,7 @@ class CachingMarketDataGatewayTest {
                     failures.incrementAndGet();
                 }
             });
+            thread.setUncaughtExceptionHandler((failed, error) -> uncaught.add(error));
             threads.add(thread);
             thread.start();
         }
@@ -323,6 +329,7 @@ class CachingMarketDataGatewayTest {
             assertFalse(thread.isAlive(), "A reader thread did not finish");
         }
 
+        assertTrue(uncaught.isEmpty(), "A reader thread threw an uncaught exception: " + uncaught);
         assertEquals(0, failures.get());
         assertEquals(2, gateway.getCachedSymbolCount());
     }

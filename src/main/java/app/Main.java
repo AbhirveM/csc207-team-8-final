@@ -5,13 +5,19 @@ import data_access.CachingMarketDataGateway;
 import data_access.FileWatchlistDataAccessObject;
 import data_access.InMemoryMarketDataGateway;
 import data_access.InMemoryStockRepository;
+import entity.BacktestEngine;
 import entity.Watchlist;
+import view.BacktestView;
 import view.ComparisonView;
 import view.MainView;
 import view.MomentumConfigurationView;
+import view.MovingAverageConfigurationView;
 import view.ViewManager;
 import view.ViewManagerModel;
 import view.WatchlistView;
+import interface_adapter.backtest.BacktestController;
+import interface_adapter.backtest.BacktestPresenter;
+import interface_adapter.backtest.BacktestViewModel;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
@@ -19,15 +25,23 @@ import interface_adapter.comparison.CompletedBacktestStore;
 import interface_adapter.momentum.MomentumController;
 import interface_adapter.momentum.MomentumPresenter;
 import interface_adapter.momentum.MomentumViewModel;
+import interface_adapter.moving_average.MovingAverageController;
+import interface_adapter.moving_average.MovingAveragePresenter;
+import interface_adapter.moving_average.MovingAverageViewModel;
 import interface_adapter.persistence.PersistencePresenter;
 import interface_adapter.persistence.PersistenceViewModel;
 import interface_adapter.watchlist.WatchlistController;
 import interface_adapter.watchlist.WatchlistPresenter;
 import interface_adapter.watchlist.WatchlistState;
 import interface_adapter.watchlist.WatchlistViewModel;
+import use_case.backtest.RunBacktestInteractor;
+import use_case.backtest.RunBacktestOutputBoundary;
+import use_case.backtest.RunBacktestOutputData;
 import use_case.comparison.CompareStrategies;
 import use_case.momentum.ConfigureMomentumInputBoundary;
 import use_case.momentum.ConfigureMomentumInteractor;
+import use_case.moving_average.ConfigureMovingAverageInputBoundary;
+import use_case.moving_average.ConfigureMovingAverageInteractor;
 import use_case.persistence.LoadWatchlist;
 import use_case.persistence.SaveWatchlist;
 import use_case.persistence.WatchlistDataAccessInterface;
@@ -90,11 +104,41 @@ public class Main {
                 MomentumViewModel.VIEW_NAME,
                 momentumView);
 
+        // --- Moving Average strategy configuration (Member 2) ---
+        MovingAverageViewModel movingAverageViewModel = new MovingAverageViewModel();
+
+        MovingAveragePresenter movingAveragePresenter =
+                new MovingAveragePresenter(movingAverageViewModel);
+
+        ConfigureMovingAverageInputBoundary movingAverageInteractor =
+                new ConfigureMovingAverageInteractor(movingAveragePresenter);
+
+        MovingAverageController movingAverageController =
+                new MovingAverageController(movingAverageInteractor);
+
+        MovingAverageConfigurationView movingAverageView =
+                new MovingAverageConfigurationView(
+                        movingAverageViewModel,
+                        movingAverageController);
+
+        mainView.addView(
+                MovingAverageViewModel.VIEW_NAME,
+                movingAverageView);
+
         // --- Persistence (Member 4) ---
         WatchlistDataAccessInterface watchlistDataAccess =
                 new FileWatchlistDataAccessObject("watchlist.dat");
         PersistenceViewModel persistenceViewModel = new PersistenceViewModel();
         PersistencePresenter persistencePresenter = new PersistencePresenter(persistenceViewModel);
+        // Bind the persistence view model to the window's status bar. Without this the view
+        // model fired into the void, so a failed save was invisible: the watchlist reported
+        // "Added AAPL..." while nothing reached watchlist.dat. Saves run on the watchlist's
+        // background worker, so setPersistenceStatus marshals back onto the event thread.
+        persistenceViewModel.addPropertyChangeListener(event -> {
+            if (PersistenceViewModel.STATUS_PROPERTY.equals(event.getPropertyName())) {
+                mainView.setPersistenceStatus(persistenceViewModel.getStatusMessage());
+            }
+        });
         SaveWatchlist.InputBoundary saveWatchlistInteractor =
                 new SaveWatchlist.Interactor(watchlistDataAccess, persistencePresenter);
         LoadWatchlist.InputBoundary loadWatchlistInteractor =
@@ -146,14 +190,46 @@ public class Main {
         WatchlistView watchlistView = new WatchlistView(watchlistViewModel, watchlistController);
         mainView.addView(WatchlistViewModel.VIEW_NAME, watchlistView);
 
+        // --- Backtesting (Member 3's engine, wired by Member 4's integration) ---
+        // Every piece below already existed and was tested; nothing constructed them, so the
+        // completed-backtest store had no callers and the Compare screen stayed empty.
+        BacktestEngine backtestEngine = new BacktestEngine();
+        BacktestViewModel backtestViewModel = new BacktestViewModel();
+        BacktestPresenter backtestPresenter = new BacktestPresenter(backtestViewModel);
+        // The shared store of finished backtests that the Compare Strategies screen ranks. The
+        // backtest and comparison features never reference each other; they meet only through
+        // this one instance.
+        CompletedBacktestStore completedBacktests = new CompletedBacktestStore();
+        // A thin decorator over the presenter: on a successful run it also files the result
+        // into the shared store the Comparison feature reads from, so "run a backtest" and
+        // "compare completed backtests" are joined without either feature knowing the other.
+        RunBacktestOutputBoundary backtestOutput = new RunBacktestOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RunBacktestOutputData outputData) {
+                completedBacktests.add(outputData.getBacktestResult());
+                backtestPresenter.prepareSuccessView(outputData);
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                backtestPresenter.prepareFailView(errorMessage);
+            }
+        };
+        RunBacktestInteractor runBacktest =
+                new RunBacktestInteractor(backtestEngine, backtestOutput);
+        BacktestController backtestController = new BacktestController(runBacktest);
+        // The backtest reads the strategy parameters the user saved on the two configuration
+        // screens (falling back to sensible defaults until they do), so a run reflects the
+        // Momentum / Moving Average settings rather than hardcoded numbers.
+        BacktestView backtestView = new BacktestView(
+                backtestViewModel, backtestController, stockRepository,
+                momentumViewModel, movingAverageViewModel);
+        mainView.addView(BacktestViewModel.VIEW_NAME, backtestView);
+
         // --- Strategy comparison (Member 4's own feature) ---
         ComparisonViewModel comparisonViewModel = new ComparisonViewModel();
         CompareStrategies.OutputBoundary comparisonPresenter = new ComparisonPresenter(comparisonViewModel);
         CompareStrategies.InputBoundary comparisonInteractor = new CompareStrategies.Interactor(comparisonPresenter);
-        // Nothing adds to this store yet, because the run-backtest use case is not constructed
-        // here - see plan/handoffs/team-raise-2026-08-08.md. Until it is, Compare Strategies
-        // correctly shows its empty state.
-        CompletedBacktestStore completedBacktests = new CompletedBacktestStore();
         ComparisonController comparisonController =
                 new ComparisonController(comparisonInteractor, completedBacktests);
 
