@@ -1,7 +1,7 @@
 package app;
 
-import data_access.FileWatchlistDataAccessObject;
-import view.*;
+import database.FileWatchlistDataAccessObject;
+import views.*;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;

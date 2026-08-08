@@ -1,4 +1,4 @@
-package view;
+package views;
 
 import entity.BacktestResult;
 import interface_adapter.comparison.ComparisonController;

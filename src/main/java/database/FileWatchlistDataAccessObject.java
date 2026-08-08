@@ -1,4 +1,4 @@
-package data_access;
+package database;
 
 import entity.Watchlist;
 import use_case.persistence.WatchlistDataAccessInterface;
