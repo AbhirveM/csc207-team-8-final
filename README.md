@@ -26,7 +26,7 @@ The application supports:
 - Retrieving historical market data
 - Running trading strategy simulations
 - Comparing strategy performance
-- Saving user preferences between sessions
+- Saving your watchlist between sessions
 
 The project is developed for **CSC207: Software Design** at the University of Toronto and follows **Clean Architecture principles**.
 
@@ -79,32 +79,25 @@ Market data is retrieved automatically from an external financial data provider.
 
 ## Trading Strategy Backtesting
 
-Users can test different trading strategies against stocks in their watchlist.
+Users can test built-in trading strategies against stocks in their watchlist. On the Backtest
+screen, pick a ticker whose price history is loaded and a strategy, then run the backtest.
 
-Supported strategies include:
+Two strategies are available:
 
 ### Moving Average Crossover Strategy
 
-Users can configure:
-- Short-term moving average window
-- Long-term moving average window
+Signals a buy when the short-term moving average of closing prices crosses above the long-term
+average, and a sell when it crosses back below. It runs with a 5-day short window and a 20-day
+long window.
 
-Example:
+### RSI Momentum Strategy
 
-```
-Short window: 10 days
-Long window: 50 days
-```
+Uses the Relative Strength Index over a 14-day period to flag momentum extremes: a buy when RSI
+falls to the oversold threshold (30) or below, and a sell when it reaches the overbought
+threshold (70) or above.
 
----
-
-### Momentum Strategy
-
-Users can configure:
-- Overbought threshold
-- Oversold threshold
-
-The strategy identifies possible buying and selling opportunities based on momentum indicators.
+> The strategy parameters above are fixed defaults chosen to stay within the free-tier
+> ~100-day history limit. They are not yet configurable from the UI.
 
 ---
 
@@ -125,12 +118,10 @@ Users can compare multiple strategies on the same stock to determine which strat
 
 ## Data Persistence
 
-The application saves:
-- User watchlists
-- Strategy configurations
-- User preferences
-
-Users can close and reopen the application without losing their previous setup.
+The application saves your watchlist — the set of ticker symbols you have added — to a local
+`watchlist.dat` file, so your tickers are still there when you reopen the app. Price history is
+not saved: it is re-fetched on demand, so a restored ticker reads as "Not loaded" until you
+refresh it. The window's status bar reports whether each save succeeded.
 
 ---
 
@@ -269,29 +260,28 @@ Confirm the `ALPHA_VANTAGE_API_KEY` environment variable is set in the same term
 
 # Usage
 
-1. Set up your API key (see Installation above).
-2. Launch the application (`mvn exec:java -Dexec.mainClass="app.Main"`).
-3. Create or modify your stock watchlist.
-4. Add desired stock tickers.
-5. Retrieve historical market data.
-6. Select a trading strategy.
-7. Configure strategy parameters.
-8. Run the backtest.
-9. Review trade history and performance statistics.
+1. Set up your API key (optional — see Installation above; the app runs fully offline without one).
+2. Launch the application with the `java -cp ...` command in [Run the Application](#run-the-application)
+   (`mvn exec:java` is **not** configured for this project).
+3. On the Watchlist screen, add stock tickers and load their price history.
+4. Open the Backtest screen.
+5. Choose a ticker and one of the built-in strategies.
+6. Run the backtest.
+7. Review the trade history and performance statistics.
+8. Open Compare Strategies to rank the backtests you have run.
 
 Example workflow:
 
 ```
-Add TSLA to watchlist
+Add TSLA on the Watchlist screen, then Load prices
         ↓
-Select Moving Average Crossover
-        ↓
-Set short window = 10 days
-Set long window = 50 days
+Backtest screen: choose TSLA + Moving Average Crossover
         ↓
 Run backtest
         ↓
 View return, trades, and win rate
+        ↓
+Compare Strategies to rank multiple runs
 ```
 
 ### The Watchlist screen
