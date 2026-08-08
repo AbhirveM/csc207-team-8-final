@@ -7,6 +7,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 
 import interface_adapter.comparison.ComparisonViewModel;
+import interface_adapter.momentum.MomentumViewModel;
 import interface_adapter.watchlist.WatchlistViewModel;
 
 /**
@@ -14,9 +15,9 @@ import interface_adapter.watchlist.WatchlistViewModel;
  * ViewManager swaps between. Register each finished view with
  * {@link #addView(String, java.awt.Component)} and add a nav button for it here.
  *
- * <p>Two screens are reachable today: Watchlist and Compare Strategies. The
- * backtest results screen exists but has no nav button because nothing
- * constructs it yet - see the note on {@code app.Main}.
+ * <p>Three screens are reachable today: Watchlist, Momentum Strategy and Compare
+ * Strategies. The backtest results screen exists but has no nav button because
+ * nothing constructs it yet - see the note on {@code app.Main}.
  */
 public class MainView extends JFrame {
     private final JPanel cardPanel;
@@ -42,6 +43,10 @@ public class MainView extends JFrame {
         watchlistBtn.addActionListener(
                 event -> viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME));
         navBar.add(watchlistBtn);
+        JButton momentumBtn = new JButton("Momentum Strategy");
+        momentumBtn.addActionListener(
+                e -> viewManagerModel.setActiveView(MomentumViewModel.VIEW_NAME));
+        navBar.add(momentumBtn);
         JButton comparisonBtn = new JButton("Compare Strategies");
         comparisonBtn.setMnemonic('S');
         comparisonBtn.addActionListener(
