@@ -1,42 +1,88 @@
 package interface_adapter.comparison;
 
-import entity.BacktestResult;
-
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * No Swing imports here on purpose - the view observes this via
- * PropertyChangeSupport, keeping the view model framework-agnostic.
+ * The observable state of the Compare Strategies screen.
+ *
+ * <p>No Swing imports here on purpose - the view observes this via {@link PropertyChangeSupport},
+ * keeping the view model framework-agnostic. It also carries no entities: every field is a
+ * display-ready {@code String} produced by {@link ComparisonPresenter}, so the view never formats,
+ * rounds or localises anything and {@code view} never needs to import {@code entity}.
  */
 public class ComparisonViewModel {
+
     public static final String VIEW_NAME = "comparison";
     public static final String RESULTS_PROPERTY = "results";
 
+    /**
+     * One row of the comparison table, already formatted for display.
+     *
+     * @param ticker          the ticker symbol the backtest ran against
+     * @param strategyName    the name of the strategy
+     * @param totalReturn     the total return as a percentage, as text
+     * @param numberOfTrades  how many trades the run produced, as text
+     * @param winRate         the win rate as a percentage, as text
+     */
+    public record ResultRow(String ticker, String strategyName, String totalReturn,
+                            String numberOfTrades, String winRate) {
+    }
+
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    private List<BacktestResult> rankedResults = Collections.emptyList();
+    private List<ResultRow> rankedResults = Collections.emptyList();
     private String bestStrategyName = "";
     private String errorMessage = "";
 
-    public void setResults(List<BacktestResult> rankedResults, String bestStrategyName) {
-        this.rankedResults = rankedResults;
+    /**
+     * Shows a completed comparison.
+     *
+     * @param rankedResults    the rows to show, best first
+     * @param bestStrategyName the name of the winning strategy
+     */
+    public void setResults(List<ResultRow> rankedResults, String bestStrategyName) {
+        this.rankedResults = List.copyOf(rankedResults);
         this.bestStrategyName = bestStrategyName;
         this.errorMessage = "";
-        support.firePropertyChange(RESULTS_PROPERTY, null, rankedResults);
+        support.firePropertyChange(RESULTS_PROPERTY, null, this.rankedResults);
     }
 
+    /**
+     * Shows a failure, and clears any results that were on screen.
+     *
+     * <p>Clearing is deliberate: leaving the previous ranking visible underneath an error message
+     * would present stale data as though it were current.
+     *
+     * @param errorMessage the worded explanation to show
+     */
     public void setError(String errorMessage) {
         this.errorMessage = errorMessage;
+        this.rankedResults = Collections.emptyList();
+        this.bestStrategyName = "";
         support.firePropertyChange(RESULTS_PROPERTY, null, null);
     }
 
-    public List<BacktestResult> getRankedResults() { return rankedResults; }
-    public String getBestStrategyName() { return bestStrategyName; }
-    public String getErrorMessage() { return errorMessage; }
+    public List<ResultRow> getRankedResults() {
+        return rankedResults;
+    }
 
-    public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
+    public String getBestStrategyName() {
+        return bestStrategyName;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    /**
+     * Subscribes a listener to state changes.
+     *
+     * @param listener the listener to add
+     */
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
         support.addPropertyChangeListener(listener);
     }
 }

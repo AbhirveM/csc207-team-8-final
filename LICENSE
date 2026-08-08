@@ -1,0 +1,27 @@
+Copyright (c) 2026 Abhirve Munipalle, Ratnabh Khare, Dongyan Zhou, and Ziyad Mouftah.
+
+All rights reserved.
+
+This software ("MarketLens") was created as coursework for CSC207: Software Design at the
+University of Toronto. It is made visible for the purposes of academic assessment and for the
+authors' own portfolios.
+
+No permission is granted to any other person to use, copy, modify, merge, publish, distribute,
+sublicense, or sell copies of this software, in whole or in part, for any commercial purpose or as
+part of any other work, without the prior written permission of all of the copyright holders named
+above.
+
+Students at the University of Toronto are reminded that copying any part of this repository and
+submitting it as their own work is an academic offence under the University's Code of Behaviour on
+Academic Matters, regardless of the terms above.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+MarketLens is a learning and analysis tool. It does not place trades, hold funds, or provide
+financial advice. Backtested results are simulations over a short window of historical data and do
+not predict future returns. Market data is supplied by Alpha Vantage and is subject to Alpha
+Vantage's own terms of service.

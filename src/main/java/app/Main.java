@@ -6,10 +6,16 @@ import data_access.FileWatchlistDataAccessObject;
 import data_access.InMemoryMarketDataGateway;
 import data_access.InMemoryStockRepository;
 import entity.Watchlist;
-import view.*;
+import view.ComparisonView;
+import view.MainView;
+import view.MomentumConfigurationView;
+import view.ViewManager;
+import view.ViewManagerModel;
+import view.WatchlistView;
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonPresenter;
 import interface_adapter.comparison.ComparisonViewModel;
+import interface_adapter.comparison.CompletedBacktestStore;
 import interface_adapter.momentum.MomentumController;
 import interface_adapter.momentum.MomentumPresenter;
 import interface_adapter.momentum.MomentumViewModel;
@@ -36,7 +42,7 @@ import use_case.watchlist.ShowWatchlistInputBoundary;
 import use_case.watchlist.ShowWatchlistInteractor;
 import use_case.watchlist.StockRepository;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import java.util.Optional;
 
 /**
@@ -44,9 +50,17 @@ import java.util.Optional;
  * together (dependency injection by hand). This is where Member 4's
  * "connecting all modules through the application builder" responsibility lives.
  *
- * As Members 1-3 finish their features, add their controller/presenter/view
- * construction here the same way the Comparison feature is wired below,
- * then register their view with mainView.addView(...).
+ * <p>Wired and reachable today: the four watchlist use cases, watchlist
+ * persistence, and the Compare Strategies screen.
+ *
+ * <p><strong>Not yet wired:</strong> the run-backtest use case and the
+ * configure-moving-average use case. Both are implemented and unit-tested, but
+ * nothing here constructs them, so no user path reaches a backtest and the
+ * Compare screen has nothing to rank. Add their controller/presenter/view
+ * construction below the same way the Comparison feature is wired, register the
+ * view with mainView.addView(...), add a nav button in MainView, and have
+ * BacktestPresenter record each finished run in the CompletedBacktestStore that
+ * is already constructed here. See plan/handoffs/team-raise-2026-08-08.md.
  */
 public class Main {
     public static void main(String[] args) {
@@ -136,7 +150,12 @@ public class Main {
         ComparisonViewModel comparisonViewModel = new ComparisonViewModel();
         CompareStrategies.OutputBoundary comparisonPresenter = new ComparisonPresenter(comparisonViewModel);
         CompareStrategies.InputBoundary comparisonInteractor = new CompareStrategies.Interactor(comparisonPresenter);
-        ComparisonController comparisonController = new ComparisonController(comparisonInteractor);
+        // Nothing adds to this store yet, because the run-backtest use case is not constructed
+        // here - see plan/handoffs/team-raise-2026-08-08.md. Until it is, Compare Strategies
+        // correctly shows its empty state.
+        CompletedBacktestStore completedBacktests = new CompletedBacktestStore();
+        ComparisonController comparisonController =
+                new ComparisonController(comparisonInteractor, completedBacktests);
 
         ComparisonView comparisonView = new ComparisonView(comparisonViewModel, comparisonController);
         mainView.addView(ComparisonViewModel.VIEW_NAME, comparisonView);

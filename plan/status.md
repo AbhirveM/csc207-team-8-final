@@ -2,20 +2,43 @@
 
 Current phase: **none — all five phases complete.**
 Active agents: none.
-Branch: `feature/watchlist-use-cases`
+Branch: `chore/presentation-readiness` (PR #24 merged; PR #27 open)
 
-**The plan is finished. Two things are still owed, and both are the owner's, by hand:**
+**The plan is finished, and both items it used to list as owed are now done:**
 
-1. **The `vision.md` §8 manual walkthrough** — `plan/handoffs/walkthrough.md` is the
-   checklist. The data path is machine-verified through the exact object graph `Main`
-   builds; what no machine has checked is the restart round trip through a real
-   `watchlist.dat`, resize behaviour, Tab order against visual order, and the W3-5
-   mid-refresh freeze.
-2. **The "after" screenshot** for the individual presentation. `screenshots.md` holds the
-   "before" shot (captured, SHA `fc27b3c`) and `walkthrough.md` step 8 has the recipe and a
-   blank record to fill in.
+1. ~~The `vision.md` §8 manual walkthrough~~ — **complete.** All eight steps recorded in
+   `plan/handoffs/walkthrough.md`. It found a real defect: `JTable` installs its own focus
+   traversal keys, so Tab could never leave either table and never reached the status line
+   where errors are announced — a WCAG 2.1.2 keyboard trap. Fixed in **PR #27**. It also
+   found the shrink-resize clipping, raised for Member 4 rather than patched.
+2. ~~The "after" screenshot~~ — **captured** 2026-08-08, `docs/after-watchlist-view.png`.
 
-Everything else the rubric and `vision.md` §8 ask for is landed and verified.
+## Cross-cutting work closed since the plan ended (2026-08-08)
+
+Done on `chore/presentation-readiness`, after nobody claimed the gaps raised in
+`plan/handoffs/team-raise-2026-08-08.md`:
+
+- **Checkstyle enforced** — `checkstyle.xml` + plugin bound to `validate`, failing the
+  build on any violation. Found 172, all resolved. Closes warning **W2-3** (exception
+  variables named `e`) and the `MomentumConfiguration` indentation defect.
+- **`accessibility-report.md` written** — all seven Universal Design principles, target
+  market, and the excluded-demographics discussion. Was a 5-point category scoring zero.
+- **`LICENSE` added**; README no longer claims a license it does not have.
+- **README corrected** — the Features section no longer presents unreachable features as
+  delivered, and Usage no longer instructs the reader to launch with `mvn exec:java`, which
+  the same file said elsewhere cannot work.
+- **`docs/architecture.md`** — whole-project layer diagram, patterns/SOLID evidence, and
+  both Alpha Vantage endpoints named for the slides.
+- **`view` no longer imports `entity`** — `ComparisonView`, `BacktestResultsView` and the
+  deleted `MainAppState` all did. View models now carry display-ready records and the
+  presenters format. `MainAppState` became `interface_adapter.comparison.CompletedBacktestStore`.
+
+**Current build:** `mvn clean verify` — 0 Checkstyle violations, **461 tests**, 0 failures,
+**73.1%** overall line coverage (1247/1706).
+
+**Still open, and not mine to close** — see `plan/handoffs/team-raise-2026-08-08.md` §1:
+the run-backtest use case is still not constructed in `Main`, so there is no end-to-end
+demo path. That is the largest remaining risk to the Functionality mark.
 
 ## Completed phases
 

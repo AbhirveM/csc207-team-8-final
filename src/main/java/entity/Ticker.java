@@ -24,8 +24,12 @@ public class Ticker implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Ticker)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Ticker)) {
+            return false;
+        }
         return symbol.equalsIgnoreCase(((Ticker) o).symbol);
     }
 

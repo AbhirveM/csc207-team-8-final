@@ -61,6 +61,10 @@ class BacktestEngineTest {
                 DELTA);
 
         assertEquals(
+                200,
+                trade.getQuantity());
+
+        assertEquals(
                 LocalDate.of(2026, 1, 3),
                 trade.getExitDate());
 
@@ -111,6 +115,10 @@ class BacktestEngineTest {
                 16.6,
                 result.getTotalReturn(),
                 DELTA);
+
+        assertEquals(
+                166,
+                result.getTradeLog().get(0).getQuantity());
     }
 
     @Test

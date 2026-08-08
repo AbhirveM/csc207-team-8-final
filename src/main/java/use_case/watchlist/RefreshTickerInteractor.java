@@ -61,8 +61,8 @@ public final class RefreshTickerInteractor implements RefreshTickerInputBoundary
         try {
             prices = marketDataGateway.fetchDailyPricesFresh(symbol);
         }
-        catch (MarketDataException e) {
-            presenter.prepareFailView(WatchlistFailure.from(e));
+        catch (MarketDataException exception) {
+            presenter.prepareFailView(WatchlistFailure.from(exception));
             return;
         }
 
