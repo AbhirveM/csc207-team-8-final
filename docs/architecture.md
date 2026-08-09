@@ -4,7 +4,12 @@ The whole-project view: how the packages map onto Clean Architecture layers, whi
 where the Dependency Rule holds and where it currently does not, and the design patterns and SOLID
 principles the team can point at during the presentation.
 
-For a single feature end-to-end, see [Add Ticker — full use case](add-ticker-use-case.md).
+Companion diagrams:
+
+- [Use case diagram](use-case-diagram.md) — actors and the ten use cases
+- [Entity class diagram](entity-class-diagram.md) — the innermost layer in full
+- [Sequence diagrams](sequence-diagrams.md) — runtime call order for three use cases
+- [Add Ticker — full use case](add-ticker-use-case.md) — one feature end-to-end
 
 ---
 
@@ -14,26 +19,26 @@ For a single feature end-to-end, see [Add Ticker — full use case](add-ticker-u
 flowchart RL
     subgraph FRAMEWORKS["Frameworks &amp; Drivers"]
         direction TB
-        VIEWS["<b>view</b><br/>MainView · ViewManager · WatchlistView<br/>ComparisonView · BacktestResultsView"]
+        VIEWS["<b>view</b><br/>MainView · ViewManager · WatchlistView<br/>BacktestView · BacktestResultsView · ComparisonView<br/>MovingAverageConfigurationView · MomentumConfigurationView"]
         DATA["<b>data_access</b><br/>AlphaVantageMarketDataAccessObject<br/>CachingMarketDataGateway · InMemoryMarketDataGateway<br/>InMemoryStockRepository · FileWatchlistDataAccessObject<br/>JdkHttpJsonClient"]
         MAIN["<b>app</b><br/>Main — composition root"]
     end
 
     subgraph ADAPTERS["Interface Adapters"]
         direction TB
-        CTRL["Controllers<br/>WatchlistController · BacktestController<br/>ComparisonController"]
-        PRES["Presenters<br/>WatchlistPresenter · BacktestPresenter<br/>ComparisonPresenter · PersistencePresenter"]
-        VMS["View models<br/>WatchlistViewModel · WatchlistState<br/>BacktestViewModel · ComparisonViewModel<br/>PersistenceViewModel"]
+        CTRL["Controllers<br/>WatchlistController · BacktestController · ComparisonController<br/>MovingAverageController · MomentumController"]
+        PRES["Presenters<br/>WatchlistPresenter · BacktestPresenter · ComparisonPresenter<br/>PersistencePresenter · MovingAveragePresenter · MomentumPresenter"]
+        VMS["View models<br/>WatchlistViewModel · WatchlistState · BacktestViewModel<br/>ComparisonViewModel · PersistenceViewModel<br/>MovingAverageViewModel · MomentumViewModel<br/>CompletedBacktestStore"]
     end
 
     subgraph USECASE["Use Cases"]
         direction TB
-        INT["Interactors<br/>AddTicker · RemoveTicker · RefreshTicker · ShowWatchlist<br/>RunBacktest · ConfigureMovingAverage<br/>SaveWatchlist · LoadWatchlist · CompareStrategies"]
+        INT["Interactors<br/>AddTicker · RemoveTicker · RefreshTicker · ShowWatchlist<br/>ConfigureMovingAverage · ConfigureMomentum · RunBacktest<br/>CompareStrategies · SaveWatchlist · LoadWatchlist"]
         PORTS["<i>Ports declared here</i><br/>MarketDataGateway · StockRepository<br/>WatchlistDataAccessInterface<br/>Input and Output Boundaries"]
     end
 
     subgraph ENTITIES["Entities"]
-        ENT["Stock · Ticker · DailyPrice<br/>Watchlist · WatchlistEntry<br/>TradingStrategy · MovingAverageCrossoverStrategy · RSIMomentumStrategy<br/>MovingAverageConfiguration · MomentumConfiguration<br/>BacktestEngine · BacktestResult · Trade · TradingSignal"]
+        ENT["Stock · Ticker · DailyPrice<br/>Watchlist · WatchlistEntry<br/>TradingStrategy · MovingAverageCrossoverStrategy · RSIMomentumStrategy<br/>MovingAverageConfiguration · MomentumConfiguration<br/>BacktestEngine · BacktestResult · Trade · TradingSignal · SignalType"]
     end
 
     VIEWS --> CTRL
@@ -65,34 +70,52 @@ and it is what lets every interactor be unit-tested with no network, no files an
 
 ## 3. Use case inventory
 
-| Use case | Owner | Boundaries | Reachable in the running app |
+All ten use cases are constructed in `Main` and reachable from the running app.
+
+| Use case | Owner | Boundaries | How the user reaches it |
 |---|---|---|---|
-| Add Ticker | Member 1 | full | **Yes** |
-| Remove Ticker | Member 1 | full | **Yes** |
-| Refresh Ticker | Member 1 | full | **Yes** |
-| Show Watchlist | Member 1 | full | **Yes** |
-| Save Watchlist | Member 4 | nested | **Yes** — called by the watchlist interactors |
-| Load Watchlist | Member 4 | nested | **Yes** — called once at start-up |
-| Compare Strategies | Member 4 | nested | Screen reachable; empty until backtests can run |
-| Run Backtest | Member 3 | full | **No — not constructed in `Main`** |
-| Configure Moving Average | Member 2 | interactor only | **No — no presenter, controller, view model or view** |
-| Configure Momentum | — | none | **No — entity only, no use case** |
+| Add Ticker | Member 1 | full | Watchlist screen — **Add** |
+| Remove Ticker | Member 1 | full | Watchlist screen — **Remove** |
+| Refresh Ticker | Member 1 | full | Watchlist screen — **Refresh**, and looped by **Load prices** |
+| Show Watchlist | Member 1 | full | Watchlist screen — row click; also once at start-up |
+| Configure Moving Average | Member 2 | full | Moving Average screen — **Apply Configuration** |
+| Configure Momentum | Member 3 | full | Momentum screen — **Configure** |
+| Run Backtest | Member 3 | full | Backtest screen — **Run backtest** |
+| Compare Strategies | Member 4 | nested | Comparison screen — **Compare Completed Backtests** |
+| Save Watchlist | Member 4 | nested | No UI control — invoked by the Add and Remove interactors |
+| Load Watchlist | Member 4 | nested | No UI control — invoked once at start-up |
+
+"Nested" means the boundaries are declared as nested interfaces inside a single class
+(`SaveWatchlist.InputBoundary`, `CompareStrategies.OutputBoundary`) rather than as the five separate
+files the watchlist vertical uses. Those three use cases also pass entities across their boundaries
+instead of dedicated input/output data objects — see §4.
+
+The two configuration use cases produce a validated configuration object held in their view models.
+`BacktestView` reads those view models when building a strategy, falling back to `(5, 20)` for
+Moving Average and `(14, 30, 70)` for Momentum until the user saves their own. The configurations
+are **not** persisted — see §4.
 
 ## 4. Known violations, stated rather than hidden
 
 A grader will run these checks, so we name them ourselves.
 
-- **`view` imports `entity`.** `ComparisonView` and `MainAppState` both import
-  `entity.BacktestResult`, which crosses from Frameworks & Drivers straight past the adapter layer.
-  The fix is a display-ready DTO on `ComparisonViewModel`, the same shape `WatchlistState` already
-  uses for the watchlist screen.
-- **`MainAppState` is a mutable global singleton.** Its own javadoc calls it a temporary integration
-  seam. It exists because the backtest and comparison features were built by different members in
-  parallel and needed somewhere to meet. It should be replaced by passing results through the
-  comparison view model.
+- **`view` imports `entity` — one class, `BacktestView`.** It imports eight entity types
+  (`DailyPrice`, `MomentumConfiguration`, `MovingAverageConfiguration`,
+  `MovingAverageCrossoverStrategy`, `RSIMomentumStrategy`, `Stock`, `Ticker`, `TradingStrategy`)
+  plus the `StockRepository` port, and **constructs strategy objects itself**. That is a
+  Frameworks & Drivers class reaching straight past the adapter layer into Entities. It is the only
+  view in the package with any entity import — the other eight have none. The fix is to move
+  strategy selection behind `BacktestController` and pass a display-ready DTO, the same shape
+  `WatchlistState` already uses.
 - **Entities cross some boundaries.** The Member-4 use cases declare boundaries that pass `Watchlist`
-  and `List<BacktestResult>` directly rather than output-data DTOs. The four watchlist use cases are
-  the clean exemplars to compare against.
+  and `List<BacktestResult>` directly rather than output-data DTOs. `CompareStrategies` has no input
+  data class at all, and its `ComparisonOutputData` exposes public mutable fields. The four watchlist
+  use cases are the clean exemplars to compare against.
+- **Strategy configurations are never persisted.** The blueprint promises the app saves "the
+  watchlist and strategy configurations". `WatchlistEntry.setMovingAverageConfiguration` and
+  `setMomentumConfiguration` exist and both configuration classes are `Serializable`, but nothing
+  calls either setter — the configurations live only in their view models and are lost on exit.
+  They are also global rather than per-ticker, despite `WatchlistEntry` being modelled per-ticker.
 - **`BacktestEngine` and the strategies live in `entity`.** Defensible — they are pure domain rules
   with no I/O — but worth being ready to justify.
 

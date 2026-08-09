@@ -329,6 +329,12 @@ is cached and re-fetched on demand, so a restored row reads "Not loaded" until y
 
 - [Architecture overview](docs/architecture.md) — the whole-project layer diagram, the Dependency
   Rule, and where each use case sits.
+- [Use case diagram](docs/use-case-diagram.md) — the ten use cases, their actors, and the
+  «include» relationships between them.
+- [Entity class diagram](docs/entity-class-diagram.md) — the 15 entity classes, their fields, and
+  the Strategy pattern at the centre of the domain.
+- [Sequence diagrams](docs/sequence-diagrams.md) — runtime call order for Add Ticker, Run Backtest,
+  and Load Watchlist.
 - [Add Ticker — full use case](docs/add-ticker-use-case.md) — class diagram, the Dependency Rule
   applied to this feature, and the before/after views of the screen.
 - [Accessibility report](accessibility-report.md) — the seven Principles of Universal Design as

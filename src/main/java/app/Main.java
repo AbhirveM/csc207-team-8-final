@@ -64,17 +64,24 @@ import java.util.Optional;
  * together (dependency injection by hand). This is where Member 4's
  * "connecting all modules through the application builder" responsibility lives.
  *
- * <p>Wired and reachable today: the four watchlist use cases, watchlist
- * persistence, and the Compare Strategies screen.
+ * <p><strong>All ten use cases are wired and reachable.</strong> The four
+ * watchlist use cases (Add, Remove, Refresh, Show), both persistence use cases
+ * (Save, Load), both strategy configuration use cases (Moving Average,
+ * Momentum), Run Backtest, and Compare Strategies. Five views are registered
+ * with mainView.addView(...) and reachable from the navigation bar: Watchlist,
+ * Moving Average, Momentum, Backtest, and Comparison.
  *
- * <p><strong>Not yet wired:</strong> the run-backtest use case and the
- * configure-moving-average use case. Both are implemented and unit-tested, but
- * nothing here constructs them, so no user path reaches a backtest and the
- * Compare screen has nothing to rank. Add their controller/presenter/view
- * construction below the same way the Comparison feature is wired, register the
- * view with mainView.addView(...), add a nav button in MainView, and have
- * BacktestPresenter record each finished run in the CompletedBacktestStore that
- * is already constructed here. See plan/handoffs/team-raise-2026-08-08.md.
+ * <p>Save and Load have no navigation entry by design: Save is a sub-use-case
+ * invoked by the Add and Remove interactors, and Load runs once here at
+ * start-up.
+ *
+ * <p>Run Backtest and Compare Strategies never reference each other. They meet
+ * only through the CompletedBacktestStore constructed below, which an anonymous
+ * RunBacktestOutputBoundary decorator writes to on each successful run.
+ *
+ * <p>To add a further use case, follow the same shape: construct
+ * interactor/presenter/controller, build the view, register it with
+ * mainView.addView(...), and add a nav button in MainView.
  */
 public class Main {
     public static void main(String[] args) {

@@ -17,10 +17,13 @@ import java.util.List;
  * constructor argument rather than reaching for a static instance makes it injectable and
  * testable.
  *
- * <p><strong>Nothing calls {@link #add} yet.</strong> The run-backtest use case is implemented and
- * tested but is not constructed in {@code Main}, so no backtest can finish and this store is
- * always empty - which is why the Compare screen shows its empty state. Whoever wires the backtest
- * path should have {@code BacktestPresenter} call {@link #add} once a run succeeds.
+ * <p>{@link #add} is called from {@code Main}, by an anonymous
+ * {@code RunBacktestOutputBoundary} decorator that files each successful result here before
+ * delegating to {@code BacktestPresenter}. Decorating the boundary rather than putting the call
+ * inside the presenter keeps the backtest feature unaware that a comparison feature exists.
+ *
+ * <p>The store is session-scoped: it is never persisted and never cleared, so the Compare screen
+ * shows its empty state only until the first backtest finishes.
  */
 public class CompletedBacktestStore {
 
