@@ -4,7 +4,12 @@ The whole-project view: how the packages map onto Clean Architecture layers, whi
 where the Dependency Rule holds and where it currently does not, and the design patterns and SOLID
 principles the team can point at during the presentation.
 
-For a single feature end-to-end, see [Add Ticker — full use case](add-ticker-use-case.md).
+Companion diagrams:
+
+- [Use case diagram](use-case-diagram.md) — actors and the ten use cases
+- [Entity class diagram](entity-class-diagram.md) — the innermost layer in full
+- [Sequence diagrams](sequence-diagrams.md) — runtime call order for three use cases
+- [Add Ticker — full use case](add-ticker-use-case.md) — one feature end-to-end
 
 ---
 
@@ -33,7 +38,7 @@ flowchart RL
     end
 
     subgraph ENTITIES["Entities"]
-        ENT["Stock · Ticker · DailyPrice<br/>Watchlist · WatchlistEntry<br/>TradingStrategy · MovingAverageCrossoverStrategy · RSIMomentumStrategy<br/>MovingAverageConfiguration · MomentumConfiguration<br/>BacktestEngine · BacktestResult · Trade · TradingSignal"]
+        ENT["Stock · Ticker · DailyPrice<br/>Watchlist · WatchlistEntry<br/>TradingStrategy · MovingAverageCrossoverStrategy · RSIMomentumStrategy<br/>MovingAverageConfiguration · MomentumConfiguration<br/>BacktestEngine · BacktestResult · Trade · TradingSignal · SignalType"]
     end
 
     VIEWS --> CTRL
@@ -65,6 +70,8 @@ and it is what lets every interactor be unit-tested with no network, no files an
 
 ## 3. Use case inventory
 
+All ten use cases are constructed in `Main` and reachable from the running app.
+
 | Use case | Owner | Boundaries | Reachable in the running app |
 |---|---|---|---|
 | Add Ticker | Member 1 | full | **Yes** |
@@ -77,6 +84,16 @@ and it is what lets every interactor be unit-tested with no network, no files an
 | Run Backtest | Member 3 | full | **Yes** — `BacktestView`, reached from the nav bar |
 | Configure Moving Average | Member 2 | full | **Yes** — `MovingAverageConfigurationView` |
 | Configure Momentum | Member 3 | full | **Yes** — `MomentumConfigurationView` |
+
+"Nested" means the boundaries are declared as nested interfaces inside a single class
+(`SaveWatchlist.InputBoundary`, `CompareStrategies.OutputBoundary`) rather than as the five separate
+files the watchlist vertical uses. Those three use cases also pass entities across their boundaries
+instead of dedicated input/output data objects — see §4.
+
+The two configuration use cases produce a validated configuration object held in their view models.
+`BacktestView` reads those view models when building a strategy, falling back to `(5, 20)` for
+Moving Average and `(14, 30, 70)` for Momentum until the user saves their own. The configurations
+are **not** persisted — see §4.
 
 ## 4. Known violations, stated rather than hidden
 
@@ -91,8 +108,14 @@ A grader will run these checks, so we name them ourselves.
   *(`ComparisonView` and `BacktestResultsView` had the same problem and no longer do: their view
   models now carry display-ready records and the presenters do the formatting.)*
 - **Entities cross some boundaries.** The Member-4 use cases declare boundaries that pass `Watchlist`
-  and `List<BacktestResult>` directly rather than output-data DTOs. The four watchlist use cases are
-  the clean exemplars to compare against.
+  and `List<BacktestResult>` directly rather than output-data DTOs. `CompareStrategies` has no input
+  data class at all, and its `ComparisonOutputData` exposes public mutable fields. The four watchlist
+  use cases are the clean exemplars to compare against.
+- **Strategy configurations are never persisted.** The blueprint promises the app saves "the
+  watchlist and strategy configurations". `WatchlistEntry.setMovingAverageConfiguration` and
+  `setMomentumConfiguration` exist and both configuration classes are `Serializable`, but nothing
+  calls either setter — the configurations live only in their view models and are lost on exit.
+  They are also global rather than per-ticker, despite `WatchlistEntry` being modelled per-ticker.
 - **`BacktestEngine` and the strategies live in `entity`.** Defensible — they are pure domain rules
   with no I/O — but worth being ready to justify.
 
