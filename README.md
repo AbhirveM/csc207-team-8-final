@@ -218,7 +218,16 @@ This project uses the [Alpha Vantage API](https://www.alphavantage.co/documentat
    ```
    After `setx`, open a new terminal for the change to take effect.
 3. The application reads this key at runtime via `System.getenv("ALPHA_VANTAGE_API_KEY")`, at the
-   composition root only. There is no `.env` file and no default key in the source.
+   composition root only. No key is ever committed or defaulted in the source.
+
+   As a convenience, copy the committed [`.env.example`](.env.example) to a local `.env` and put your
+   key there. `.env` is gitignored, so it never reaches source control. Note the app does **not**
+   auto-load `.env` — load it into your shell before running, or add the variable to your IntelliJ
+   Run Configuration:
+   ```bash
+   cp .env.example .env   # then edit .env with your key
+   set -a; source .env; set +a
+   ```
 
 **This step is optional.** See [Running without an API key](#running-without-an-api-key) — the
 application is fully functional offline without one.
