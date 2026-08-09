@@ -1,8 +1,9 @@
 package view;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.GridLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.beans.PropertyChangeEvent;
 import java.util.Objects;
 
@@ -64,12 +65,14 @@ public final class MomentumConfigurationView extends JPanel {
                 controller,
                 "Controller cannot be null");
 
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(Theme.MD, Theme.MD));
+        setBackground(Theme.BG);
         setBorder(BorderFactory.createEmptyBorder(
-                16, 16, 16, 16));
+                Theme.LG, Theme.LG, Theme.LG, Theme.LG));
 
         add(buildTitle(), BorderLayout.NORTH);
-        add(buildConfigurationPanel(), BorderLayout.CENTER);
+        add(PanelHeader.region(new JLabel("Parameters"), null, buildConfigurationPanel()),
+                BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
 
         configureButton.addActionListener(event -> onConfigure());
@@ -86,12 +89,15 @@ public final class MomentumConfigurationView extends JPanel {
      * @return the title panel
      */
     private JPanel buildTitle() {
-        final JPanel panel = new JPanel();
+        // BorderLayout rather than the default centring FlowLayout: the title starts at the
+        // same left edge as the labels below it, which is what makes the column read.
+        final JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Theme.BG);
 
-        final JLabel title =
-                new JLabel(MomentumViewModel.TITLE_LABEL);
+        final JLabel title = Controls.title(
+                new JLabel(MomentumViewModel.TITLE_LABEL));
 
-        panel.add(title);
+        panel.add(title, BorderLayout.WEST);
 
         return panel;
     }
@@ -102,17 +108,17 @@ public final class MomentumConfigurationView extends JPanel {
      * @return the configuration panel
      */
     private JPanel buildConfigurationPanel() {
-        final JPanel panel = new JPanel(new GridLayout(
-                4, 2, 8, 8));
+        final JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(Theme.BG);
 
         final JLabel periodLabel =
-                new JLabel("RSI Period:");
+                Controls.fieldLabel(new JLabel("RSI Period:"));
 
         final JLabel oversoldLabel =
-                new JLabel("Oversold Threshold:");
+                Controls.fieldLabel(new JLabel("Oversold Threshold:"));
 
         final JLabel overboughtLabel =
-                new JLabel("Overbought Threshold:");
+                Controls.fieldLabel(new JLabel("Overbought Threshold:"));
 
         periodLabel.setLabelFor(periodField);
         oversoldLabel.setLabelFor(oversoldField);
@@ -130,19 +136,66 @@ public final class MomentumConfigurationView extends JPanel {
         configureButton.setToolTipText(
                 "Configure the Momentum strategy.");
 
-        panel.add(periodLabel);
-        panel.add(periodField);
+        Controls.styleField(periodField);
+        Controls.styleField(oversoldField);
+        Controls.styleField(overboughtField);
+        Controls.primary(configureButton);
 
-        panel.add(oversoldLabel);
-        panel.add(oversoldField);
+        addRow(panel, 0, periodLabel, periodField);
+        addRow(panel, 1, oversoldLabel, oversoldField);
+        addRow(panel, 2, overboughtLabel, overboughtField);
 
-        panel.add(overboughtLabel);
-        panel.add(overboughtField);
+        final GridBagConstraints buttonConstraints = new GridBagConstraints();
+        buttonConstraints.gridx = 1;
+        buttonConstraints.gridy = 3;
+        buttonConstraints.anchor = GridBagConstraints.LINE_START;
+        buttonConstraints.insets = new Insets(Theme.MD, 0, 0, 0);
+        panel.add(configureButton, buttonConstraints);
 
-        panel.add(new JLabel());
-        panel.add(configureButton);
+        // The form keeps its natural width at the top of the screen instead of stretching to
+        // fill it; a number field as wide as the window invites an essay rather than a number.
+        final JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(Theme.BG);
+        wrapper.add(panel, BorderLayout.NORTH);
+        return wrapper;
+    }
 
-        return panel;
+    /**
+     * Adds one label/field row: label right-aligned in the first column, field at its
+     * natural width in the second, and the slack pushed into a third column so the pair
+     * stays left.
+     *
+     * @param panel the form panel being built
+     * @param row the grid row to place this pair on
+     * @param label the row's label
+     * @param field the control the label describes
+     */
+    private static void addRow(JPanel panel, int row, JLabel label, JTextField field) {
+        label.setFont(Theme.FONT_UI);
+        label.setForeground(Theme.FG);
+
+        final GridBagConstraints labelConstraints = new GridBagConstraints();
+        labelConstraints.gridx = 0;
+        labelConstraints.gridy = row;
+        labelConstraints.anchor = GridBagConstraints.LINE_END;
+        labelConstraints.insets = new Insets(0, 0, Theme.SM, Theme.MD);
+        panel.add(label, labelConstraints);
+
+        final GridBagConstraints fieldConstraints = new GridBagConstraints();
+        fieldConstraints.gridx = 1;
+        fieldConstraints.gridy = row;
+        fieldConstraints.anchor = GridBagConstraints.LINE_START;
+        fieldConstraints.insets = new Insets(0, 0, Theme.SM, 0);
+        panel.add(field, fieldConstraints);
+
+        final GridBagConstraints fillerConstraints = new GridBagConstraints();
+        fillerConstraints.gridx = 2;
+        fillerConstraints.gridy = row;
+        fillerConstraints.weightx = 1.0;
+        fillerConstraints.fill = GridBagConstraints.HORIZONTAL;
+        final JPanel filler = new JPanel();
+        filler.setOpaque(false);
+        panel.add(filler, fillerConstraints);
     }
 
     /**
@@ -152,9 +205,13 @@ public final class MomentumConfigurationView extends JPanel {
      */
     private JPanel buildFooter() {
         final JPanel footer = new JPanel(
-                new GridLayout(2, 1));
+                new BorderLayout(0, Theme.XS));
+        footer.setBackground(Theme.BG);
 
-        errorLabel.setForeground(Color.RED.darker());
+        statusLabel.setFont(Theme.FONT_UI);
+        statusLabel.setForeground(Theme.FG_MUTED);
+        errorLabel.setFont(Theme.FONT_UI);
+        errorLabel.setForeground(Theme.DOWN);
 
         statusLabel.getAccessibleContext()
                 .setAccessibleName("Status");
@@ -162,8 +219,8 @@ public final class MomentumConfigurationView extends JPanel {
         errorLabel.getAccessibleContext()
                 .setAccessibleName("Error");
 
-        footer.add(statusLabel);
-        footer.add(errorLabel);
+        footer.add(statusLabel, BorderLayout.NORTH);
+        footer.add(errorLabel, BorderLayout.SOUTH);
 
         return footer;
     }

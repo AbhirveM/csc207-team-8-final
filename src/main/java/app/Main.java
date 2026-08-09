@@ -9,6 +9,7 @@ import entity.BacktestEngine;
 import entity.Watchlist;
 import view.BacktestView;
 import view.ComparisonView;
+import view.LookAndFeel;
 import view.MainView;
 import view.MomentumConfigurationView;
 import view.MovingAverageConfigurationView;
@@ -85,6 +86,11 @@ import java.util.Optional;
  */
 public class Main {
     public static void main(String[] args) {
+        // First statement on purpose: the views below are constructed inline, and a look and
+        // feel installed after a component exists leaves that component on Metal. This blocks
+        // until the event thread has it in place.
+        LookAndFeel.install();
+
         // --- Shared navigation state ---
         ViewManagerModel viewManagerModel = new ViewManagerModel();
         MainView mainView = new MainView(viewManagerModel);
