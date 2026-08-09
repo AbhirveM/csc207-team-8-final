@@ -21,14 +21,23 @@ public class ComparisonViewModel {
     /**
      * One row of the comparison table, already formatted for display.
      *
-     * @param ticker          the ticker symbol the backtest ran against
-     * @param strategyName    the name of the strategy
-     * @param totalReturn     the total return as a percentage, as text
-     * @param numberOfTrades  how many trades the run produced, as text
-     * @param winRate         the win rate as a percentage, as text
+     * <p>The two {@code Value} components carry the same numbers as the text components, unrounded.
+     * A table needs the text - it must not decide how many decimal places to show - but a chart
+     * needs the number, and parsing {@code "12.40"} back out of the string in the view would put
+     * formatting knowledge in exactly the place this record exists to keep it out of. Both are
+     * present so neither consumer has to convert.
+     *
+     * @param ticker           the ticker symbol the backtest ran against
+     * @param strategyName     the name of the strategy
+     * @param totalReturn      the total return as a percentage, as text
+     * @param numberOfTrades   how many trades the run produced, as text
+     * @param winRate          the win rate as a percentage, as text
+     * @param totalReturnValue the total return as a percentage, unrounded, for plotting
+     * @param winRateValue     the win rate as a percentage, unrounded, for plotting
      */
     public record ResultRow(String ticker, String strategyName, String totalReturn,
-                            String numberOfTrades, String winRate) {
+                            String numberOfTrades, String winRate,
+                            double totalReturnValue, double winRateValue) {
     }
 
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
