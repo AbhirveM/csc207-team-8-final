@@ -9,11 +9,11 @@ import use_case.moving_average.ConfigureMovingAverageInputData;
  * Controller for configuring the Moving Average strategy.
  */
 public class MovingAverageController {
-   private final ConfigureMovingAverageInputBoundary interactor;
+    private final ConfigureMovingAverageInputBoundary interactor;
 
-   public MovingAverageController( ConfigureMovingAverageInputBoundary interactor) {
-       this.interactor = Objects.requireNonNull(interactor, "Interactor cannot be null");
-   }
+    public MovingAverageController(ConfigureMovingAverageInputBoundary interactor) {
+        this.interactor = Objects.requireNonNull(interactor, "Interactor cannot be null");
+    }
 
     /**
      * Sends the user-entered window values to the configuration use case.
