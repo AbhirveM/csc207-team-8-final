@@ -71,7 +71,11 @@ public final class LookAndFeel {
         try {
             UIManager.setLookAndFeel(new FlatLightLaf());
         }
-        catch (UnsupportedLookAndFeelException failure) {
+        // LinkageError, not just the checked exception: if flatlaf.jar is absent from the
+        // runtime classpath the failure is a NoClassDefFoundError at this line, which a catch
+        // of UnsupportedLookAndFeelException alone would let kill the app before the window
+        // ever appears. A missing look and feel must only cost us the styling.
+        catch (UnsupportedLookAndFeelException | LinkageError failure) {
             LOGGER.log(Level.WARNING, "FlatLaf unavailable; falling back to the system look and feel.", failure);
             installSystemFallback();
         }
