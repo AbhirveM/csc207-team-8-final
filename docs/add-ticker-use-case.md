@@ -242,9 +242,8 @@ with an empty results table and no way to add a ticker.
 
 ## After
 
-<!-- Capture during the manual walkthrough (plan/handoffs/walkthrough.md step 8) and save as
-     docs/after-watchlist-view.png. Show: a ticker added, company name resolved, and the daily
-     price table populated. -->
+Captured 2026-08-08 during the manual walkthrough: `AAPL` added, company name resolved from the
+offline fake, and the daily price table populated newest-first.
 
 ![After — the Watchlist screen with a ticker added and its price history loaded](after-watchlist-view.png)
 
