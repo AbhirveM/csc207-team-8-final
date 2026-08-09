@@ -267,7 +267,7 @@ class ViewConstructionTest {
                 new ComparisonController(inputData -> { }, new CompletedBacktestStore()));
         viewModel.setResults(List.of(
                 new ComparisonViewModel.ResultRow("NVDA", "Moving Average Crossover",
-                        "18.44", "8", "62.50")), "Moving Average Crossover");
+                        "18.44", "8", "62.50", 18.44, 62.50)), "Moving Average Crossover");
         JTable table = tableNamed(view, "Strategy comparison");
         assertEquals(1, table.getRowCount());
         assertEquals("NVDA", table.getValueAt(0, 0));

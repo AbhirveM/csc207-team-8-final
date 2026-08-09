@@ -256,7 +256,10 @@ To also generate the line-coverage report, run `mvn clean verify` and open
 
 ## Run the Application
 
-Compile, then launch `app.Main` with the `org.json` dependency on the classpath:
+Compile, then launch `app.Main` with both runtime dependencies — `org.json` and FlatLaf — on the
+classpath. Leaving FlatLaf off fails at startup with
+`NoClassDefFoundError: com/formdev/flatlaf/FlatDarkLaf`, because the look and feel is installed as
+the first statement of `main`.
 
 ```bash
 mvn clean compile
@@ -265,13 +268,13 @@ mvn clean compile
 macOS / Linux:
 
 ```bash
-java -cp "target/classes:$HOME/.m2/repository/org/json/json/20240303/json-20240303.jar" app.Main
+java -cp "target/classes:$HOME/.m2/repository/org/json/json/20240303/json-20240303.jar:$HOME/.m2/repository/com/formdev/flatlaf/3.6/flatlaf-3.6.jar" app.Main
 ```
 
 Windows (PowerShell) — note the `;` separator rather than `:`:
 
 ```powershell
-java -cp "target/classes;$env:USERPROFILE\.m2\repository\org\json\json\20240303\json-20240303.jar" app.Main
+java -cp "target/classes;$env:USERPROFILE\.m2\repository\org\json\json\20240303\json-20240303.jar;$env:USERPROFILE\.m2\repository\com\formdev\flatlaf\3.6\flatlaf-3.6.jar" app.Main
 ```
 
 The application runs **without an API key**. If `ALPHA_VANTAGE_API_KEY` is not set, it falls back to

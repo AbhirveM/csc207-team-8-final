@@ -2,6 +2,7 @@ package view;
 
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonViewModel;
+import view.chart.BarChartPanel;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -12,6 +13,9 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.KeyboardFocusManager;
 import java.beans.PropertyChangeEvent;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * The Swing panel for comparing completed backtests.
@@ -33,6 +37,7 @@ public class ComparisonView extends JPanel {
     private final DefaultTableModel tableModel;
     private final JLabel bestStrategyLabel;
     private final JLabel statusLabel;
+    private final BarChartPanel returnChart;
     private final ComparisonViewModel viewModel;
 
     public ComparisonView(ComparisonViewModel viewModel, ComparisonController controller) {
@@ -65,8 +70,18 @@ public class ComparisonView extends JPanel {
         TableStyler.preferredWidths(table, COLUMN_WIDTHS);
         final JLabel rankingHeading = new JLabel("Ranking");
         rankingHeading.setLabelFor(table);
-        add(PanelHeader.region(rankingHeading, PanelHeader.rowCount(table), TableStyler.wrap(table)),
-                BorderLayout.CENTER);
+
+        // The chart sits above the table, never instead of it. It is the faster read for
+        // "which strategy won and by how much"; the table is the only place the exact
+        // figures live, and it stays in the keyboard order and in the accessibility tree.
+        returnChart = new BarChartPanel("Total return by strategy");
+        final JPanel centre = new JPanel(new BorderLayout(0, Theme.MD));
+        centre.setBackground(Theme.BG);
+        centre.add(PanelHeader.region(new JLabel("Total Return"), null, returnChart),
+                BorderLayout.NORTH);
+        centre.add(PanelHeader.region(rankingHeading, PanelHeader.rowCount(table),
+                TableStyler.wrap(table)), BorderLayout.CENTER);
+        add(centre, BorderLayout.CENTER);
 
         final JPanel topPanel = new JPanel(new BorderLayout(Theme.MD, 0));
         topPanel.setBackground(Theme.BG);
@@ -102,14 +117,25 @@ public class ComparisonView extends JPanel {
             // colour is only there to find them.
             statusLabel.setText("Error: " + viewModel.getErrorMessage());
             statusLabel.setForeground(Theme.DOWN);
+            // Clearing the chart alongside the table, for the reason the view model clears its
+            // own results: a ranking left on screen under an error message reads as current.
+            returnChart.setBars(Collections.emptyList());
             return;
         }
         statusLabel.setText(" ");
         statusLabel.setForeground(Theme.FG_MUTED);
         bestStrategyLabel.setText("Best performing strategy: " + viewModel.getBestStrategyName());
+        final List<BarChartPanel.Bar> bars = new ArrayList<>();
         for (final ComparisonViewModel.ResultRow row : viewModel.getRankedResults()) {
             tableModel.addRow(new Object[] {row.ticker(), row.strategyName(), row.totalReturn(),
                     row.numberOfTrades(), row.winRate()});
+            // The numeric component, not the formatted string: parsing the text back into a
+            // number here would put a formatting decision in the view that the presenter owns.
+            bars.add(new BarChartPanel.Bar(
+                    row.ticker() + " " + row.strategyName(),
+                    row.totalReturnValue(),
+                    row.totalReturn()));
         }
+        returnChart.setBars(bars);
     }
 }
