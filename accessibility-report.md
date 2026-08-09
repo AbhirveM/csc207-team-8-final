@@ -94,17 +94,47 @@ restyle carries meaning in colour alone:
   sign rather than instead of it (`TableStyler.SignedRenderer`). On a selected row, where the accent
   fill would put the direction colour below contrast, the colour is dropped and the sign alone
   carries the meaning.
-- **The active screen in the navigation bar** — marked with a two-pixel accent rule *and* a bold
-  weight, so the current screen is identifiable without distinguishing the accent from grey
-  (`MainView.markActiveView`).
+- **The active screen in the navigation bar** — marked with a two-pixel accent rule, a bold weight,
+  *and* the accent foreground, so the current screen is identifiable without distinguishing amber
+  from grey (`MainView.markActiveView`). The screens are also numbered `F1` to `F5` in their labels,
+  and those keys really are bound, so the current screen can be reached without reading the bar at
+  all.
 - **The window's save-status line** — a failed save is now prefixed with the literal word
   `"Error: "` before the colour is applied, matching what the watchlist error line already did, and
   the same text is pushed into the label's accessible description
   (`MainView.setPersistenceStatus`).
 
-The two direction colours are contrast-checked rather than eyeballed: `ThemeTest` asserts that both
-clear the WCAG AA ratio of 4.5:1 against the surface they are drawn on, so the check fails the build
-rather than relying on someone remembering to re-measure.
+### Measured contrast
+
+The interface is amber on near-black. Colours are contrast-checked rather than eyeballed: `ThemeTest`
+asserts the ratios below against the surface each colour is actually drawn on, so a token that drifts
+fails the build rather than relying on someone remembering to re-measure. Ratios are WCAG 2.1
+relative-luminance, computed by the same formula the test uses.
+
+| Foreground | Surface | Ratio | AA 4.5:1 |
+|---|---|---|---|
+| `FG` `#E8E8E8` — values | `BG` `#0A0A0A` | 16.16 | pass |
+| `FG` | `FIELD_BG` `#121212` — inputs | 15.29 | pass |
+| `FG_MUTED` `#9AA0A6` — secondary text | `BG` | 7.50 | pass |
+| `FG_MUTED` | `CHROME` `#141414` — bars and bands | 6.98 | pass |
+| `ACCENT` `#FF9E1B` — headings, active screen | `BG` | 9.58 | pass |
+| `ACCENT` | `CHROME` | 8.91 | pass |
+| `ACCENT_FG` `#0A0A0A` — text on a selected row | `ACCENT` | 9.58 | pass |
+| `KEY` `#4FC3F7` — field labels | `BG` | 9.88 | pass |
+| `KEY` | `CHROME` | 9.20 | pass |
+| `UP` `#26A65B` — positive change | `BG` | 6.31 | pass |
+| `UP` | `ROW_ALT` `#101013` — striped rows | 6.05 | pass |
+| `DOWN` `#E5484D` — negative change | `BG` | 5.06 | pass |
+| `DOWN` | `ROW_ALT` | 4.85 | pass |
+| `FG_FAINT` `#6B7075` — placeholder, disabled | `BG` | 3.96 | exempt |
+
+`FG_FAINT` is the one value below the threshold. It is used only for placeholder text, disabled
+controls, and the punctuation between status-bar segments — never for text a user has to read to
+operate the program — which is the exemption WCAG 1.4.3 grants for inactive components. Nothing it
+marks is the only way to reach a piece of information.
+
+Half the rows in every table are `ROW_ALT` rather than `BG`, so the direction colours are measured
+against both. Checking only the base surface would leave every second row unverified.
 
 Table cells gained interior padding during the restyle, and the focused cell keeps the look and
 feel's focus highlight nested inside that padding rather than having it replaced — the highlight is
