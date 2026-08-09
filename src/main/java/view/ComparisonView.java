@@ -63,7 +63,10 @@ public class ComparisonView extends JPanel {
         // sign and the direction colour rather than sitting as an unsigned figure.
         TableStyler.signedColumns(table, TOTAL_RETURN_COLUMN);
         TableStyler.preferredWidths(table, COLUMN_WIDTHS);
-        add(TableStyler.wrap(table), BorderLayout.CENTER);
+        final JLabel rankingHeading = new JLabel("Ranking");
+        rankingHeading.setLabelFor(table);
+        add(PanelHeader.region(rankingHeading, PanelHeader.rowCount(table), TableStyler.wrap(table)),
+                BorderLayout.CENTER);
 
         final JPanel topPanel = new JPanel(new BorderLayout(Theme.MD, 0));
         topPanel.setBackground(Theme.BG);

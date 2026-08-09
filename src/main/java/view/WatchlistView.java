@@ -248,7 +248,10 @@ public class WatchlistView extends JPanel {
      * @return the assembled panel
      */
     private static JPanel buildTablePanel(final String heading, final JTable table) {
-        final JLabel headingLabel = Controls.heading(new JLabel(heading));
+        // Left unstyled: PanelHeader.band puts it through Controls.heading itself. The
+        // setLabelFor binding is why the label is built here and handed over rather than
+        // named by a string - only this method knows which table the heading labels.
+        final JLabel headingLabel = new JLabel(heading);
         headingLabel.setLabelFor(table);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getAccessibleContext().setAccessibleName(heading);
@@ -278,7 +281,7 @@ public class WatchlistView extends JPanel {
         final JPanel panel = new JPanel(new BorderLayout(0, Theme.XS));
         panel.setBackground(Theme.BG);
         panel.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
-        panel.add(headingLabel, BorderLayout.NORTH);
+        panel.add(PanelHeader.band(headingLabel, PanelHeader.rowCount(table)), BorderLayout.NORTH);
         panel.add(TableStyler.wrap(table), BorderLayout.CENTER);
         return panel;
     }

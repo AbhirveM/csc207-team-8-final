@@ -71,7 +71,8 @@ public final class MomentumConfigurationView extends JPanel {
                 Theme.LG, Theme.LG, Theme.LG, Theme.LG));
 
         add(buildTitle(), BorderLayout.NORTH);
-        add(buildConfigurationPanel(), BorderLayout.CENTER);
+        add(PanelHeader.region(new JLabel("Parameters"), null, buildConfigurationPanel()),
+                BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
 
         configureButton.addActionListener(event -> onConfigure());

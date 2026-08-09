@@ -58,7 +58,8 @@ public final class MovingAverageConfigurationView extends JPanel
         setBorder(new EmptyBorder(Theme.LG, Theme.LG, Theme.LG, Theme.LG));
 
         add(createHeaderPanel(), BorderLayout.NORTH);
-        add(createFormPanel(), BorderLayout.CENTER);
+        add(PanelHeader.region(new JLabel("Parameters"), null, createFormPanel()),
+                BorderLayout.CENTER);
         add(createStatusArea(), BorderLayout.SOUTH);
 
         configureButton.addActionListener(event ->

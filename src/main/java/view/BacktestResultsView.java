@@ -74,7 +74,7 @@ public class BacktestResultsView extends JPanel {
         addMetric(summaryPanel, 1, 1, TOTAL_RETURN_LABEL, totalReturnLabel);
         addMetric(summaryPanel, 0, 2, TRADES_LABEL, numberOfTradesLabel);
         addMetric(summaryPanel, 1, 2, WIN_RATE_LABEL, winRateLabel);
-        add(summaryPanel, BorderLayout.NORTH);
+        add(PanelHeader.region(new JLabel("Result"), null, summaryPanel), BorderLayout.NORTH);
 
         final String[] columns = {"Entry Date", "Entry Price", "Quantity", "Exit Date",
                 "Exit Price", "Return %"};
@@ -96,7 +96,10 @@ public class BacktestResultsView extends JPanel {
         TableStyler.numericColumns(table, TRADE_NUMERIC_COLUMNS);
         TableStyler.signedColumns(table, RETURN_COLUMN);
         TableStyler.preferredWidths(table, TRADE_COLUMN_WIDTHS);
-        add(TableStyler.wrap(table), BorderLayout.CENTER);
+        final JLabel tradeLogHeading = new JLabel("Trade log");
+        tradeLogHeading.setLabelFor(table);
+        add(PanelHeader.region(tradeLogHeading, PanelHeader.rowCount(table), TableStyler.wrap(table)),
+                BorderLayout.CENTER);
 
         statusLabel.setFont(Theme.FONT_UI);
         statusLabel.setForeground(Theme.FG_MUTED);
