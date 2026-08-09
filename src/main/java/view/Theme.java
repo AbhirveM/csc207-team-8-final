@@ -118,6 +118,21 @@ public final class Theme {
     /** Height of the top navigation bar. */
     public static final int NAV_HEIGHT = 40;
 
+    /** The preferred height of a chart region, sized to read at a glance without owning the screen. */
+    public static final int CHART_HEIGHT = 148;
+
+    /** The left gutter a chart reserves for its value-axis labels, wide enough for "$10000.00". */
+    public static final int CHART_GUTTER = 56;
+
+    /** The bottom strip a chart reserves for its date-axis labels. */
+    public static final int CHART_FOOT = 18;
+
+    /** How many horizontal gridlines a chart draws between its bounds. */
+    public static final int CHART_GRID_LINES = 4;
+
+    /** The stroke width of a plotted series. */
+    public static final float CHART_STROKE = 1.5f;
+
     // --- Type ---
 
     /** Base point size for all text. */

@@ -107,6 +107,9 @@ public class WatchlistView extends JPanel {
     private final JTable tickerTable = new JTable(tickerTableModel);
     private final JTable priceTable = new JTable(priceTableModel);
 
+    private final LineChart closeChart = new LineChart("Close price");
+    private final JLabel closeChartMeta = new JLabel(BLANK_LINE);
+
     private final JLabel statusLabel = new JLabel(BLANK_LINE);
     private final JLabel errorLabel = new JLabel(BLANK_LINE);
 
@@ -204,7 +207,7 @@ public class WatchlistView extends JPanel {
     private JSplitPane buildSplitPane() {
         final JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 buildTablePanel("Watchlist", tickerTable),
-                buildTablePanel("Daily prices", priceTable));
+                buildPricePanel());
         splitPane.setResizeWeight(0.5);
         // The divider is a rule the user can drag, not a piece of furniture: one pixel wide,
         // no bevel, and no one-touch arrows hanging off it.
@@ -214,6 +217,37 @@ public class WatchlistView extends JPanel {
         splitPane.setOneTouchExpandable(false);
         splitPane.setContinuousLayout(true);
         return splitPane;
+    }
+
+    /**
+     * Builds the right-hand side of the split: the close-price chart over the daily-price
+     * table.
+     *
+     * <p>The chart belongs on this side rather than above the whole split because it and the
+     * table below it are both keyed to the selected ticker, where the watchlist table on the
+     * left is not. Putting it over the split would have it change under a table it has nothing
+     * to do with.
+     *
+     * @return the assembled panel
+     */
+    private JPanel buildPricePanel() {
+        // Left unstyled for the same reason the table headings are: PanelHeader.band runs it
+        // through Controls.heading itself. The setLabelFor binding is why it is built here.
+        final JLabel chartHeading = new JLabel("Close price");
+        chartHeading.setLabelFor(closeChart);
+
+        final JPanel chartRegion = PanelHeader.region(chartHeading, closeChartMeta, closeChart);
+        // The same horizontal inset buildTablePanel applies, so the band over the chart lines
+        // up with the band over the table beneath it rather than sitting a few pixels wider.
+        chartRegion.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
+
+        final JPanel priceSide = new JPanel(new BorderLayout(0, Theme.MD));
+        priceSide.setBackground(Theme.BG);
+        // NORTH takes the chart's preferred height, which is Theme.CHART_HEIGHT, so the table
+        // keeps every remaining pixel.
+        priceSide.add(chartRegion, BorderLayout.NORTH);
+        priceSide.add(buildTablePanel("Daily prices", priceTable), BorderLayout.CENTER);
+        return priceSide;
     }
 
     /**
@@ -304,7 +338,8 @@ public class WatchlistView extends JPanel {
      */
     private void installFocusOrder() {
         final List<Component> order = List.of(tickerField, addButton, removeButton,
-                refreshButton, loadPricesButton, tickerTable, priceTable, statusLabel);
+                refreshButton, loadPricesButton, tickerTable, closeChart, priceTable,
+                statusLabel);
         setFocusTraversalPolicy(new OrderedFocusTraversalPolicy(order));
         setFocusTraversalPolicyProvider(true);
     }
@@ -452,6 +487,14 @@ public class WatchlistView extends JPanel {
             priceTableModel.addRow(new Object[] {row.date(), row.open(), row.high(),
                     row.low(), row.close(), row.volume()});
         }
+
+        // The summary is set on the chart, where it becomes the accessible description, and
+        // again in the band's meta slot, where it is visible. The line's colour says the same
+        // thing a third time and is the only one of the three that is optional.
+        final WatchlistState.PriceChart chart = state.getPriceChart();
+        closeChart.setSeries(new LineChart.Series(chart.closes(), chart.lowLabel(),
+                chart.highLabel(), chart.startLabel(), chart.endLabel(), chart.summary()));
+        closeChartMeta.setText(chart.summary());
 
         tickerField.setText(state.getTickerFieldText());
         statusLabel.setText(state.getStatusMessage());

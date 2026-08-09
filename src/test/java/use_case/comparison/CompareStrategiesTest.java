@@ -21,7 +21,10 @@ class CompareStrategiesTest {
                 10000 * (1 + totalReturn / 100.0),
                 totalReturn,
                 3,
-                60.0
+                60.0,
+                Collections.emptyList(),
+                null,
+                null
         );
     }
 

@@ -3,12 +3,14 @@
 Team 8, CSC207. This report covers the seven Principles of Universal Design as they apply to
 MarketLens, followed by our target market and a discussion of who may be excluded.
 
-**Scope note, stated up front so nothing below is misread.** The screen that is reachable in the
-running application today is the **Watchlist** screen (`view/WatchlistView.java`). The strategy
-configuration, backtest and comparison features exist as tested code but are not yet wired into a
-user path, so we do not claim accessibility work for screens a user cannot open. Where a principle is
-served by the watchlist screen we cite the specific mechanism; where it is not yet served, we say so
-and describe what we would implement.
+**Scope note, stated up front so nothing below is misread.** All five screens are now reachable in
+the running application: `Main` registers the watchlist, both strategy-configuration screens, the
+backtest and the comparison view with `MainView.addView`, and the navigation bar reaches each of
+them by button and by the `F1`–`F5` keys. An earlier version of this report limited its claims to
+the **Watchlist** screen (`view/WatchlistView.java`) because the others were tested code with no
+user path into them; that is no longer true and the claims below are made for the screens a user
+can actually open. The watchlist remains the screen with the deepest accessibility work, and it is
+still the one we cite most often, because it is where the keyboard walkthrough was performed.
 
 ---
 
@@ -54,10 +56,13 @@ width that pushes a control out of reach.
 *Use of the design is easy to understand, regardless of the user's experience, knowledge, language
 skills, or current concentration level.*
 
-The screen is arranged in one top-to-bottom reading order: controls, then the two labelled tables,
-then the status and error lines. Both tables sit under a visible heading ("Watchlist", "Daily
-prices") which is bound to the table with `setLabelFor`, so the heading is both a visual and a
-programmatic label rather than decoration.
+The screen is arranged in one top-to-bottom reading order: controls, then the labelled data
+regions, then the status and error lines. Every region sits under a visible heading ("Watchlist",
+"Close price", "Daily prices") which is bound to its content with `setLabelFor`, so the heading is
+both a visual and a programmatic label rather than decoration. The close-price chart and the
+daily-price table are deliberately kept together on the right-hand side of the split, because both
+describe the selected ticker and the watchlist table on the left does not — the layout groups what
+changes together.
 
 The view contains no business logic and composes no prose: every value arrives from the presenter
 already formatted as a display-ready string. In practice this means the wording a user sees is
@@ -104,6 +109,53 @@ restyle carries meaning in colour alone:
   `"Error: "` before the colour is applied, matching what the watchlist error line already did, and
   the same text is pushed into the label's accessible description
   (`MainView.setPersistenceStatus`).
+
+### The two charts
+
+Adding graphics to a program that was entirely text is the largest perceptible-information change
+we have made, and it is the one most likely to quietly exclude someone, so it is recorded in full.
+Two charts were added, both drawn by the same component (`view/LineChart.java`): a **close-price
+line** on the Watchlist, above the daily-price table, and an **equity curve** on the Backtest
+results, between the summary metrics and the trade log.
+
+Neither chart is the only place its information exists. That is the design rule they were built
+to, and it is what keeps them from being a barrier:
+
+| | Close price | Portfolio value |
+|---|---|---|
+| Accessible name | `"Close price"` | `"Portfolio value"` |
+| Spoken description | `"Close price for AAPL, 120 days, low 210.11, high 258.02, latest 249.68."` | `"Portfolio value over 120 days, $10000.00 to $11240.00, +12.40%."` |
+| Same sentence, visible | the header band's meta slot, beside the region title | the header band's meta slot |
+| Underlying figures | the daily-price table directly beneath, every OHLCV row in full | the six summary metrics above and the complete trade log below |
+
+Four points about how this is built:
+
+- **The description is not set once and forgotten.** `LineChart.setSeries` writes the summary onto
+  the accessible description every time the plotted data changes, so what a screen reader announces
+  cannot drift away from what is drawn. `ViewConstructionTest` asserts this on the watchlist chart.
+- **The sentence is composed by a presenter, never by the chart.** Both summaries are built in the
+  interface-adapter layer (`WatchlistPresenter.chartFor`, `BacktestPresenter.curveFor`) alongside
+  every other piece of user-facing prose, which is what keeps the wording consistent with the
+  status lines and table cells around it.
+- **The series colour is direction only, and it is redundant.** A line whose last value is above
+  its first is drawn in `UP`, below in `DOWN`, and level in `FG` — exactly the rule
+  `TableStyler.SignedRenderer` applies to a signed cell, lifted from a cell to a line. The same
+  direction is stated in words and with an explicit `+` or `-` in the summary sentence, which is
+  both spoken and visible. This is the identical argument we make for the signed columns above:
+  remove the colour entirely and no information is lost. The `UP`/`DOWN` ratios in the table below
+  therefore cover the plotted line as well as the table cells.
+- **Both charts are focusable and are in the reading order.** `closeChart` sits between the
+  watchlist table and the price table in `WatchlistView.installFocusOrder`, which is where it sits
+  on screen, so a keyboard-only user reaches it in the order they would read it rather than having
+  it skipped as decoration.
+
+**A limitation we are not going to paper over.** A line chart communicates *shape* — the drawdown
+partway through, whether a gain was steady or one lucky trade — and a one-sentence summary
+communicates only the endpoints and the bounds. A user relying on the description gets the facts
+but not the shape. The honest mitigation, which we have not implemented, is a textual description
+of the path itself (direction changes, largest drawdown) rather than only its extremes. What we
+have ensured is that nothing is *only* in the chart: every number plotted is on screen as text in
+the table beside it.
 
 ### Measured contrast
 

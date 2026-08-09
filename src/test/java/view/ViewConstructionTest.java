@@ -97,6 +97,44 @@ class ViewConstructionTest {
     }
 
     @Test
+    void bothScreensCarryANamedFocusableChart() {
+        // Focusable so a keyboard-only user can land on the chart at all, and named so that
+        // landing on it announces something other than "panel".
+        LineChart closePrice = chartNamed(watchlistView(), "Close price");
+        assertTrue(closePrice.isFocusable());
+        LineChart portfolioValue = chartNamed(
+                new BacktestResultsView(new BacktestViewModel()), "Portfolio value");
+        assertTrue(portfolioValue.isFocusable());
+    }
+
+    @Test
+    void everyChartSaysInWordsWhatItsLineSaysInShape() throws Exception {
+        // The accessible description is the non-visual half of the chart. It must never be
+        // left at whatever it was built with once real data has arrived.
+        WatchlistViewModel viewModel = new WatchlistViewModel();
+        WatchlistView view = new WatchlistView(viewModel, noOpWatchlistController());
+        LineChart chart = chartNamed(view, "Close price");
+        assertEquals("No data.", chart.getAccessibleContext().getAccessibleDescription());
+
+        viewModel.setState(new WatchlistState(
+                List.of(), List.of(), "AAPL", "Loaded.", "", "",
+                new WatchlistState.PriceChart(List.of(1.0, 2.0), "1.00", "2.00",
+                        "2026-01-05", "2026-01-09", "Close price for AAPL, 2 days.")));
+        flushEventQueue();
+        assertEquals("Close price for AAPL, 2 days.",
+                chart.getAccessibleContext().getAccessibleDescription());
+    }
+
+    @Test
+    void theChartHeadingLabelsTheChartItSitsOver() {
+        // Uppercased for the eye by Controls.heading, but still bound to the chart, which is
+        // what a screen reader follows.
+        WatchlistView view = watchlistView();
+        assertEquals(chartNamed(view, "Close price"),
+                labelStartingWith(view, "CLOSE PRICE").getLabelFor());
+    }
+
+    @Test
     void theWatchlistPaintsWhateverStateItIsGiven() throws Exception {
         WatchlistViewModel viewModel = new WatchlistViewModel();
         WatchlistView view = new WatchlistView(viewModel, noOpWatchlistController());
@@ -306,6 +344,22 @@ class ViewConstructionTest {
         assertTrue(!table.areFocusTraversalKeysSet(
                         java.awt.KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS),
                 "a table still swallows Shift+Tab");
+    }
+
+    /**
+     * Finds the chart carrying the given accessible name.
+     *
+     * @param root the container to search
+     * @param name the accessible name to match
+     * @return the chart
+     */
+    private static LineChart chartNamed(Container root, String name) {
+        for (LineChart chart : descendants(root, LineChart.class)) {
+            if (name.equals(chart.getAccessibleContext().getAccessibleName())) {
+                return chart;
+            }
+        }
+        throw new AssertionError("no chart named " + name);
     }
 
     /**

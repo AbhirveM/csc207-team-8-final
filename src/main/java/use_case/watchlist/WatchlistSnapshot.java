@@ -49,20 +49,38 @@ public final class WatchlistSnapshot {
     private final List<TickerRow> tickerRows;
     private final String selectedSymbol;
     private final List<PriceRow> selectedPriceRows;
+    private final List<Double> selectedCloses;
 
     /**
      * @param tickerRows        one row per watchlist ticker, copied defensively
      * @param selectedSymbol    the symbol whose prices are carried, or null/"" for none
-     * @param selectedPriceRows the price rows for {@code selectedSymbol}
+     * @param selectedPriceRows the price rows for {@code selectedSymbol}, newest first
+     * @param selectedCloses    the closing prices for {@code selectedSymbol} as raw numbers,
+     *                          <em>oldest first</em>
+     * @throws NullPointerException if any list is null
+     */
+    public WatchlistSnapshot(List<TickerRow> tickerRows, String selectedSymbol,
+                             List<PriceRow> selectedPriceRows, List<Double> selectedCloses) {
+        Objects.requireNonNull(tickerRows, "Ticker rows cannot be null");
+        Objects.requireNonNull(selectedPriceRows, "Selected price rows cannot be null");
+        Objects.requireNonNull(selectedCloses, "Selected closes cannot be null");
+        this.tickerRows = List.copyOf(tickerRows);
+        this.selectedSymbol = selectedSymbol == null ? "" : selectedSymbol;
+        this.selectedPriceRows = List.copyOf(selectedPriceRows);
+        this.selectedCloses = List.copyOf(selectedCloses);
+    }
+
+    /**
+     * The snapshots that carry no plottable series.
+     *
+     * @param tickerRows        one row per watchlist ticker, copied defensively
+     * @param selectedSymbol    the symbol whose prices are carried, or null/"" for none
+     * @param selectedPriceRows the price rows for {@code selectedSymbol}, newest first
      * @throws NullPointerException if either list is null
      */
     public WatchlistSnapshot(List<TickerRow> tickerRows, String selectedSymbol,
                              List<PriceRow> selectedPriceRows) {
-        Objects.requireNonNull(tickerRows, "Ticker rows cannot be null");
-        Objects.requireNonNull(selectedPriceRows, "Selected price rows cannot be null");
-        this.tickerRows = List.copyOf(tickerRows);
-        this.selectedSymbol = selectedSymbol == null ? "" : selectedSymbol;
-        this.selectedPriceRows = List.copyOf(selectedPriceRows);
+        this(tickerRows, selectedSymbol, selectedPriceRows, List.of());
     }
 
     public List<TickerRow> getTickerRows() {
@@ -76,6 +94,22 @@ public final class WatchlistSnapshot {
 
     public List<PriceRow> getSelectedPriceRows() {
         return selectedPriceRows;
+    }
+
+    /**
+     * The selected ticker's closing prices as raw numbers, for a presenter to scale into a
+     * chart series.
+     *
+     * <p>Deliberately <em>oldest first</em>, the opposite order to
+     * {@link #getSelectedPriceRows()}. The price rows are reversed because newest-first is what
+     * a user expects to read down a table; a plotted line has to run forwards in time or it is
+     * simply drawn backwards. This is the one place in the codebase where the two orders sit
+     * side by side, so it is the one place the asymmetry is worth stating.
+     *
+     * @return the closing prices, oldest first. Never null; empty when nothing is selected.
+     */
+    public List<Double> getSelectedCloses() {
+        return selectedCloses;
     }
 
     /**
@@ -96,11 +130,15 @@ public final class WatchlistSnapshot {
         final WatchlistSnapshot that = (WatchlistSnapshot) other;
         return tickerRows.equals(that.tickerRows)
                 && selectedSymbol.equals(that.selectedSymbol)
-                && selectedPriceRows.equals(that.selectedPriceRows);
+                && selectedPriceRows.equals(that.selectedPriceRows)
+                // The series is part of the identity, not a derived extra: this equality is
+                // what suppresses a repaint, so a snapshot differing only in its closes would
+                // silently leave a stale line on screen.
+                && selectedCloses.equals(that.selectedCloses);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tickerRows, selectedSymbol, selectedPriceRows);
+        return Objects.hash(tickerRows, selectedSymbol, selectedPriceRows, selectedCloses);
     }
 }

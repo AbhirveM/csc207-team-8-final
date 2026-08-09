@@ -66,7 +66,8 @@ final class WatchlistSnapshotFactory {
                     latestPrice.map(price -> money(price.getClose())).orElse("")));
         }
 
-        return new WatchlistSnapshot(tickerRows, selectedSymbol, priceRowsFor(selectedStock));
+        return new WatchlistSnapshot(tickerRows, selectedSymbol,
+                priceRowsFor(selectedStock), closesFor(selectedStock));
     }
 
     /** Symbols are compared case-insensitively, matching {@code Ticker.equals}. */
@@ -95,6 +96,23 @@ final class WatchlistSnapshotFactory {
                     String.valueOf(price.getVolume())));
         }
         return rows;
+    }
+
+    /**
+     * Oldest first, the opposite order to {@link #priceRowsFor}: these are plotted along a time
+     * axis rather than read down a table, and a series handed over newest-first draws backwards.
+     */
+    private static List<Double> closesFor(Optional<Stock> stock) {
+        if (stock.isEmpty()) {
+            return List.of();
+        }
+
+        final List<DailyPrice> prices = stock.get().getDailyPrices();
+        final List<Double> closes = new ArrayList<>(prices.size());
+        for (final DailyPrice price : prices) {
+            closes.add(price.getClose());
+        }
+        return List.copyOf(closes);
     }
 
     /** Falls back to the symbol so the table never shows a blank name cell. */

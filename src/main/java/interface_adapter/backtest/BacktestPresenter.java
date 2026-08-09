@@ -49,7 +49,56 @@ public class BacktestPresenter implements RunBacktestOutputBoundary {
                     String.format(PLAIN_FORMAT, trade.getReturnPercent())));
         }
 
-        viewModel.setResult(summary, tradeRows);
+        viewModel.setResult(summary, tradeRows, curveFor(result));
+    }
+
+    /**
+     * Builds the equity curve for the chart, with every label already formatted - the chart
+     * itself composes no text.
+     *
+     * <p>The summary states the direction twice over, in words and with an explicit sign, which
+     * is what lets the plotted line be coloured by direction without the colour carrying
+     * anything on its own. The {@code +} on a gain is the same convention
+     * {@code TableStyler.SignedRenderer} applies to a signed cell.
+     *
+     * @param result the completed run
+     * @return the curve to plot, or an empty one for a result that carries no path
+     */
+    private static BacktestViewModel.EquityCurve curveFor(BacktestResult result) {
+        final List<Double> values = result.getEquityCurve();
+        if (values.isEmpty()) {
+            return BacktestViewModel.EquityCurve.empty();
+        }
+
+        double low = values.get(0);
+        double high = values.get(0);
+        for (final Double value : values) {
+            low = Math.min(low, value);
+            high = Math.max(high, value);
+        }
+
+        final String returnText = String.format(PERCENT_FORMAT, result.getTotalReturn());
+        final String signedReturn;
+        if (result.getTotalReturn() > 0.0) {
+            signedReturn = "+" + returnText;
+        }
+        else {
+            signedReturn = returnText;
+        }
+
+        final String summary = String.format(
+                "Portfolio value over %d days, %s to %s, %s.",
+                values.size(),
+                String.format(MONEY_FORMAT, values.get(0)),
+                String.format(MONEY_FORMAT, values.get(values.size() - 1)),
+                signedReturn);
+
+        return new BacktestViewModel.EquityCurve(values,
+                String.format(MONEY_FORMAT, low),
+                String.format(MONEY_FORMAT, high),
+                String.valueOf(result.getStartDate()),
+                String.valueOf(result.getEndDate()),
+                summary);
     }
 
     @Override

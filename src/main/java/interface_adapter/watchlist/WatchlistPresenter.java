@@ -2,6 +2,7 @@ package interface_adapter.watchlist;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import use_case.watchlist.AddTickerOutputBoundary;
@@ -52,6 +53,14 @@ public final class WatchlistPresenter
 
     /** How a blank symbol is referred to, so a blank-input message still reads as English. */
     private static final String UNTYPED_SYMBOL = "the symbol you typed";
+
+    /**
+     * How a price is written into a chart's axis labels and summary. Two decimals and no
+     * currency mark, matching the figures in the daily-price table the chart sits above -
+     * a gutter label reading {@code $249.68} beside a column reading {@code 249.68} would
+     * look like two different quantities.
+     */
+    private static final String MONEY_FORMAT = "%.2f";
 
     private final WatchlistViewModel viewModel;
 
@@ -217,7 +226,11 @@ public final class WatchlistPresenter
                 current.getSelectedSymbol(),
                 current.getStatusMessage(),
                 messageFor(failure),
-                current.getTickerFieldText()));
+                current.getTickerFieldText(),
+                // Preserved for the same reason the rows above it are: the chart is drawn
+                // directly over the price table, so clearing one and keeping the other would
+                // leave the screen contradicting itself while the error is on display.
+                current.getPriceChart()));
     }
 
     /**
@@ -313,7 +326,54 @@ public final class WatchlistPresenter
                 snapshot.getSelectedSymbol(),
                 statusMessage,
                 "",
-                tickerFieldText));
+                tickerFieldText,
+                chartFor(snapshot)));
+    }
+
+    /**
+     * Builds the close-price series for the selected ticker, with every label already
+     * formatted - the chart itself composes no text.
+     *
+     * <p>The dates come off the snapshot's price rows rather than being carried separately.
+     * Those rows are newest-first, so the series start is the <em>last</em> of them and the
+     * series end is the first; the closes beside them run the other way. That inversion is the
+     * one thing in this method worth reading twice.
+     *
+     * @param snapshot the watchlist as the use case left it
+     * @return the chart to paint, or an empty one when the selection has no prices
+     */
+    private static WatchlistState.PriceChart chartFor(WatchlistSnapshot snapshot) {
+        final List<Double> closes = snapshot.getSelectedCloses();
+        final List<WatchlistSnapshot.PriceRow> rows = snapshot.getSelectedPriceRows();
+        if (closes.isEmpty() || rows.isEmpty()) {
+            return WatchlistState.PriceChart.empty();
+        }
+
+        double low = closes.get(0);
+        double high = closes.get(0);
+        for (final Double close : closes) {
+            low = Math.min(low, close);
+            high = Math.max(high, close);
+        }
+
+        final String lowLabel = money(low);
+        final String highLabel = money(high);
+        final String summary = String.format(
+                "Close price for %s, %d days, low %s, high %s, latest %s.",
+                snapshot.getSelectedSymbol(), closes.size(), lowLabel, highLabel,
+                money(closes.get(closes.size() - 1)));
+
+        return new WatchlistState.PriceChart(closes, lowLabel, highLabel,
+                rows.get(rows.size() - 1).date(), rows.get(0).date(), summary);
+    }
+
+    /**
+     * @param value a price to write into a chart label
+     * @return the price to two decimals, in a fixed locale so the decimal mark cannot drift
+     *         from the one the price table beside it uses
+     */
+    private static String money(double value) {
+        return String.format(Locale.ROOT, MONEY_FORMAT, value);
     }
 
     /**

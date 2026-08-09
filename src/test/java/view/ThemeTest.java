@@ -64,6 +64,18 @@ class ThemeTest {
     }
 
     @Test
+    void theChartMetricsLeaveRoomForBothAxesInsideTheChartHeight() {
+        // The gutter and the foot are carved out of the chart's own box, so a plot rectangle
+        // only exists while they are smaller than it.
+        assertTrue(Theme.CHART_FOOT < Theme.CHART_HEIGHT);
+        assertTrue(Theme.CHART_GUTTER > Theme.LG, "the gutter must hold a money label");
+        assertTrue(Theme.CHART_HEIGHT > Theme.ROW_HEIGHT + Theme.HEADER_HEIGHT,
+                "a chart region has to be taller than a single banded table row");
+        assertTrue(Theme.CHART_GRID_LINES > 0);
+        assertTrue(Theme.CHART_STROKE > 0.0f);
+    }
+
+    @Test
     void fontsResolveToSomethingInstalled() {
         assertNotNull(Theme.FONT_UI.getFamily());
         assertNotNull(Theme.FONT_MONO.getFamily());
