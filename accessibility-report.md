@@ -124,9 +124,20 @@ to, and it is what keeps them from being a barrier:
 | | Close price | Portfolio value |
 |---|---|---|
 | Accessible name | `"Close price"` | `"Portfolio value"` |
-| Spoken description | `"Close price for AAPL, 120 days, low 210.11, high 258.02, latest 249.68."` | `"Portfolio value over 120 days, $10000.00 to $11240.00, +12.40%."` |
-| Same sentence, visible | the header band's meta slot, beside the region title | the header band's meta slot |
+| Spoken description | `"Close price for AAPL, 120 days, low 216.74, high 262.46, latest 249.68, +38.94 (+18.53%) over the window."` | `"Portfolio value over 120 days, $10000.00 to $11240.00, +12.40%."` |
+| Visible readout in the band | `120D +38.94 (+18.53%)` | `120D +12.40%` |
+| Visible on the plot itself | the low and high in the gutter, the first and last date on the foot | the same |
 | Underlying figures | the daily-price table directly beneath, every OHLCV row in full | the six summary metrics above and the complete trade log below |
+
+The spoken description and the visible band readout are deliberately *different lengths of the
+same fact* rather than the same string twice. The band is a fixed-height strip a few words wide,
+sitting beside the region title; the first version of this work put the whole sentence there and
+it painted straight over the title, which left the title present in the component tree and
+invisible on screen — a worse accessibility outcome than the one it was trying to achieve, and
+one that only showed up on a real display. The band now carries the signed direction, which is
+the part that has to be visible for the line's colour to be redundant, and the full sentence
+goes to the screen reader. `PanelHeaderTest` pins both halves: that a long readout can never
+overlap a title again, and that a short one still sits hard against the right edge.
 
 Four points about how this is built:
 
@@ -140,8 +151,8 @@ Four points about how this is built:
 - **The series colour is direction only, and it is redundant.** A line whose last value is above
   its first is drawn in `UP`, below in `DOWN`, and level in `FG` — exactly the rule
   `TableStyler.SignedRenderer` applies to a signed cell, lifted from a cell to a line. The same
-  direction is stated in words and with an explicit `+` or `-` in the summary sentence, which is
-  both spoken and visible. This is the identical argument we make for the signed columns above:
+  direction is stated with an explicit `+` or `-` in both the visible band readout and the
+  spoken description. This is the identical argument we make for the signed columns above:
   remove the colour entirely and no information is lost. The `UP`/`DOWN` ratios in the table below
   therefore cover the plotted line as well as the table cells.
 - **Both charts are focusable and are in the reading order.** `closeChart` sits between the

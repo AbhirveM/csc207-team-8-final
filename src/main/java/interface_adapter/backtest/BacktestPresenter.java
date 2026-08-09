@@ -93,11 +93,17 @@ public class BacktestPresenter implements RunBacktestOutputBoundary {
                 String.format(MONEY_FORMAT, values.get(values.size() - 1)),
                 signedReturn);
 
+        // The band's meta slot is a few words wide. It carries the one thing the plotted line
+        // must not be trusted to convey alone - the signed direction - and the sentence above
+        // goes to the accessible description instead.
+        final String meta = String.format("%dD %s", values.size(), signedReturn);
+
         return new BacktestViewModel.EquityCurve(values,
                 String.format(MONEY_FORMAT, low),
                 String.format(MONEY_FORMAT, high),
                 String.valueOf(result.getStartDate()),
                 String.valueOf(result.getEndDate()),
+                meta,
                 summary);
     }
 

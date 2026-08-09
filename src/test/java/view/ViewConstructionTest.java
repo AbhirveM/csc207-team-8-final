@@ -119,7 +119,8 @@ class ViewConstructionTest {
         viewModel.setState(new WatchlistState(
                 List.of(), List.of(), "AAPL", "Loaded.", "", "",
                 new WatchlistState.PriceChart(List.of(1.0, 2.0), "1.00", "2.00",
-                        "2026-01-05", "2026-01-09", "Close price for AAPL, 2 days.")));
+                        "2026-01-05", "2026-01-09", "2D +1.00",
+                        "Close price for AAPL, 2 days.")));
         flushEventQueue();
         assertEquals("Close price for AAPL, 2 days.",
                 chart.getAccessibleContext().getAccessibleDescription());

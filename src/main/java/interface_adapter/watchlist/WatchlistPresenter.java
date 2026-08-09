@@ -356,15 +356,61 @@ public final class WatchlistPresenter
             high = Math.max(high, close);
         }
 
+        final double first = closes.get(0);
+        final double latest = closes.get(closes.size() - 1);
         final String lowLabel = money(low);
         final String highLabel = money(high);
+
+        // The band's meta slot is a few words wide, so it carries only the part the plotted
+        // line cannot be trusted to convey on its own: the direction, with an explicit sign.
+        // The whole sentence goes to the accessible description instead.
+        final String meta = String.format("%dD %s", closes.size(), signedChange(first, latest));
         final String summary = String.format(
-                "Close price for %s, %d days, low %s, high %s, latest %s.",
-                snapshot.getSelectedSymbol(), closes.size(), lowLabel, highLabel,
-                money(closes.get(closes.size() - 1)));
+                "Close price for %s, %d days, low %s, high %s, latest %s, %s over the window.",
+                snapshot.getSelectedSymbol(), closes.size(), lowLabel, highLabel, money(latest),
+                signedChange(first, latest));
 
         return new WatchlistState.PriceChart(closes, lowLabel, highLabel,
-                rows.get(rows.size() - 1).date(), rows.get(0).date(), summary);
+                rows.get(rows.size() - 1).date(), rows.get(0).date(), meta, summary);
+    }
+
+    /**
+     * Writes the movement across the window with an explicit sign, which is what makes the
+     * plotted line's colour redundant rather than load-bearing.
+     *
+     * @param first  the oldest close in the series
+     * @param latest the newest close in the series
+     * @return the change and, when the opening price allows one to be computed, the percentage
+     *         beside it - both signed, as {@code TableStyler.SignedRenderer} signs a cell
+     */
+    private static String signedChange(double first, double latest) {
+        final double change = latest - first;
+        final String signedAmount = signed(change);
+        final String result;
+        if (first > 0.0) {
+            result = signedAmount + " (" + signed(change / first * 100.0) + "%)";
+        }
+        else {
+            result = signedAmount;
+        }
+        return result;
+    }
+
+    /**
+     * @param value a movement, which may be negative
+     * @return the value to two decimals, carrying an explicit {@code +} when it is positive;
+     *         the minus sign the format already supplies covers the other direction
+     */
+    private static String signed(double value) {
+        final String formatted = money(value);
+        final String result;
+        if (value > 0.0) {
+            result = "+" + formatted;
+        }
+        else {
+            result = formatted;
+        }
+        return result;
     }
 
     /**

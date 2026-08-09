@@ -152,13 +152,13 @@ public class BacktestResultsView extends JPanel {
         setValue(numberOfTradesLabel, summary.numberOfTrades());
         setValue(winRateLabel, summary.winRate());
 
-        // The summary goes on the chart, where it becomes the accessible description, and into
-        // the band's meta slot, where it is visible. The line's colour repeats what the signed
-        // figure in that sentence already says.
+        // The full sentence goes on the chart, where it becomes the accessible description; the
+        // short signed form goes in the band, which has room for a few words beside the title.
+        // The line's colour repeats what the sign in both of them already says.
         final BacktestViewModel.EquityCurve curve = viewModel.getEquityCurve();
         equityChart.setSeries(new LineChart.Series(curve.values(), curve.lowLabel(),
                 curve.highLabel(), curve.startLabel(), curve.endLabel(), curve.summary()));
-        equityMeta.setText(curve.summary());
+        equityMeta.setText(curve.meta().isEmpty() ? BLANK_LINE : curve.meta());
 
         for (final BacktestViewModel.TradeRow row : viewModel.getTradeRows()) {
             tableModel.addRow(new Object[] {row.entryDate(), row.entryPrice(), row.quantity(),

@@ -58,15 +58,18 @@ public class BacktestViewModel {
      * @param highLabel  the highest value the portfolio reached, formatted
      * @param startLabel the date of the first close
      * @param endLabel   the date of the last close
-     * @param summary    one sentence describing the run, including its direction in words and
-     *                   with an explicit sign, so the line's colour carries nothing on its own
+     * @param meta       the compact signed readout for the header band's meta slot, which has
+     *                   room for about four words beside the region title
+     * @param summary    the full sentence, spoken as the chart's accessible description; it
+     *                   states the direction in words and with an explicit sign, so the line's
+     *                   colour carries nothing on its own
      */
     public record EquityCurve(List<Double> values, String lowLabel, String highLabel,
-                              String startLabel, String endLabel, String summary) {
+                              String startLabel, String endLabel, String meta, String summary) {
 
         /** @return the curve shown before a run, and after one that failed. */
         public static EquityCurve empty() {
-            return new EquityCurve(List.of(), "", "", "", "", "No data.");
+            return new EquityCurve(List.of(), "", "", "", "", "", "No data.");
         }
     }
 

@@ -72,15 +72,16 @@ public final class WatchlistState {
      * @param highLabel  the highest close, formatted
      * @param startLabel the date of the oldest close
      * @param endLabel   the date of the newest close
-     * @param summary    one sentence describing the series, shown beside the chart and spoken
-     *                   as its accessible description
+     * @param meta       the compact signed readout for the header band's meta slot, which has
+     *                   room for about four words beside the region title
+     * @param summary    the full sentence, spoken as the chart's accessible description
      */
     public record PriceChart(List<Double> closes, String lowLabel, String highLabel,
-                             String startLabel, String endLabel, String summary) {
+                             String startLabel, String endLabel, String meta, String summary) {
 
         /** @return the chart shown when nothing is selected or the selection has no prices. */
         public static PriceChart empty() {
-            return new PriceChart(List.of(), "", "", "", "", "No data.");
+            return new PriceChart(List.of(), "", "", "", "", "", "No data.");
         }
     }
 

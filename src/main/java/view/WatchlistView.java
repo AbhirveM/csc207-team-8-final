@@ -488,13 +488,14 @@ public class WatchlistView extends JPanel {
                     row.low(), row.close(), row.volume()});
         }
 
-        // The summary is set on the chart, where it becomes the accessible description, and
-        // again in the band's meta slot, where it is visible. The line's colour says the same
-        // thing a third time and is the only one of the three that is optional.
+        // Two readouts of the same fact at two lengths: the full sentence goes to the chart,
+        // where it becomes the accessible description, and the short signed form goes in the
+        // band beside the title, which has room for a few words and no more. The line's colour
+        // says it a third time and is the only one of the three that is optional.
         final WatchlistState.PriceChart chart = state.getPriceChart();
         closeChart.setSeries(new LineChart.Series(chart.closes(), chart.lowLabel(),
                 chart.highLabel(), chart.startLabel(), chart.endLabel(), chart.summary()));
-        closeChartMeta.setText(chart.summary());
+        closeChartMeta.setText(metaOrBlank(chart.meta()));
 
         tickerField.setText(state.getTickerFieldText());
         statusLabel.setText(state.getStatusMessage());
@@ -519,6 +520,23 @@ public class WatchlistView extends JPanel {
             errorLabel.setText(BLANK_LINE);
             errorLabel.getAccessibleContext().setAccessibleDescription("No error.");
         }
+    }
+
+    /**
+     * Keeps a meta label from collapsing when there is nothing to report.
+     *
+     * @param meta the readout the presenter supplied, possibly empty
+     * @return the readout, or a blank line so the band keeps its height
+     */
+    private static String metaOrBlank(final String meta) {
+        final String result;
+        if (meta.isEmpty()) {
+            result = BLANK_LINE;
+        }
+        else {
+            result = meta;
+        }
+        return result;
     }
 
     /**
