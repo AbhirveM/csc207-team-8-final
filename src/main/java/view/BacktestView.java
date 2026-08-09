@@ -1,12 +1,12 @@
 package view;
 
 import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -98,7 +98,10 @@ public class BacktestView extends JPanel {
                 movingAverageViewModel, "Moving average view model cannot be null");
         Objects.requireNonNull(viewModel, "View model cannot be null");
 
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(Theme.MD, Theme.MD));
+        setBackground(Theme.BG);
+        setBorder(BorderFactory.createEmptyBorder(
+                Theme.LG, Theme.LG, Theme.LG, Theme.LG));
         add(buildControls(), BorderLayout.NORTH);
         add(new BacktestResultsView(viewModel), BorderLayout.CENTER);
 
@@ -124,14 +127,12 @@ public class BacktestView extends JPanel {
      * @return the assembled panel
      */
     private JPanel buildControls() {
-        final JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-
-        final JLabel tickerLabel = new JLabel("Ticker:");
+        final JLabel tickerLabel = controlLabel("Ticker:");
         tickerLabel.setLabelFor(tickerBox);
         tickerLabel.setDisplayedMnemonic('K');
         tickerBox.getAccessibleContext().setAccessibleName("Ticker to backtest");
 
-        final JLabel strategyLabel = new JLabel("Strategy:");
+        final JLabel strategyLabel = controlLabel("Strategy:");
         strategyLabel.setLabelFor(strategyBox);
         strategyLabel.setDisplayedMnemonic('S');
         strategyBox.getAccessibleContext().setAccessibleName("Strategy to apply");
@@ -141,19 +142,47 @@ public class BacktestView extends JPanel {
                 "Run the chosen strategy over the chosen ticker's loaded price history.");
 
         statusLabel.setFocusable(true);
+        statusLabel.setFont(Theme.FONT_UI);
+        statusLabel.setForeground(Theme.FG_MUTED);
         statusLabel.getAccessibleContext().setAccessibleName("Backtest status");
 
-        controls.add(tickerLabel);
-        controls.add(tickerBox);
-        controls.add(strategyLabel);
-        controls.add(strategyBox);
-        controls.add(runButton);
+        Controls.styleComboBox(tickerBox);
+        Controls.styleComboBox(strategyBox);
+        Controls.primary(runButton);
 
-        final JPanel north = new JPanel(new BorderLayout());
-        north.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        // A box row instead of a FlowLayout: the controls stay on one line pinned left,
+        // rather than centring themselves and re-wrapping as the window is resized.
+        final Box controls = Box.createHorizontalBox();
+        controls.add(tickerLabel);
+        controls.add(Box.createHorizontalStrut(Theme.SM));
+        controls.add(tickerBox);
+        controls.add(Box.createHorizontalStrut(Theme.LG));
+        controls.add(strategyLabel);
+        controls.add(Box.createHorizontalStrut(Theme.SM));
+        controls.add(strategyBox);
+        controls.add(Box.createHorizontalStrut(Theme.LG));
+        controls.add(runButton);
+        controls.add(Box.createHorizontalGlue());
+
+        final JPanel north = new JPanel(new BorderLayout(0, Theme.SM));
+        north.setBackground(Theme.BG);
+        north.setBorder(BorderFactory.createEmptyBorder(0, 0, Theme.MD, 0));
         north.add(controls, BorderLayout.CENTER);
         north.add(statusLabel, BorderLayout.SOUTH);
         return north;
+    }
+
+    /**
+     * Builds a control-strip label in the house type.
+     *
+     * @param text the label text
+     * @return the styled label
+     */
+    private static JLabel controlLabel(String text) {
+        final JLabel label = new JLabel(text);
+        label.setFont(Theme.FONT_UI);
+        label.setForeground(Theme.FG);
+        return label;
     }
 
     /**
