@@ -31,7 +31,9 @@ public class ComparisonPresenter implements CompareStrategies.OutputBoundary {
                     result.getStrategyName(),
                     String.format(PERCENT_FORMAT, result.getTotalReturn()),
                     String.valueOf(result.getNumberOfTrades()),
-                    String.format(PERCENT_FORMAT, result.getWinRate())));
+                    String.format(PERCENT_FORMAT, result.getWinRate()),
+                    result.getTotalReturn(),
+                    result.getWinRate()));
         }
         viewModel.setResults(rows, outputData.best.getStrategyName());
     }
