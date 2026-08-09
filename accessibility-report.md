@@ -42,11 +42,12 @@ Loading price history is user-driven rather than automatic, through the "Load pr
 lets a user work at their own pace instead of the application deciding when to spend their time and
 their API quota.
 
-**Known gap, recorded honestly:** below roughly 700px of window width the "Load prices" button clips
-off the right edge of the control strip and becomes unclickable, because `MainView` sets no minimum
-window size. This is a real flexibility failure for anyone working in a small or split-screen window,
-it is logged in `plan/handoffs/walkthrough.md` step 7, and the fix is a minimum window size plus a
-wrapping layout for the control strip.
+**A gap we found and closed:** below roughly 700px of window width the "Load prices" button clipped
+off the right edge of the control strip and became unclickable, because `MainView` set no minimum
+window size. We found it during the manual walkthrough (`plan/handoffs/walkthrough.md` step 7)
+rather than by inspection, which is the argument for walking the interface by hand at all.
+`MainView` now sets `setMinimumSize(new Dimension(820, 500))`, so the window cannot be resized to a
+width that pushes a control out of reach.
 
 ## 3. Simple and Intuitive Use
 
@@ -117,9 +118,11 @@ Saved data is protected against the most likely real hazard, a crash mid-write:
 load a corrupted `watchlist.dat` is backed up and recovered from rather than throwing the user out of
 the application.
 
-**Known gap:** save failures are currently invisible. `PersistenceViewModel` is bound to no view, so
-if a save fails the user still sees the success message. This is logged in
-`plan/handoffs/team-notes.md` and is a genuine tolerance-for-error defect, not a cosmetic one.
+**A gap we found and closed:** save failures used to be invisible. `PersistenceViewModel` was bound
+to no view, so if a save failed the user still saw the success message — a genuine
+tolerance-for-error defect, not a cosmetic one. `Main` now subscribes to the view model's status
+property and forwards it to a persistence status line in `MainView`, so a failed save says so on
+screen instead of failing silently.
 
 ## 6. Low Physical Effort
 
@@ -145,10 +148,11 @@ and spatial arrangement: the controls are standard-sized Swing buttons with 8px 
 adjacent controls, and the split pane lets a user allocate screen space to whichever region they
 need.
 
-Where we fail this principle is the minimum-size defect noted under Flexibility in Use: below ~700px
-a control is pushed outside the reachable area entirely. Setting a minimum window size and wrapping
-the control strip is the fix, and it is the single highest-value accessibility change still
-outstanding.
+The one way we used to fail this principle was the minimum-size defect noted under Flexibility in
+Use: below ~700px a control was pushed outside the reachable area entirely. `MainView` now sets a
+minimum window size of 820×500, which is the floor at which every control in the widest screen
+still fits. It is worth saying plainly that we did not find this by reading the layout code — we
+found it by resizing the window during a manual walkthrough.
 
 ---
 

@@ -105,7 +105,7 @@ Two strategies are available:
 ### Moving Average Crossover Strategy
 
 Signals a buy when the short-term moving average of closing prices crosses above the long-term
-average, and a sell when it crosses back below. It runs with a 5-day short window and a 20-day
+average, and a sell when it crosses back below. It defaults to a 5-day short window and a 20-day
 long window.
 
 ### RSI Momentum Strategy
@@ -114,8 +114,11 @@ Uses the Relative Strength Index over a 14-day period to flag momentum extremes:
 falls to the oversold threshold (30) or below, and a sell when it reaches the overbought
 threshold (70) or above.
 
-> The strategy parameters above are fixed defaults chosen to stay within the free-tier
-> ~100-day history limit. They are not yet configurable from the UI.
+> Both strategies are configurable from the UI. Save your parameters on the **Moving Average
+> Strategy** or **Momentum Strategy** screen and the next backtest uses them; the values above are
+> the defaults applied until you do, chosen to stay within the free tier's ~100-day history limit.
+> Keep a moving-average long window under ~90 — beyond that there is not enough history to produce
+> a crossover. Configurations are not saved between sessions.
 
 ---
 
@@ -218,7 +221,16 @@ This project uses the [Alpha Vantage API](https://www.alphavantage.co/documentat
    ```
    After `setx`, open a new terminal for the change to take effect.
 3. The application reads this key at runtime via `System.getenv("ALPHA_VANTAGE_API_KEY")`, at the
-   composition root only. There is no `.env` file and no default key in the source.
+   composition root only. No key is ever committed or defaulted in the source.
+
+   As a convenience, copy the committed [`.env.example`](.env.example) to a local `.env` and put your
+   key there. `.env` is gitignored, so it never reaches source control. Note the app does **not**
+   auto-load `.env` — load it into your shell before running, or add the variable to your IntelliJ
+   Run Configuration:
+   ```bash
+   cp .env.example .env   # then edit .env with your key
+   set -a; source .env; set +a
+   ```
 
 **This step is optional.** See [Running without an API key](#running-without-an-api-key) — the
 application is fully functional offline without one.
