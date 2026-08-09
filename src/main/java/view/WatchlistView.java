@@ -1,22 +1,20 @@
 package view;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.FlowLayout;
 import java.awt.FocusTraversalPolicy;
-import java.awt.GridLayout;
 import java.awt.KeyboardFocusManager;
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -69,6 +67,28 @@ public class WatchlistView extends JPanel {
     /** The column of the watchlist table that holds the symbol. */
     private static final int SYMBOL_COLUMN = 0;
 
+    /**
+     * The watchlist columns that hold figures - the price-day count and the latest close -
+     * indexed as {@code WatchlistViewModel.TICKER_COLUMNS} declares them.
+     */
+    private static final int[] TICKER_NUMERIC_COLUMNS = {2, 4};
+
+    /**
+     * The daily-price columns that hold figures: everything except the date, indexed as
+     * {@code WatchlistViewModel.PRICE_COLUMNS} declares them.
+     */
+    private static final int[] PRICE_NUMERIC_COLUMNS = {1, 2, 3, 4, 5};
+
+    /**
+     * Relative column widths for the watchlist table. The price-day count is wider than a
+     * count suggests because the presenter substitutes the words "Not loaded" into it, and
+     * the numeric renderer sets that column in monospace.
+     */
+    private static final int[] TICKER_COLUMN_WIDTHS = {58, 113, 88, 88, 78};
+
+    /** Relative column widths for the daily-price table: dates and volumes are the long ones. */
+    private static final int[] PRICE_COLUMN_WIDTHS = {95, 68, 68, 68, 68, 78};
+
     private final WatchlistViewModel viewModel;
     private final WatchlistController controller;
 
@@ -107,10 +127,20 @@ public class WatchlistView extends JPanel {
         this.viewModel = Objects.requireNonNull(viewModel, "View model cannot be null");
         this.controller = Objects.requireNonNull(controller, "Controller cannot be null");
 
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(Theme.MD, Theme.MD));
+        setBackground(Theme.BG);
+        // The one outer margin for the screen. Children keep no padding of their own, so the
+        // gap at the window edge stays a single number rather than a sum of four opinions.
+        setBorder(BorderFactory.createEmptyBorder(Theme.LG, Theme.LG, Theme.LG, Theme.LG));
         add(buildControls(), BorderLayout.NORTH);
         add(buildSplitPane(), BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
+        // After the tables exist: the renderers attach to columns, which only exist once the
+        // models have been handed to the tables.
+        TableStyler.numericColumns(tickerTable, TICKER_NUMERIC_COLUMNS);
+        TableStyler.numericColumns(priceTable, PRICE_NUMERIC_COLUMNS);
+        TableStyler.preferredWidths(tickerTable, TICKER_COLUMN_WIDTHS);
+        TableStyler.preferredWidths(priceTable, PRICE_COLUMN_WIDTHS);
         installFocusOrder();
 
         addButton.addActionListener(event -> onAdd());
@@ -128,13 +158,15 @@ public class WatchlistView extends JPanel {
      *
      * @return the assembled panel
      */
-    private JPanel buildControls() {
-        final JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+    private JComponent buildControls() {
         final JLabel tickerFieldLabel = new JLabel("Ticker symbol:");
         tickerFieldLabel.setLabelFor(tickerField);
         tickerFieldLabel.setDisplayedMnemonic('T');
+        tickerFieldLabel.setFont(Theme.FONT_UI);
+        tickerFieldLabel.setForeground(Theme.FG);
         tickerField.setToolTipText("A ticker symbol such as AAPL.");
         tickerField.getAccessibleContext().setAccessibleName("Ticker symbol");
+        Controls.styleField(tickerField);
 
         describe(addButton, 'A', "Add the ticker symbol in the field to your watchlist.");
         describe(removeButton, 'M', "Remove the ticker symbol in the field from your watchlist.");
@@ -142,11 +174,27 @@ public class WatchlistView extends JPanel {
         describe(loadPricesButton, 'L',
                 "Fetch price history for every ticker on the watchlist, one at a time.");
 
+        // Adding a ticker is what this screen is for, so it is the one primary action; the
+        // other three operate on something already in the list.
+        Controls.primary(addButton);
+        Controls.secondary(removeButton);
+        Controls.secondary(refreshButton);
+        Controls.secondary(loadPricesButton);
+
+        // A box row rather than a FlowLayout: FlowLayout centres its children and re-wraps
+        // them as the window narrows, which is what made this strip drift out of alignment
+        // with the table headings below it.
+        final Box controls = Box.createHorizontalBox();
         controls.add(tickerFieldLabel);
+        controls.add(Box.createHorizontalStrut(Theme.SM));
         controls.add(tickerField);
+        controls.add(Box.createHorizontalStrut(Theme.MD));
         for (final JButton button : buttons) {
             controls.add(button);
+            controls.add(Box.createHorizontalStrut(Theme.SM));
         }
+        controls.add(Box.createHorizontalGlue());
+        controls.setBorder(BorderFactory.createEmptyBorder(0, 0, Theme.MD, 0));
         return controls;
     }
 
@@ -160,6 +208,13 @@ public class WatchlistView extends JPanel {
                 buildTablePanel("Watchlist", tickerTable),
                 buildTablePanel("Daily prices", priceTable));
         splitPane.setResizeWeight(0.5);
+        // The divider is a rule the user can drag, not a piece of furniture: one pixel wide,
+        // no bevel, and no one-touch arrows hanging off it.
+        splitPane.setDividerSize(Theme.XS);
+        splitPane.setBorder(BorderFactory.createEmptyBorder());
+        splitPane.setBackground(Theme.RULE);
+        splitPane.setOneTouchExpandable(false);
+        splitPane.setContinuousLayout(true);
         return splitPane;
     }
 
@@ -169,14 +224,21 @@ public class WatchlistView extends JPanel {
      * @return a panel holding the status label above the error label
      */
     private JPanel buildFooter() {
-        final JPanel footer = new JPanel(new GridLayout(2, 1));
-        footer.setBorder(BorderFactory.createEmptyBorder(0, 8, 8, 8));
+        // BorderLayout, not GridLayout(2, 1): the grid gave the status line and the error
+        // line equal heights, which reads as two equally important rows when the error is
+        // the one that matters and is usually blank.
+        final JPanel footer = new JPanel(new BorderLayout(0, Theme.XS));
+        footer.setBackground(Theme.BG);
+        footer.setBorder(BorderFactory.createEmptyBorder(Theme.MD, 0, 0, 0));
         statusLabel.setFocusable(true);
+        statusLabel.setFont(Theme.FONT_UI);
+        statusLabel.setForeground(Theme.FG_MUTED);
         statusLabel.getAccessibleContext().setAccessibleName("Status");
-        errorLabel.setForeground(Color.RED.darker());
+        errorLabel.setFont(Theme.FONT_UI);
+        errorLabel.setForeground(Theme.DOWN);
         errorLabel.getAccessibleContext().setAccessibleName("Error");
-        footer.add(statusLabel);
-        footer.add(errorLabel);
+        footer.add(statusLabel, BorderLayout.NORTH);
+        footer.add(errorLabel, BorderLayout.SOUTH);
         return footer;
     }
 
@@ -188,10 +250,11 @@ public class WatchlistView extends JPanel {
      * @return the assembled panel
      */
     private static JPanel buildTablePanel(final String heading, final JTable table) {
-        final JLabel headingLabel = new JLabel(heading);
+        final JLabel headingLabel = Controls.heading(new JLabel(heading));
         headingLabel.setLabelFor(table);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getAccessibleContext().setAccessibleName(heading);
+        TableStyler.style(table);
 
         /*
          * Release Tab and Shift+Tab back to the focus traversal policy.
@@ -214,10 +277,11 @@ public class WatchlistView extends JPanel {
         table.setFocusTraversalKeys(
                 KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, null);
 
-        final JPanel panel = new JPanel(new BorderLayout(0, 4));
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        final JPanel panel = new JPanel(new BorderLayout(0, Theme.XS));
+        panel.setBackground(Theme.BG);
+        panel.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
         panel.add(headingLabel, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(TableStyler.wrap(table), BorderLayout.CENTER);
         return panel;
     }
 
