@@ -181,6 +181,17 @@ class ViewConstructionTest {
     }
 
     @Test
+    void theStatusBarCarriesTheDataSourceAndAClockBesideTheSaveMessage() {
+        MainView mainView = new MainView(new ViewManagerModel());
+        assertNotNull(labelNamed(mainView, "Market data source"));
+        JLabel clock = labelNamed(mainView, "Clock");
+        // Rendered before the window is shown, so the bar is never briefly a segment short.
+        // The timer that keeps it moving starts in addNotify, not in the constructor: these
+        // tests build a MainView per case and never show one.
+        assertTrue(clock.getText().matches("\\d{2}:\\d{2}:\\d{2}"), clock.getText());
+    }
+
+    @Test
     void aFailedSaveIsPrefixedWithTheWordErrorAndNotJustColoured() throws Exception {
         MainView mainView = new MainView(new ViewManagerModel());
         mainView.setPersistenceStatus("Could not save watchlist: disk full");

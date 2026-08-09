@@ -11,11 +11,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.Border;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -49,10 +52,21 @@ public class MainView extends JFrame {
     /** Thickness of the accent rule under the active nav button. */
     private static final int ACTIVE_RULE = 2;
 
+    /** Names the gateway every price on screen came from. */
+    private static final String SOURCE_SEGMENT = "ALPHA VANTAGE";
+
+    /** Wall clock format. Seconds included: a clock that does not visibly move reads as stale. */
+    private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    /** Clock tick, in milliseconds. */
+    private static final int CLOCK_INTERVAL = 1000;
+
     private final JPanel cardPanel;
     private final CardLayout cardLayout;
     private final ViewManagerModel viewManagerModel;
     private final JLabel persistenceStatusLabel = new JLabel(" ");
+    private final JLabel clockLabel = new JLabel();
+    private final Timer clock = new Timer(CLOCK_INTERVAL, event -> clockLabel.setText(now()));
     /** Nav buttons by the view name each one activates, so the active screen can be marked. */
     private final Map<String, JButton> navButtons = new LinkedHashMap<>();
 
@@ -230,13 +244,91 @@ public class MainView extends JFrame {
         persistenceStatusLabel.setForeground(Theme.FG_MUTED);
         persistenceStatusLabel.getAccessibleContext().setAccessibleName("Save status");
 
+        // The message keeps the whole left half to itself; the standing readouts are pushed
+        // right behind a glue and separated by rules, so a status message can never be
+        // mistaken for one of them or shorten one by growing.
+        final Box segments = Box.createHorizontalBox();
+        segments.add(persistenceStatusLabel);
+        segments.add(Box.createHorizontalGlue());
+        segments.add(separator());
+        segments.add(segment(SOURCE_SEGMENT, "Market data source"));
+        segments.add(separator());
+        segments.add(clockLabel);
+
+        clockLabel.setFont(Theme.FONT_MONO);
+        clockLabel.setForeground(Theme.FG_MUTED);
+        clockLabel.getAccessibleContext().setAccessibleName("Clock");
+        clockLabel.setText(now());
+
         JPanel statusBar = new JPanel(new BorderLayout());
         statusBar.setBackground(Theme.CHROME);
         statusBar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.RULE_STRONG),
                 BorderFactory.createEmptyBorder(Theme.XS, Theme.LG, Theme.XS, Theme.LG)));
-        statusBar.add(persistenceStatusLabel, BorderLayout.WEST);
+        statusBar.add(segments, BorderLayout.CENTER);
         return statusBar;
+    }
+
+    /**
+     * Builds one standing readout in the status bar.
+     *
+     * @param text the readout text
+     * @param name the accessible name describing what the readout reports
+     * @return the segment label
+     */
+    private static JLabel segment(String text, String name) {
+        final JLabel label = new JLabel(text);
+        label.setFont(Theme.FONT_MONO);
+        label.setForeground(Theme.FG_MUTED);
+        label.getAccessibleContext().setAccessibleName(name);
+        return label;
+    }
+
+    /**
+     * Builds the rule between two status bar segments.
+     *
+     * @return the separator label
+     */
+    private static JLabel separator() {
+        final JLabel rule = new JLabel("│");
+        rule.setFont(Theme.FONT_MONO);
+        rule.setForeground(Theme.FG_FAINT);
+        rule.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
+        // Punctuation between readouts, not a readout. Naming it would have a screen reader
+        // announce a vertical bar between every pair of segments.
+        rule.getAccessibleContext().setAccessibleName("");
+        return rule;
+    }
+
+    /**
+     * The wall clock, to the second.
+     *
+     * @return the current time as the status bar shows it
+     */
+    private static String now() {
+        return LocalTime.now().format(CLOCK_FORMAT);
+    }
+
+    /**
+     * Starts the clock once the window is on screen.
+     *
+     * <p>Started here and not in the constructor: the tests build a {@code MainView} for every
+     * case and never show one, and a timer started at construction would leave a live thread
+     * behind for each. A {@link Timer} fires on the event dispatch thread by construction, so
+     * the tick needs no marshalling of its own.
+     */
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        clock.setInitialDelay(0);
+        clock.start();
+    }
+
+    /** Stops the clock when the window leaves the screen, so it cannot outlive its label. */
+    @Override
+    public void removeNotify() {
+        clock.stop();
+        super.removeNotify();
     }
 
     /** Register a finished view under the given name so the nav bar / ViewManager can show it. */
