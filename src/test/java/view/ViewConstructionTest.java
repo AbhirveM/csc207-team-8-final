@@ -6,12 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.AbstractButton;
+import javax.swing.Action;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JTable;
+import javax.swing.KeyStroke;
 import javax.swing.UIManager;
 
 import org.junit.jupiter.api.Test;
@@ -126,6 +131,36 @@ class ViewConstructionTest {
         assertEquals('W', buttonNamed(mainView, "Watchlist").getMnemonic());
         assertEquals('S', buttonNamed(mainView, "Compare Strategies").getMnemonic());
         assertNotNull(labelNamed(mainView, "Save status"));
+    }
+
+    @Test
+    void everyFunctionKeyReachesItsScreenFromAnywhereInTheWindow() {
+        ViewManagerModel viewManagerModel = new ViewManagerModel();
+        MainView mainView = new MainView(viewManagerModel);
+        JComponent rootPane = mainView.getRootPane();
+        InputMap inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        // WHEN_IN_FOCUSED_WINDOW and not a binding on the button: the key has to work while
+        // focus is inside a table, which is where a user reading figures actually is.
+        for (int ordinal = 1; ordinal <= 5; ordinal++) {
+            KeyStroke key = KeyStroke.getKeyStroke("F" + ordinal);
+            assertNotNull(inputMap.get(key), "F" + ordinal + " is not bound");
+        }
+
+        Action showWatchlist = rootPane.getActionMap()
+                .get(inputMap.get(KeyStroke.getKeyStroke("F1")));
+        showWatchlist.actionPerformed(new ActionEvent(rootPane, ActionEvent.ACTION_PERFORMED, ""));
+        assertEquals(WatchlistViewModel.VIEW_NAME, viewManagerModel.getActiveView());
+    }
+
+    @Test
+    void navButtonsAreLabelledByFunctionKeyButSpokenByScreenName() {
+        MainView mainView = new MainView(new ViewManagerModel());
+        AbstractButton watchlist = buttonNamed(mainView, "Watchlist");
+        assertEquals("F1 WATCHLIST", watchlist.getText());
+        assertEquals("Watchlist", watchlist.getAccessibleContext().getAccessibleName());
+        // The mnemonic has to underline a character the label actually contains.
+        assertTrue(buttonNamed(mainView, "Compare Strategies").getText().indexOf('S') >= 0);
     }
 
     @Test
@@ -321,19 +356,26 @@ class ViewConstructionTest {
     }
 
     /**
-     * Finds the button carrying the given text anywhere under a container.
+     * Finds the button with the given name anywhere under a container.
+     *
+     * <p>The accessible name is checked before the visible text, because it is the durable
+     * identity of a button: the nav bar labels its screens "F1 WATCHLIST" for the eye while
+     * telling a screen reader "Watchlist", and it is the spoken name a user navigates by. A
+     * button that was never given one falls back to its text, which is what
+     * {@code AccessibleContext} reports for it anyway.
      *
      * @param root the container to search
-     * @param text the button's exact label
+     * @param name the button's accessible name, or its exact label
      * @return the button
      */
-    private static AbstractButton buttonNamed(Container root, String text) {
+    private static AbstractButton buttonNamed(Container root, String name) {
         for (AbstractButton button : descendants(root, AbstractButton.class)) {
-            if (text.equals(button.getText())) {
+            if (name.equals(button.getAccessibleContext().getAccessibleName())
+                    || name.equals(button.getText())) {
                 return button;
             }
         }
-        throw new AssertionError("no button labelled " + text);
+        throw new AssertionError("no button named " + name);
     }
 
     /**

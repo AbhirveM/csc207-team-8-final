@@ -1,19 +1,23 @@
 package view;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
-import java.awt.Font;
+import java.awt.event.ActionEvent;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import interface_adapter.backtest.BacktestViewModel;
@@ -98,18 +102,21 @@ public class MainView extends JFrame {
 
         JLabel wordmark = new JLabel("MarketLens");
         wordmark.setFont(Theme.FONT_TITLE);
-        wordmark.setForeground(Theme.FG);
+        wordmark.setForeground(Theme.ACCENT);
         navBar.add(wordmark);
         navBar.add(Box.createHorizontalStrut(Theme.XL));
 
-        // One nav button per screen. Each switches the CardLayout via the shared
-        // ViewManagerModel; the matching view is registered from app.Main by addView(...).
-        JButton watchlistBtn = addNavButton(navBar, "Watchlist", WatchlistViewModel.VIEW_NAME);
+        // One nav button per screen, numbered by the function key that reaches it. Each
+        // switches the CardLayout via the shared ViewManagerModel; the matching view is
+        // registered from app.Main by addView(...).
+        JButton watchlistBtn = addNavButton(navBar, 1, "Watchlist", WatchlistViewModel.VIEW_NAME);
         watchlistBtn.setMnemonic('W');
-        addNavButton(navBar, "Moving Average Strategy", MovingAverageViewModel.VIEW_NAME);
-        addNavButton(navBar, "Momentum Strategy", MomentumViewModel.VIEW_NAME);
-        addNavButton(navBar, "Backtest", BacktestViewModel.VIEW_NAME);
-        JButton comparisonBtn = addNavButton(navBar, "Compare Strategies", ComparisonViewModel.VIEW_NAME);
+        addNavButton(navBar, 2, "Moving Average", MovingAverageViewModel.VIEW_NAME);
+        addNavButton(navBar, 3, "Momentum", MomentumViewModel.VIEW_NAME);
+        addNavButton(navBar, 4, "Backtest", BacktestViewModel.VIEW_NAME);
+        // "Compare Strategies" rather than "Compare": the S mnemonic below has to underline
+        // a character that is actually in the label.
+        JButton comparisonBtn = addNavButton(navBar, 5, "Compare Strategies", ComparisonViewModel.VIEW_NAME);
         comparisonBtn.setMnemonic('S');
 
         // Buttons sit left; the glue absorbs the rest of the width so they never centre.
@@ -118,30 +125,62 @@ public class MainView extends JFrame {
     }
 
     /**
-     * Creates a borderless nav button, registers it against the view it activates, and adds
-     * it to the bar.
+     * Creates a borderless nav button, registers it against the view it activates, binds the
+     * matching function key, and adds it to the bar.
      *
      * @param navBar the bar to add the button to
-     * @param text the button label
+     * @param ordinal the screen's position, which is also its function key number
+     * @param name the screen's human name
      * @param viewName the view name this button switches the card layout to
      * @return the created button, so the caller can attach a mnemonic
      */
-    private JButton addNavButton(JPanel navBar, String text, String viewName) {
-        JButton button = new JButton(text);
-        button.setFont(Theme.FONT_UI);
+    private JButton addNavButton(JPanel navBar, int ordinal, String name, String viewName) {
+        JButton button = new JButton("F" + ordinal + " " + name.toUpperCase(Locale.ROOT));
+        button.setFont(Theme.FONT_MONO);
         button.setForeground(Theme.FG_MUTED);
         button.setBorder(inactiveNavBorder());
         button.setContentAreaFilled(false);
         button.setFocusPainted(false);
+        // The spoken name is the screen, not the shortcut. A screen reader announcing
+        // "F1 watchlist button" makes the user decode a label that is only there for the eye,
+        // and it is the identity the tests find these buttons by.
+        button.getAccessibleContext().setAccessibleName(name);
+        button.getAccessibleContext().setAccessibleDescription(
+                "Show the " + name + " screen. Shortcut F" + ordinal + ".");
+        button.setToolTipText(name + " (F" + ordinal + ")");
         button.addActionListener(event -> viewManagerModel.setActiveView(viewName));
+        bindFunctionKey(ordinal, viewName);
         navButtons.put(viewName, button);
         navBar.add(button);
         return button;
     }
 
     /**
-     * Marks one nav button as the active screen. The state is carried twice over - an accent
-     * rule and a bold weight - so it does not depend on colour vision.
+     * Binds one function key to a screen for the whole window.
+     *
+     * <p>{@code WHEN_IN_FOCUSED_WINDOW} rather than a binding on the button, so the key works
+     * wherever focus happens to be - a user reading a table should not have to leave it to
+     * change screen. Nothing else in the app binds F1 to F5.
+     *
+     * @param ordinal the function key number
+     * @param viewName the view name the key switches to
+     */
+    private void bindFunctionKey(int ordinal, String viewName) {
+        final String actionKey = "show." + viewName;
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke("F" + ordinal), actionKey);
+        getRootPane().getActionMap().put(actionKey, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                viewManagerModel.setActiveView(viewName);
+            }
+        });
+    }
+
+    /**
+     * Marks one nav button as the active screen. The state is carried three times over - an
+     * accent rule, a bold weight, and the accent foreground - so it does not depend on colour
+     * vision, and it is still legible if the rule is lost to a low-resolution display.
      *
      * @param viewName the name of the view that is now showing
      */
@@ -149,8 +188,8 @@ public class MainView extends JFrame {
         for (Map.Entry<String, JButton> entry : navButtons.entrySet()) {
             boolean active = entry.getKey().equals(viewName);
             JButton button = entry.getValue();
-            button.setFont(active ? Theme.FONT_UI.deriveFont(Font.BOLD) : Theme.FONT_UI);
-            button.setForeground(active ? Theme.FG : Theme.FG_MUTED);
+            button.setFont(active ? Theme.FONT_MONO_BOLD : Theme.FONT_MONO);
+            button.setForeground(active ? Theme.ACCENT : Theme.FG_MUTED);
             button.setBorder(active ? activeNavBorder() : inactiveNavBorder());
         }
     }
