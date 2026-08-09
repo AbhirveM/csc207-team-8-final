@@ -74,9 +74,23 @@ class ControlsTest {
         Controls.heading(label);
         assertEquals("WATCHLIST", label.getText());
         assertEquals(Theme.FONT_HEADING, label.getFont());
-        assertEquals(Theme.FG_MUTED, label.getForeground());
+        assertEquals(Theme.ACCENT, label.getForeground());
         // Shouting is a display choice; the spoken name keeps its original casing.
         assertEquals("Watchlist", label.getAccessibleContext().getAccessibleName());
+    }
+
+    @Test
+    void aFieldLabelIsCyanAndKeepsItsTextExactlyAsTheCallerWroteIt() {
+        JLabel label = new JLabel("Ticker symbol:");
+        label.setDisplayedMnemonic('T');
+        assertSame(label, Controls.fieldLabel(label));
+        assertEquals(Theme.KEY, label.getForeground());
+        // The mnemonic is stored as an index into the text, so a helper that rewrote the
+        // text - uppercasing it, say - would move the underline onto a different character.
+        assertEquals("Ticker symbol:", label.getText());
+        assertEquals('T', label.getDisplayedMnemonic());
+        // Words, not figures: the prose face, like a substitution in a numeric column.
+        assertEquals(Theme.FONT_UI, label.getFont());
     }
 
     @Test

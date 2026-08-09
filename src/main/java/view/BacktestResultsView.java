@@ -193,9 +193,7 @@ public class BacktestResultsView extends JPanel {
      * @param value the label holding the metric value
      */
     private static void addMetric(JPanel panel, int pair, int row, String caption, JLabel value) {
-        final JLabel captionLabel = new JLabel(caption);
-        captionLabel.setFont(Theme.FONT_UI);
-        captionLabel.setForeground(Theme.FG_MUTED);
+        final JLabel captionLabel = Controls.fieldLabel(new JLabel(caption));
         captionLabel.setLabelFor(value);
 
         final int leadingGap;

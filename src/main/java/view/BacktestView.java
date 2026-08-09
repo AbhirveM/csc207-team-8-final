@@ -179,10 +179,7 @@ public class BacktestView extends JPanel {
      * @return the styled label
      */
     private static JLabel controlLabel(String text) {
-        final JLabel label = new JLabel(text);
-        label.setFont(Theme.FONT_UI);
-        label.setForeground(Theme.FG);
-        return label;
+        return Controls.fieldLabel(new JLabel(text));
     }
 
     /**

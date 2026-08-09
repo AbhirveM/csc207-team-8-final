@@ -33,7 +33,7 @@ public final class Controls {
     public static JTextField styleField(JTextField field) {
         field.setFont(Theme.FONT_UI);
         field.setForeground(Theme.FG);
-        field.setBackground(Theme.BG);
+        field.setBackground(Theme.FIELD_BG);
         field.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Theme.RULE),
                 BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM)));
@@ -50,7 +50,7 @@ public final class Controls {
     public static JComboBox<?> styleComboBox(JComboBox<?> comboBox) {
         comboBox.setFont(Theme.FONT_UI);
         comboBox.setForeground(Theme.FG);
-        comboBox.setBackground(Theme.BG);
+        comboBox.setBackground(Theme.FIELD_BG);
         constrainHeight(comboBox, comboBox.getPreferredSize().width);
         return comboBox;
     }
@@ -63,7 +63,7 @@ public final class Controls {
      * @return the same button
      */
     public static JButton primary(JButton button) {
-        button.setFont(Theme.FONT_UI);
+        button.setFont(Theme.FONT_MONO);
         button.setForeground(Theme.ACCENT_FG);
         button.setBackground(Theme.ACCENT);
         button.setOpaque(true);
@@ -81,7 +81,7 @@ public final class Controls {
      * @return the same button
      */
     public static JButton secondary(JButton button) {
-        button.setFont(Theme.FONT_UI);
+        button.setFont(Theme.FONT_MONO);
         button.setForeground(Theme.FG);
         button.setBackground(Theme.BG);
         button.setOpaque(true);
@@ -94,7 +94,7 @@ public final class Controls {
     }
 
     /**
-     * Turns a label into a section heading: small, bold, muted, and uppercased. The visible
+     * Turns a label into a section heading: small, bold, amber, and uppercased. The visible
      * text is uppercased here rather than in the caller so the accessible name the caller
      * set keeps its original casing.
      *
@@ -103,9 +103,27 @@ public final class Controls {
      */
     public static JLabel heading(JLabel label) {
         label.setFont(Theme.FONT_HEADING);
-        label.setForeground(Theme.FG_MUTED);
+        label.setForeground(Theme.ACCENT);
         label.setText(label.getText().toUpperCase(Locale.ROOT));
         label.setBorder(BorderFactory.createEmptyBorder(0, 0, Theme.XS, 0));
+        return label;
+    }
+
+    /**
+     * Styles a form label: the cyan name of the value in the control beside it.
+     *
+     * <p>Deliberately neither uppercased nor restyled beyond the colour. A form label is the
+     * one label that regularly carries a displayed mnemonic, and that mnemonic is stored as
+     * an index into the text - rewriting the text would move the underline onto a different
+     * character. The prose face rather than the house monospace, for the same reason it is
+     * used in a substituted table cell: these are words, not figures.
+     *
+     * @param label the label to style
+     * @return the same label
+     */
+    public static JLabel fieldLabel(JLabel label) {
+        label.setFont(Theme.FONT_UI);
+        label.setForeground(Theme.KEY);
         return label;
     }
 

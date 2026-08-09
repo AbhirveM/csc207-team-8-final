@@ -111,13 +111,13 @@ public final class MomentumConfigurationView extends JPanel {
         panel.setBackground(Theme.BG);
 
         final JLabel periodLabel =
-                new JLabel("RSI Period:");
+                Controls.fieldLabel(new JLabel("RSI Period:"));
 
         final JLabel oversoldLabel =
-                new JLabel("Oversold Threshold:");
+                Controls.fieldLabel(new JLabel("Oversold Threshold:"));
 
         final JLabel overboughtLabel =
-                new JLabel("Overbought Threshold:");
+                Controls.fieldLabel(new JLabel("Overbought Threshold:"));
 
         periodLabel.setLabelFor(periodField);
         oversoldLabel.setLabelFor(oversoldField);

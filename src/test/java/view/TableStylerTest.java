@@ -60,6 +60,13 @@ class TableStylerTest {
     }
 
     @Test
+    void textCellsAreMonospaceTooSoEveryColumnSitsOnOneGrid() {
+        JLabel cell = render(0, "AAPL");
+        assertEquals(Theme.FONT_MONO, cell.getFont());
+        assertEquals(SwingConstants.LEADING, cell.getHorizontalAlignment());
+    }
+
+    @Test
     void numericCellsAreRightAlignedMonospace() {
         JLabel cell = render(1, "249.68");
         assertEquals(SwingConstants.RIGHT, cell.getHorizontalAlignment());
@@ -149,7 +156,19 @@ class TableStylerTest {
                 .getTableCellRendererComponent(table, "Symbol", false, false, -1, 0);
         assertEquals(Theme.FONT_HEADING, header.getFont());
         assertEquals(SwingConstants.LEADING, ((JLabel) header).getHorizontalAlignment());
-        assertEquals(Theme.FG_MUTED, header.getForeground());
+        assertEquals(Theme.ACCENT, header.getForeground());
+        // The header's own foreground is what an unrendered header paints, so both it and
+        // the renderer have to agree or half the columns keep the old colour.
+        assertEquals(Theme.ACCENT, table.getTableHeader().getForeground());
+    }
+
+    @Test
+    void oddRowsAreStripedAndSelectedRowsAreNot() {
+        // The stripe is what keeps the eye on one row across a wide table. It must not paint
+        // over a selection, which is the stronger signal and the one the accent is sized for.
+        assertEquals(Theme.BG, render(0, "AAPL").getBackground());
+        assertEquals(Theme.ROW_ALT, renderAt(1, 0, "MSFT", false).getBackground());
+        assertNotEquals(Theme.ROW_ALT, renderAt(1, 0, "MSFT", true).getBackground());
     }
 
     @Test
@@ -183,11 +202,24 @@ class TableStylerTest {
      * @return the rendered label
      */
     private JLabel render(int column, Object value) {
+        return renderAt(0, column, value, false);
+    }
+
+    /**
+     * Renders one cell at a given row through whatever renderer its column carries.
+     *
+     * @param row the row to render at, which decides the zebra stripe
+     * @param column the column to render through
+     * @param value the value to render
+     * @param selected whether the row is selected
+     * @return the rendered label
+     */
+    private JLabel renderAt(int row, int column, Object value, boolean selected) {
         TableStyler.numericColumns(table, 1);
         // getCellRenderer falls back to the table's default renderer for a column that has
         // none of its own, which is how the text columns are rendered.
-        return (JLabel) table.getCellRenderer(0, column)
-                .getTableCellRendererComponent(table, value, false, false, 0, column);
+        return (JLabel) table.getCellRenderer(row, column)
+                .getTableCellRendererComponent(table, value, selected, false, row, column);
     }
 
     /**

@@ -159,11 +159,9 @@ public class WatchlistView extends JPanel {
      * @return the assembled panel
      */
     private JComponent buildControls() {
-        final JLabel tickerFieldLabel = new JLabel("Ticker symbol:");
+        final JLabel tickerFieldLabel = Controls.fieldLabel(new JLabel("Ticker symbol:"));
         tickerFieldLabel.setLabelFor(tickerField);
         tickerFieldLabel.setDisplayedMnemonic('T');
-        tickerFieldLabel.setFont(Theme.FONT_UI);
-        tickerFieldLabel.setForeground(Theme.FG);
         tickerField.setToolTipText("A ticker symbol such as AAPL.");
         tickerField.getAccessibleContext().setAccessibleName("Ticker symbol");
         Controls.styleField(tickerField);

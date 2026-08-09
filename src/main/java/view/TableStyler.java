@@ -26,8 +26,8 @@ import java.awt.Font;
  */
 public final class TableStyler {
 
-    /** Renderer for text columns: left aligned, with breathing room either side. */
-    private static final DefaultTableCellRenderer TEXT = new PaddedRenderer(SwingConstants.LEADING, Theme.FONT_UI);
+    /** Renderer for text columns: left aligned, monospace, with breathing room either side. */
+    private static final DefaultTableCellRenderer TEXT = new PaddedRenderer(SwingConstants.LEADING, Theme.FONT_MONO);
 
     /** Renderer for numeric columns: monospace and right aligned so decimal points line up. */
     private static final DefaultTableCellRenderer NUMERIC = new NumericRenderer();
@@ -45,7 +45,7 @@ public final class TableStyler {
         table.setRowHeight(Theme.ROW_HEIGHT);
         table.setBackground(Theme.BG);
         table.setForeground(Theme.FG);
-        table.setFont(Theme.FONT_UI);
+        table.setFont(Theme.FONT_MONO);
         table.setGridColor(Theme.RULE);
         table.setShowVerticalLines(false);
         table.setShowHorizontalLines(true);
@@ -118,7 +118,7 @@ public final class TableStyler {
     }
 
     /**
-     * Styles a table header as chrome: heading type, muted, left aligned, over a rule.
+     * Styles a table header as chrome: heading type, amber, left aligned, over a rule.
      *
      * @param header the header to style; ignored when the table has none
      */
@@ -127,7 +127,10 @@ public final class TableStyler {
             return;
         }
         header.setBackground(Theme.CHROME);
-        header.setForeground(Theme.FG_MUTED);
+        // Set on the header and again in HeaderRenderer below. Both take effect - the header's
+        // own foreground is what an unrendered header paints - so changing one alone leaves
+        // half the columns the old colour.
+        header.setForeground(Theme.ACCENT);
         header.setFont(Theme.FONT_HEADING);
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.RULE));
         header.setPreferredSize(new Dimension(0, Theme.HEADER_HEIGHT));
@@ -197,7 +200,7 @@ public final class TableStyler {
             if (component instanceof JLabel label) {
                 label.setHorizontalAlignment(SwingConstants.LEADING);
                 label.setFont(Theme.FONT_HEADING);
-                label.setForeground(Theme.FG_MUTED);
+                label.setForeground(Theme.ACCENT);
                 label.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
             }
             return component;
@@ -230,7 +233,30 @@ public final class TableStyler {
             setHorizontalAlignment(alignment);
             setFont(fontFor(value));
             applyPadding(this, hasFocus);
+            stripe(table, isSelected, row);
             return this;
+        }
+
+        /**
+         * Paints the zebra stripe on odd rows.
+         *
+         * <p>The stripe is a second reading aid rather than decoration: a dense table on a
+         * single flat surface loses the row the eye is tracking somewhere around the fourth
+         * column. It is deliberately a two-step lift off the data surface, so it separates
+         * rows without becoming a band the eye reads as meaning something.
+         *
+         * <p>A selected row is left alone: the selection band is the stronger signal and
+         * painting a stripe over it would break the accent's contrast with the text on it.
+         * The header renders at row {@code -1}, which is odd but is not a row.
+         *
+         * @param table the table being rendered
+         * @param isSelected whether this row is selected
+         * @param row the view row index
+         */
+        private void stripe(JTable table, boolean isSelected, int row) {
+            if (!isSelected) {
+                setBackground(row % 2 == 1 ? Theme.ROW_ALT : table.getBackground());
+            }
         }
 
         /**

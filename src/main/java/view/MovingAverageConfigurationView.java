@@ -103,10 +103,7 @@ public final class MovingAverageConfigurationView extends JPanel
      * @return the styled label
      */
     private static JLabel label(String text) {
-        final JLabel formLabel = new JLabel(text);
-        formLabel.setFont(Theme.FONT_UI);
-        formLabel.setForeground(Theme.FG);
-        return formLabel;
+        return Controls.fieldLabel(new JLabel(text));
     }
 
     /**
