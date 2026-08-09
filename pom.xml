@@ -32,6 +32,17 @@
             <artifactId>json</artifactId>
             <version>20240303</version>
         </dependency>
+
+        <!--
+          FlatLaf (Apache-2.0) supplies the flat look-and-feel the Swing views are
+          styled against. Metal's bevels and gradients cannot be styled away, so the
+          L&F is installed in app.Main before any component is constructed.
+        -->
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.6</version>
+        </dependency>
     </dependencies>
 
     <build>
