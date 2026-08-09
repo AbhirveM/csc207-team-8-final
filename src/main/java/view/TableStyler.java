@@ -149,10 +149,10 @@ public final class TableStyler {
         if (hasFocus) {
             renderer.setBorder(BorderFactory.createCompoundBorder(
                     renderer.getBorder(),
-                    BorderFactory.createEmptyBorder(0, Theme.XS - 1, 0, Theme.XS - 1)));
+                    BorderFactory.createEmptyBorder(0, Theme.SM - 1, 0, Theme.SM - 1)));
         }
         else {
-            renderer.setBorder(BorderFactory.createEmptyBorder(0, Theme.XS, 0, Theme.XS));
+            renderer.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
         }
     }
 
@@ -198,7 +198,7 @@ public final class TableStyler {
                 label.setHorizontalAlignment(SwingConstants.LEADING);
                 label.setFont(Theme.FONT_HEADING);
                 label.setForeground(Theme.FG_MUTED);
-                label.setBorder(BorderFactory.createEmptyBorder(0, Theme.XS, 0, Theme.XS));
+                label.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
             }
             return component;
         }

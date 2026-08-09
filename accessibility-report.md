@@ -20,7 +20,7 @@ Every action on the watchlist screen is reachable by both mouse and keyboard, an
 degraded relative to the other. Each of the four controls carries a mnemonic (`Alt+T` to reach the
 ticker field, `Alt+A` add, `Alt+M` remove, `Alt+R` refresh, `Alt+L` load prices), and an explicit
 focus traversal policy walks the screen in its reading order rather than in the arbitrary order
-components happened to be added (`installFocusOrder`, `WatchlistView.java:218`). A keyboard-only user
+components happened to be added (`installFocusOrder`, `WatchlistView.java:304`). A keyboard-only user
 and a mouse user reach the same functions by equivalent means, rather than the keyboard being a
 lesser fallback path.
 
@@ -34,7 +34,7 @@ information a sighted user reads from the visible labels.
 *The design accommodates a wide range of individual preferences and abilities.*
 
 The two data tables sit in a `JSplitPane` with a draggable divider (`buildSplitPane`,
-`WatchlistView.java:157`), so a user can give whichever table they care about more of the window —
+`WatchlistView.java:206`), so a user can give whichever table they care about more of the window —
 useful for someone running a magnifier or a large system font. The window itself is resizable and
 the layout reflows.
 
@@ -64,7 +64,7 @@ written in one place and is consistent everywhere, rather than being assembled a
 call sites. Feedback is phrased as a complete sentence — "Added AAPL with 120 days of price
 history." — rather than as a code or a bare status flag.
 
-Table cells are not editable (`ReadOnlyTableModel`, `WatchlistView.java:410`), which removes a whole
+Table cells are not editable (`ReadOnlyTableModel`, `WatchlistView.java:496`), which removes a whole
 class of "I clicked in the table and something changed" confusion; the watchlist is modified only
 through the clearly labelled buttons.
 
@@ -77,7 +77,7 @@ This is the principle we designed hardest against, because it is where a Swing a
 easily fails colour-blind and screen-reader users.
 
 **Errors are never signalled by colour alone.** The error line is always prose, prefixed with the
-literal word `"Error: "` (`renderError`, `WatchlistView.java:382`). The red foreground is set once at
+literal word `"Error: "` (`renderError`, `WatchlistView.java:468`). The red foreground is set once at
 construction and is decoration layered on top of the words — remove the colour entirely and no
 information is lost. The same text is pushed into the label's accessible description, so a screen
 reader announces it too.
@@ -85,6 +85,31 @@ reader announces it too.
 The error line is never hidden when empty; it renders a blank space so the row keeps its height and
 nothing below it jumps when an error appears or clears. Layout stability matters for users tracking
 the screen with a magnifier.
+
+**The visual restyle kept this rule and extended it to three new surfaces.** Nothing added by the
+restyle carries meaning in colour alone:
+
+- **Signed figures** — the returns columns on the backtest and comparison screens are rendered with
+  an explicit `+` or `-` in front of every value, and the up/down colour is applied on top of the
+  sign rather than instead of it (`TableStyler.SignedRenderer`). On a selected row, where the accent
+  fill would put the direction colour below contrast, the colour is dropped and the sign alone
+  carries the meaning.
+- **The active screen in the navigation bar** — marked with a two-pixel accent rule *and* a bold
+  weight, so the current screen is identifiable without distinguishing the accent from grey
+  (`MainView.markActiveView`).
+- **The window's save-status line** — a failed save is now prefixed with the literal word
+  `"Error: "` before the colour is applied, matching what the watchlist error line already did, and
+  the same text is pushed into the label's accessible description
+  (`MainView.setPersistenceStatus`).
+
+The two direction colours are contrast-checked rather than eyeballed: `ThemeTest` asserts that both
+clear the WCAG AA ratio of 4.5:1 against the surface they are drawn on, so the check fails the build
+rather than relying on someone remembering to re-measure.
+
+Table cells gained interior padding during the restyle, and the focused cell keeps the look and
+feel's focus highlight nested inside that padding rather than having it replaced — the highlight is
+the only thing showing a keyboard user which cell they are on
+(`TableStyler.applyPadding`).
 
 **A defect we found and fixed here.** During the manual accessibility walkthrough we discovered that
 `JTable` installs its own focus traversal key sets, so Tab moved between table *cells* forever
@@ -140,10 +165,23 @@ user's body size, posture or mobility.*
 
 This principle is written for physical products and applies only partially to a desktop application,
 which does not control the physical space it is used in. The parts that do translate are target size
-and spatial arrangement: the controls are standard-sized Swing buttons with 8px padding between them
-(`FlowLayout(LEFT, 8, 8)`), which keeps them comfortably clickable and reduces mis-clicks between
-adjacent controls, and the split pane lets a user allocate screen space to whichever region they
-need.
+and spatial arrangement: the controls are standard-sized Swing buttons separated by a consistent 8px
+gap (`Theme.SM` struts in the control row's `Box`, which replaced a centring `FlowLayout` during the
+restyle), which keeps them comfortably clickable and reduces mis-clicks between adjacent controls,
+and the split pane lets a user allocate screen space to whichever region they need.
+
+One genuine trade-off the restyle made here: table rows are now 22px rather than the look and feel's
+default. That density is deliberate for a table of figures, but it does make a row a slightly smaller
+mouse target, and it is the change most worth revisiting if a user reports difficulty selecting rows.
+Cell padding was kept at 8px each side rather than tightened further, precisely because the row is
+already shorter.
+
+**A new known gap, found by rendering the window at its minimum size.** At the 820px minimum width
+the daily-prices table cannot fit six columns of figures, and every price truncates to `24...`. The
+figures are still reachable — the split-pane divider is draggable and the window is resizable — but
+a user working at the minimum size sees a table of ellipses rather than numbers, which is worse than
+a truncated company name because a partial figure is not merely shortened, it is misleading. The
+honest fix is to drop or combine a column below a threshold width rather than to shrink the type.
 
 Where we fail this principle is the minimum-size defect noted under Flexibility in Use: below ~700px
 a control is pushed outside the reachable area entirely. Setting a minimum window size and wrapping
