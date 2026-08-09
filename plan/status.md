@@ -2,7 +2,44 @@
 
 Current phase: **none — all five phases complete.**
 Active agents: none.
-Branch: `chore/presentation-readiness` (PR #24 merged; PR #27 open)
+Branch: `main` at `beee8c2`. Every branch this plan used is merged; no PRs or issues are open.
+
+## The team story is wired end to end (2026-08-09)
+
+**The largest risk this file used to carry is closed.** PRs #29–#34 landed after the section below
+was written. `app/Main.java` now constructs `BacktestEngine`, `BacktestViewModel`,
+`BacktestPresenter`, `CompletedBacktestStore`, `RunBacktestInteractor`, `BacktestController` and
+`BacktestView`, and an anonymous `RunBacktestOutputBoundary` decorator files each successful run
+into the store the Compare screen reads. `MainView` carries five nav buttons. So **add a stock →
+configure a strategy → run a backtest → compare results** is reachable by a user, and the Compare
+screen is no longer permanently empty.
+
+Also closed since: the minimum window size (`MainView` sets 820×500), the invisible save failures
+(`Main` binds `PersistenceViewModel` to a status line in `MainView`), and the last 19 Checkstyle
+violations (PR #33).
+
+**Verified build on `main`, 2026-08-09:** `mvn clean verify` — BUILD SUCCESS, 0 Checkstyle
+violations, **490 tests**, 0 failures, **70.86% overall line coverage** (1549/2186).
+
+**Coverage had slipped below the 70% team target** — it measured 69.81% (1526/2186) once PRs
+#29–#32 landed wired-but-untested classes, down from 73.1%. Closed by covering
+`interface_adapter.persistence`, which was **0%** (0/23 lines) despite `PersistencePresenter` and
+`PersistenceViewModel` both being live in `Main`; it is now 100% and the project clears the target
+with ~19 lines of margin. `PersistencePresenterTest` pins the case that motivated the binding in the
+first place: a failed save must replace "Watchlist saved." rather than leave it on screen.
+
+Remaining per-package: `view` 15.73% and `app` 0% (composition root, uncovered by design) are the
+two large uncovered areas; `interface_adapter.momentum` 76.32%, `interface_adapter.comparison`
+79.17%. Everything in `use_case` and `interface_adapter.watchlist` is at or near 100%.
+
+⚠️ **Before the demo, every member must delete their local `watchlist.dat`.** PR #23 added both new
+configuration fields *and* `serialVersionUID = 1L` to `WatchlistEntry`, which is exactly the change
+`vision.md` §5.2 warned would make older saved files unreadable. The recovery path then opens on an
+empty watchlist, which on stage reads as a persistence bug rather than a format change.
+
+---
+
+## Historical record — the state as of 2026-08-08
 
 **The plan is finished, and both items it used to list as owed are now done:**
 
@@ -36,9 +73,9 @@ Done on `chore/presentation-readiness`, after nobody claimed the gaps raised in
 **Current build:** `mvn clean verify` — 0 Checkstyle violations, **461 tests**, 0 failures,
 **73.1%** overall line coverage (1247/1706).
 
-**Still open, and not mine to close** — see `plan/handoffs/team-raise-2026-08-08.md` §1:
-the run-backtest use case is still not constructed in `Main`, so there is no end-to-end
-demo path. That is the largest remaining risk to the Functionality mark.
+~~**Still open, and not mine to close**~~ — the run-backtest wiring gap raised in
+`plan/handoffs/team-raise-2026-08-08.md` §1 was **picked up and closed by PR #29**. See the
+2026-08-09 section at the top of this file.
 
 ## Completed phases
 

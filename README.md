@@ -105,7 +105,7 @@ Two strategies are available:
 ### Moving Average Crossover Strategy
 
 Signals a buy when the short-term moving average of closing prices crosses above the long-term
-average, and a sell when it crosses back below. It runs with a 5-day short window and a 20-day
+average, and a sell when it crosses back below. It defaults to a 5-day short window and a 20-day
 long window.
 
 ### RSI Momentum Strategy
@@ -114,8 +114,11 @@ Uses the Relative Strength Index over a 14-day period to flag momentum extremes:
 falls to the oversold threshold (30) or below, and a sell when it reaches the overbought
 threshold (70) or above.
 
-> The strategy parameters above are fixed defaults chosen to stay within the free-tier
-> ~100-day history limit. They are not yet configurable from the UI.
+> Both strategies are configurable from the UI. Save your parameters on the **Moving Average
+> Strategy** or **Momentum Strategy** screen and the next backtest uses them; the values above are
+> the defaults applied until you do, chosen to stay within the free tier's ~100-day history limit.
+> Keep a moving-average long window under ~90 — beyond that there is not enough history to produce
+> a crossover. Configurations are not saved between sessions.
 
 ---
 
