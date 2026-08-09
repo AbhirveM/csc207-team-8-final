@@ -1,6 +1,6 @@
 package view;
 
-import com.formdev.flatlaf.FlatLightLaf;
+import com.formdev.flatlaf.FlatDarkLaf;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -69,7 +69,7 @@ public final class LookAndFeel {
 
     private static void installOnEventThread() {
         try {
-            UIManager.setLookAndFeel(new FlatLightLaf());
+            UIManager.setLookAndFeel(new FlatDarkLaf());
         }
         // LinkageError, not just the checked exception: if flatlaf.jar is absent from the
         // runtime classpath the failure is a NoClassDefFoundError at this line, which a catch
@@ -94,6 +94,12 @@ public final class LookAndFeel {
     /**
      * Pushes Theme tokens into the shared defaults. Anything set here is one thing
      * the views do not have to set on every component they build.
+     *
+     * <p>The dark theme has to set more keys than the light one did. Under
+     * {@code FlatLightLaf} anything left unset landed on a near-white surface that
+     * happened to match {@code BG}, so a key nobody had thought about still looked
+     * right. Nothing under {@code FlatDarkLaf} matches by accident, so every surface a
+     * user can see is named here rather than inherited.
      */
     private static void applyThemeDefaults() {
         UIManager.put("defaultFont", Theme.FONT_UI);
@@ -104,9 +110,10 @@ public final class LookAndFeel {
         UIManager.put("Table.foreground", Theme.FG);
         UIManager.put("Table.selectionBackground", Theme.ACCENT);
         UIManager.put("Table.selectionForeground", Theme.ACCENT_FG);
+        UIManager.put("Table.alternateRowColor", Theme.ROW_ALT);
         UIManager.put("Table.intercellSpacing", new Dimension(0, 0));
         UIManager.put("TableHeader.background", Theme.CHROME);
-        UIManager.put("TableHeader.foreground", Theme.FG_MUTED);
+        UIManager.put("TableHeader.foreground", Theme.ACCENT);
         UIManager.put("TableHeader.separatorColor", Theme.RULE);
         UIManager.put("TableHeader.height", Theme.HEADER_HEIGHT);
 
@@ -121,12 +128,33 @@ public final class LookAndFeel {
 
         UIManager.put("ScrollBar.width", SCROLLBAR_WIDTH);
         UIManager.put("ScrollBar.showButtons", Boolean.FALSE);
+        UIManager.put("ScrollBar.track", Theme.BG);
+        UIManager.put("ScrollBar.thumb", Theme.RULE_STRONG);
 
         UIManager.put("Panel.background", Theme.BG);
-        UIManager.put("TextField.background", Theme.BG);
-        UIManager.put("TextArea.background", Theme.BG);
         UIManager.put("Label.foreground", Theme.FG);
+
+        // Inputs sit one step above the data surface: on a pure BG fill a field has no
+        // edge of its own and reads as a hole in the panel rather than somewhere to type.
+        UIManager.put("TextField.background", Theme.FIELD_BG);
+        UIManager.put("TextField.foreground", Theme.FG);
+        UIManager.put("TextField.caretForeground", Theme.ACCENT);
+        UIManager.put("TextArea.background", Theme.FIELD_BG);
+        UIManager.put("TextArea.foreground", Theme.FG);
+        UIManager.put("TextArea.caretForeground", Theme.ACCENT);
+        UIManager.put("ComboBox.background", Theme.FIELD_BG);
+        UIManager.put("ComboBox.foreground", Theme.FG);
+        UIManager.put("ComboBox.buttonBackground", Theme.FIELD_BG);
+        UIManager.put("ComboBox.buttonArrowColor", Theme.FG_MUTED);
+
+        UIManager.put("Button.background", Theme.BG);
+        UIManager.put("Button.foreground", Theme.FG);
+
+        UIManager.put("ToolTip.background", Theme.CHROME);
+        UIManager.put("ToolTip.foreground", Theme.FG);
+
         UIManager.put("SplitPane.background", Theme.RULE);
         UIManager.put("SplitPaneDivider.gripColor", Theme.RULE);
+        UIManager.put("SplitPaneDivider.draggingColor", Theme.ACCENT);
     }
 }
