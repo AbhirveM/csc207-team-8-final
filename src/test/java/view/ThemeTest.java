@@ -123,8 +123,50 @@ class ThemeTest {
 
     @Test
     void surfacesAreDistinctSoTheChromeReadsAsChrome() {
-        assertEquals(Color.WHITE, Theme.BG);
+        assertEquals(new Color(0x0A0A0A), Theme.BG);
         assertTrue(contrastRatio(Theme.RULE, Theme.BG) > 1.0);
-        assertTrue(relativeLuminance(Theme.RULE_STRONG) < relativeLuminance(Theme.RULE));
+        // Inverted against the light theme on purpose: on a near-black surface a region
+        // boundary reads by emitting more light than the hairline grid, not less.
+        assertTrue(relativeLuminance(Theme.RULE_STRONG) > relativeLuminance(Theme.RULE));
+        // The field and stripe surfaces have to sit above the data surface to read at all,
+        // but below the chrome, or a field would look like part of the window frame.
+        assertTrue(relativeLuminance(Theme.FIELD_BG) > relativeLuminance(Theme.BG));
+        assertTrue(relativeLuminance(Theme.ROW_ALT) > relativeLuminance(Theme.BG));
+        assertTrue(relativeLuminance(Theme.CHROME) > relativeLuminance(Theme.FIELD_BG));
+    }
+
+    @Test
+    void theAccentAndTheKeyColourBothClearAaContrastAgainstTheDataSurface() {
+        assertTrue(contrastRatio(Theme.ACCENT, Theme.BG) >= MINIMUM_CONTRAST,
+                "ACCENT on BG measured " + contrastRatio(Theme.ACCENT, Theme.BG));
+        assertTrue(contrastRatio(Theme.KEY, Theme.BG) >= MINIMUM_CONTRAST,
+                "KEY on BG measured " + contrastRatio(Theme.KEY, Theme.BG));
+        // Both also appear on the chrome: the accent on panel bands and table headers, the
+        // key colour on form labels beside a field.
+        assertTrue(contrastRatio(Theme.ACCENT, Theme.CHROME) >= MINIMUM_CONTRAST);
+        assertTrue(contrastRatio(Theme.KEY, Theme.CHROME) >= MINIMUM_CONTRAST);
+    }
+
+    @Test
+    void directionColoursSurviveTheZebraStripeTheyAreDrawnOn() {
+        // Half the rows in every table are ROW_ALT rather than BG, so contrast-checking
+        // against BG alone would leave the other half unmeasured.
+        assertTrue(contrastRatio(Theme.UP, Theme.ROW_ALT) >= MINIMUM_CONTRAST,
+                "UP on ROW_ALT measured " + contrastRatio(Theme.UP, Theme.ROW_ALT));
+        assertTrue(contrastRatio(Theme.DOWN, Theme.ROW_ALT) >= MINIMUM_CONTRAST,
+                "DOWN on ROW_ALT measured " + contrastRatio(Theme.DOWN, Theme.ROW_ALT));
+        assertTrue(contrastRatio(Theme.FG, Theme.FIELD_BG) >= MINIMUM_CONTRAST);
+    }
+
+    @Test
+    void theHouseFaceIsMonospaceAndCarriesTheHeadingAndTitleScale() {
+        // Mono-first typography: headings and titles are derived from the mono face, not the
+        // prose face, so a heading sits on the same grid as the figures under it.
+        assertEquals(Theme.FONT_MONO.getFamily(), Theme.FONT_HEADING.getFamily());
+        assertEquals(Theme.FONT_MONO.getFamily(), Theme.FONT_TITLE.getFamily());
+        assertEquals(Theme.FONT_MONO.getFamily(), Theme.FONT_MONO_BOLD.getFamily());
+        assertEquals(Theme.FONT_MONO.getSize(), Theme.FONT_MONO_BOLD.getSize());
+        assertTrue(Theme.FONT_MONO_BOLD.isBold());
+        assertTrue(!Theme.FONT_MONO.isBold());
     }
 }
