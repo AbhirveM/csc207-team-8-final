@@ -2,9 +2,38 @@
 
 Current phase: **none — all five phases complete.**
 Active agents: none.
-Branch: `main` at `beee8c2`. Every branch this plan used is merged; no PRs or issues are open.
+Branch: `main` at `6657298`. Every branch this plan used is merged; no PRs or issues are open.
 
-## The team story is wired end to end (2026-08-09)
+## Verified build on merged `main`, 2026-08-10
+
+`mvn clean verify -B` at `6657298` (the PR #50 charts merge), run twice, **BUILD SUCCESS** both
+times with identical results:
+
+| Metric | Value |
+|---|---|
+| Tests | **681**, 0 failures, 0 errors, 0 skipped |
+| Checkstyle | **0 violations** |
+| Overall line coverage | **90.25%** (3118 / 3455) |
+| Overall branch coverage | **85.14%** (722 / 848) |
+| Interactor line coverage | **98.33%** (236 / 240) |
+
+**The coverage-target risk this file used to carry is closed with room to spare.** The 69.81%
+slip described in the 2026-08-09 section below is history: coverage is now 20 points above the
+70% team target, and the project clears the rubric's 5/5 Testing band on both conditions
+(>90% interactor, >70% overall).
+
+Per-package, the two large uncovered areas are unchanged in kind but renamed and much improved:
+`app` 20.7% (composition root, uncovered by design) and `views` 87.3% — the old `view` package
+was 15.73%; PR #44 and PR #50 brought Swing code under test. `views.chart` is 100%.
+`interface_adapter.momentum` 80.4% and `interface_adapter.comparison` 88.1% are now the weakest
+adapter packages.
+
+Full per-package and per-class tables, plus the untested-code accounting:
+`plan/handoffs/verify-on-merged-main-2026-08-10.md`.
+
+---
+
+## Historical record — the team story wired end to end (2026-08-09)
 
 **The largest risk this file used to carry is closed.** PRs #29–#34 landed after the section below
 was written. `app/Main.java` now constructs `BacktestEngine`, `BacktestViewModel`,

@@ -93,22 +93,31 @@ files the watchlist vertical uses. Those three use cases also pass entities acro
 instead of dedicated input/output data objects — see §4.
 
 The two configuration use cases produce a validated configuration object held in their view models.
-`BacktestView` reads those view models when building a strategy, falling back to `(5, 20)` for
-Moving Average and `(14, 30, 70)` for Momentum until the user saves their own. The configurations
+`BacktestView` reads those view models for the numbers and passes them through
+`BacktestController` as plain `int`s and `double`s — the interactor is what builds the strategy —
+falling back to `(5, 20)` for Moving Average and `(14, 30, 70)` for Momentum until the user saves
+their own. The configurations
 are **not** persisted — see §4.
 
 ## 4. Known violations, stated rather than hidden
 
 A grader will run these checks, so we name them ourselves.
 
-- **`BacktestView` imports `entity`.** It names eight entity types — `Stock`, `Ticker`,
-  `DailyPrice`, `TradingStrategy` and both strategy and configuration classes — because the view
-  itself decides which strategy object to construct before handing it to the controller. That
-  crosses from Frameworks & Drivers straight past the adapter layer. The fix is to pass a strategy
-  *choice* (an enum or string) through `BacktestController` and let the interactor build the
-  strategy, the same shape the watchlist screen already uses.
-  *(`ComparisonView` and `BacktestResultsView` had the same problem and no longer do: their view
-  models now carry display-ready records and the presenters do the formatting.)*
+No class under `src/main/java` imports against the direction of control any more. The view layer
+imports no `entity` and no `data_access`, and `entity` and `use_case` import nothing outward. The
+five `interface_adapter` classes that import `entity` (`BacktestPresenter`, `ComparisonPresenter`,
+`CompletedBacktestStore`, `MomentumPresenter`, `PersistencePresenter`) point *inward*, which the
+Dependency Rule allows.
+
+The view layer holds exactly one `use_case` import, so a grep turns it up rather than the zero a
+blanket claim would promise: `WatchlistView` imports `use_case.watchlist.ChartPeriod`, the enum the
+period combo's model holds. It points inward, and it carries no behaviour — no rule about how a
+period is applied lives in the view, which hands the chosen constant to the controller and paints
+what comes back, exactly as it does with a ticker symbol. The class javadoc says the same thing at
+the source.
+
+What remains are design smells rather than import-direction violations.
+
 - **Entities cross some boundaries.** The Member-4 use cases declare boundaries that pass `Watchlist`
   and `List<BacktestResult>` directly rather than output-data DTOs. `CompareStrategies` has no input
   data class at all, and its `ComparisonOutputData` exposes public mutable fields. The four watchlist
@@ -120,6 +129,24 @@ A grader will run these checks, so we name them ourselves.
   They are also global rather than per-ticker, despite `WatchlistEntry` being modelled per-ticker.
 - **`BacktestEngine` and the strategies live in `entity`.** Defensible — they are pure domain rules
   with no I/O — but worth being ready to justify.
+
+### Fixed: the view layer no longer imports entities
+
+`BacktestView` used to name eight entity types — `Stock`, `Ticker`, `DailyPrice`,
+`TradingStrategy` and both strategy and configuration classes — because the view itself decided
+which strategy object to construct, and it read `Stock` and `DailyPrice` out of
+`use_case.watchlist.StockRepository`. That crossed from Frameworks & Drivers straight past the
+adapter layer. It is fixed: the view now names the strategy by *which* controller method it calls
+(`runMovingAverageBacktest` / `runMomentumBacktest`), passes only plain numbers, and the interactor
+builds the strategy from a `RunBacktestInputData` factory — the same shape the watchlist screen
+already used. Closed by `3183fa1` (PR #49); `ComparisonView` and `BacktestResultsView` were cleaned
+earlier in `cca8f63`.
+
+One caveat, so a whole-tree grep holds no surprises: seven **test** files import `data_access`
+implementations — the four watchlist interactor tests plus `app.IntegrationWiringTest`,
+`use_case.watchlist.MarketDataHandoffTest` and `use_case.watchlist.WatchlistSnapshotFactoryTest`.
+That is test wiring, not production dependency direction — the rule is about `src/main`, which is
+clean.
 
 ## 5. Design patterns
 
