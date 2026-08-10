@@ -338,34 +338,30 @@ claims otherwise.
 
 ### Open
 
-1. **`BacktestView` constructs entities directly.** It imports eight entity types and builds
-   strategy objects itself — a Frameworks & Drivers class reaching past the adapter layer into
-   Entities. The project's remaining Dependency Rule violation; see
-   [Architecture overview §4](architecture.md).
-2. **Save failures never reach the use case that caused them.** `AddTickerInteractor` and
+1. **Save failures never reach the use case that caused them.** `AddTickerInteractor` and
    `RemoveTickerInteractor` call `saveWatchlist.execute(...)` fire-and-forget, so the app can show
    `Added AAPL…` in the watchlist panel and `Could not save watchlist: …` in the status bar at the
    same moment.
-3. **A failed load can destroy the save file.** On a recoverable failure such as a permission
+2. **A failed load can destroy the save file.** On a recoverable failure such as a permission
    error, `Main` substitutes an empty `Watchlist` and continues — and the next Add or Remove writes
    that empty watchlist over the real file. There is no "do not save until load succeeded" flag.
-4. **Corruption recovery is silent.** The file is backed up, but nothing in the UI ever says so:
+3. **Corruption recovery is silent.** The file is backed up, but nothing in the UI ever says so:
    the presenter is only reached on the throwing paths, and recovery does not throw.
-5. **Strategy configurations are never persisted.** Both setters on `WatchlistEntry` exist and both
+4. **Strategy configurations are never persisted.** Both setters on `WatchlistEntry` exist and both
    configuration classes are `Serializable`, but nothing calls either setter. They are also global
    rather than per-ticker, despite `WatchlistEntry` being modelled per-ticker.
-6. **The rate-limit circuit breaker is a string-prefix match.** `WatchlistView` compares against the
+5. **The rate-limit circuit breaker is a string-prefix match.** `WatchlistView` compares against the
    opening sentence of the presenter's rate-limit message. Reword that message and `Load prices`
    silently starts spending the whole daily quota again. No test enforces the link.
-7. **A bad configuration edit un-configures the strategy.** Both configuration presenters clear the
+6. **A bad configuration edit un-configures the strategy.** Both configuration presenters clear the
    previously valid configuration on a parse failure, so a typo loses the working settings.
-8. **`RunBacktestInteractor`'s catch list is not exhaustive.** It catches
+7. **`RunBacktestInteractor`'s catch list is not exhaustive.** It catches
    `IllegalArgumentException`, `NullPointerException` and `IllegalStateException`, so any other
    `RuntimeException` escapes — and `BacktestView` runs the backtest on the event dispatch thread
    with no `SwingWorker`, unlike `WatchlistView`, so it would surface only in the console while the
    UI froze.
-9. **`CompletedBacktestStore` is unbounded, never cleared, and not thread-safe.** There is no
+8. **`CompletedBacktestStore` is unbounded, never cleared, and not thread-safe.** There is no
    "clear results" control, and it is a plain `ArrayList`. The thread-safety part only becomes
-   reachable if the backtest moves off the event thread — which gap 8 would do.
-10. **Ties in the ranking resolve by insertion order.** `Stream.sorted` is stable, so two strategies
-    with an identical total return leave the earlier-run one as best. Nothing surfaces the tie.
+   reachable if the backtest moves off the event thread — which gap 7 would do.
+9. **Ties in the ranking resolve by insertion order.** `Stream.sorted` is stable, so two strategies
+   with an identical total return leave the earlier-run one as best. Nothing surfaces the tie.
