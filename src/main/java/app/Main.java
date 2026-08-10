@@ -262,6 +262,11 @@ public class Main {
 
         // --- Show the app ---
         SwingUtilities.invokeLater(() -> {
+            // CardLayout shows whichever card was added first, which is Momentum's parameter
+            // form - an RSI period and two thresholds, with nothing on screen explaining what
+            // they are for. Naming the opening screen puts the watchlist first, which is where
+            // the workflow actually starts, and marks its nav button as the active one.
+            viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME);
             mainView.setVisible(true);
             // Constructing WatchlistView alone paints WatchlistState.initial() - "Ready." with
             // empty tables - so without this call a watchlist restored from disk would not
