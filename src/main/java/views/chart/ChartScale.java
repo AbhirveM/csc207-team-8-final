@@ -1,4 +1,4 @@
-package view.chart;
+package views.chart;
 
 import java.util.ArrayList;
 import java.util.List;

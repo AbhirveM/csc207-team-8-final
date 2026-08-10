@@ -1,8 +1,9 @@
-package view;
+package views;
 
 import java.awt.BorderLayout;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.beans.PropertyChangeEvent;
 import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
@@ -11,37 +12,30 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
-import entity.DailyPrice;
-import entity.MomentumConfiguration;
-import entity.MovingAverageConfiguration;
-import entity.MovingAverageCrossoverStrategy;
-import entity.RSIMomentumStrategy;
-import entity.Stock;
-import entity.Ticker;
-import entity.TradingStrategy;
 import interface_adapter.backtest.BacktestController;
 import interface_adapter.backtest.BacktestViewModel;
+import interface_adapter.momentum.MomentumState;
 import interface_adapter.momentum.MomentumViewModel;
 import interface_adapter.moving_average.MovingAverageState;
 import interface_adapter.moving_average.MovingAverageViewModel;
-import use_case.watchlist.StockRepository;
 
 /**
  * The screen that lets a user run a backtest and see its result.
  *
- * <p>This is the integration seam between three otherwise-disconnected verticals:
- * the watchlist supplies price history (through {@link StockRepository}), a strategy
- * turns that history into signals, and {@link entity.BacktestEngine} turns the signals
- * into a {@link entity.BacktestResult}. Before this view existed every one of those
- * pieces was constructed and tested but nothing in the UI called them, so the
+ * <p>This is the integration seam between three otherwise-disconnected verticals: the
+ * watchlist supplies price history, a strategy turns that history into signals, and the
+ * backtest engine turns the signals into a result. Before this view existed every one of
+ * those pieces was constructed and tested but nothing in the UI called them, so the
  * Compare-Strategies screen only ever rendered its empty state.
  *
- * <p>The panel owns only its two input controls - a ticker chooser and a strategy
- * chooser - and delegates the run itself to {@link BacktestController}. The result is
- * rendered by an embedded {@link BacktestResultsView} bound to the same
- * {@link BacktestViewModel} the controller's presenter writes to, so this class never
- * touches a {@code BacktestResult} directly.
+ * <p>The panel owns only its two input controls - a ticker chooser and a strategy chooser -
+ * and names a run to {@link BacktestController} as a symbol plus a handful of numbers. It
+ * looks nothing up and constructs nothing: resolving the symbol to its price history and
+ * building the strategy are use-case work, so this class imports no {@code entity} and no
+ * repository. Both the chooser's contents and the run's result arrive on
+ * {@link BacktestViewModel}, already display-ready.
  *
  * <p>The strategy parameters are not hardcoded here: they are read from the two
  * configuration screens' view models ({@link MomentumViewModel} and
@@ -56,12 +50,12 @@ public class BacktestView extends JPanel {
     private static final String RSI_MOMENTUM = "RSI Momentum";
 
     /** Defaults used when the user has not saved a configuration on the strategy screens. */
-    private static final MovingAverageConfiguration DEFAULT_MOVING_AVERAGE =
-            new MovingAverageConfiguration(5, 20);
-    private static final MomentumConfiguration DEFAULT_MOMENTUM =
-            new MomentumConfiguration(14, 30.0, 70.0);
+    private static final int DEFAULT_SHORT_WINDOW = 5;
+    private static final int DEFAULT_LONG_WINDOW = 20;
+    private static final int DEFAULT_RSI_PERIOD = 14;
+    private static final double DEFAULT_OVERSOLD = 30.0;
+    private static final double DEFAULT_OVERBOUGHT = 70.0;
 
-    private final StockRepository stockRepository;
     private final BacktestController controller;
     private final MomentumViewModel momentumViewModel;
     private final MovingAverageViewModel movingAverageViewModel;
@@ -75,9 +69,9 @@ public class BacktestView extends JPanel {
     /**
      * Builds the panel and wires its controls to the run-backtest use case.
      *
-     * @param viewModel              the observable the embedded results view paints; must be non-null
+     * @param viewModel              the observable this screen paints - the chooser's tickers
+     *                               and the embedded results view both read it; must be non-null
      * @param controller             the boundary the Run button calls; must be non-null
-     * @param stockRepository        where price history is read from by symbol; must be non-null
      * @param momentumViewModel      the Momentum configuration screen's view model, read for the
      *                               saved RSI parameters; must be non-null
      * @param movingAverageViewModel the Moving Average configuration screen's view model, read for
@@ -86,12 +80,9 @@ public class BacktestView extends JPanel {
      */
     public BacktestView(BacktestViewModel viewModel,
                         BacktestController controller,
-                        StockRepository stockRepository,
                         MomentumViewModel momentumViewModel,
                         MovingAverageViewModel movingAverageViewModel) {
         this.controller = Objects.requireNonNull(controller, "Controller cannot be null");
-        this.stockRepository =
-                Objects.requireNonNull(stockRepository, "Stock repository cannot be null");
         this.momentumViewModel =
                 Objects.requireNonNull(momentumViewModel, "Momentum view model cannot be null");
         this.movingAverageViewModel = Objects.requireNonNull(
@@ -107,22 +98,25 @@ public class BacktestView extends JPanel {
 
         runButton.addActionListener(event -> onRun());
 
-        // The repository is empty at construction (prices are loaded later from the
-        // watchlist), so the ticker list is refreshed every time this card is shown.
-        // CardLayout.show makes the target component visible, which fires componentShown.
+        viewModel.addPropertyChangeListener(event -> onViewModelChanged(viewModel, event));
+
+        // The repository behind the use case is empty at construction (prices are loaded
+        // later from the watchlist), so the ticker list is asked for again every time this
+        // card is shown. CardLayout.show makes the target component visible, which fires
+        // componentShown.
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentShown(final ComponentEvent event) {
-                reloadTickers();
+                controller.loadAvailableTickers();
             }
         });
-        reloadTickers();
+        controller.loadAvailableTickers();
     }
 
     /**
      * Builds the northern control strip: ticker chooser, strategy chooser, Run button
-     * and a status line for problems this view resolves itself (such as a ticker with
-     * no loaded price history).
+     * and a status line for problems this view resolves itself (such as no ticker having
+     * loaded price history yet).
      *
      * @return the assembled panel
      */
@@ -138,6 +132,7 @@ public class BacktestView extends JPanel {
         strategyBox.getAccessibleContext().setAccessibleName("Strategy to apply");
 
         runButton.setMnemonic('B');
+        runButton.setEnabled(false);
         runButton.setToolTipText(
                 "Run the chosen strategy over the chosen ticker's loaded price history.");
 
@@ -183,22 +178,43 @@ public class BacktestView extends JPanel {
     }
 
     /**
-     * Repopulates the ticker dropdown from the stock repository, preserving the current
-     * selection when it still has price history. Only tickers with loaded prices appear,
-     * because those are the only ones a backtest can run against.
+     * Handles updates from the backtest view model, marshalling onto the event thread.
+     *
+     * <p>Only the ticker list is handled here; the run's result is painted by the embedded
+     * {@link BacktestResultsView}, which listens to the same view model itself.
+     *
+     * @param viewModel the view model that changed
+     * @param event     the property change event
      */
-    private void reloadTickers() {
+    private void onViewModelChanged(BacktestViewModel viewModel, PropertyChangeEvent event) {
+        if (!BacktestViewModel.TICKERS_PROPERTY.equals(event.getPropertyName())) {
+            return;
+        }
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> onViewModelChanged(viewModel, event));
+            return;
+        }
+        showTickers(viewModel.getAvailableTickers());
+    }
+
+    /**
+     * Repopulates the ticker dropdown, preserving the current selection when it is still
+     * offered. Only tickers with loaded prices are listed, because those are the only ones
+     * a backtest can run against.
+     *
+     * @param symbols the symbols to offer, in the order they should appear
+     */
+    private void showTickers(List<String> symbols) {
         final Object previous = tickerBox.getSelectedItem();
         tickerBox.removeAllItems();
-        for (final Stock stock : stockRepository.findAll()) {
-            tickerBox.addItem(stock.getTicker().getSymbol());
+        for (final String symbol : symbols) {
+            tickerBox.addItem(symbol);
         }
         if (previous != null) {
             tickerBox.setSelectedItem(previous);
         }
-        final boolean hasTickers = tickerBox.getItemCount() > 0;
-        runButton.setEnabled(hasTickers);
-        if (!hasTickers) {
+        runButton.setEnabled(!symbols.isEmpty());
+        if (symbols.isEmpty()) {
             statusLabel.setText(
                     "No prices loaded yet. Add a ticker on the Watchlist screen and click "
                             + "\"Load prices\", then return here.");
@@ -209,10 +225,11 @@ public class BacktestView extends JPanel {
     }
 
     /**
-     * Runs the chosen strategy over the chosen ticker. Problems that this view can see
-     * for itself - no selection, or a symbol whose prices are no longer loaded - are
-     * reported on the local status line and short-circuit the call; everything else is
-     * left to the interactor and surfaces through the embedded results view.
+     * Runs the chosen strategy over the chosen ticker. The one problem this view can see
+     * for itself - nothing selected - is reported on the local status line and
+     * short-circuits the call; everything else, including a symbol whose prices are no
+     * longer loaded, is the interactor's to word and surfaces through the embedded results
+     * view.
      */
     private void onRun() {
         final Object selected = tickerBox.getSelectedItem();
@@ -221,70 +238,65 @@ public class BacktestView extends JPanel {
             return;
         }
 
-        final Stock stock = stockRepository.findBySymbol((String) selected).orElse(null);
-        if (stock == null) {
-            statusLabel.setText(
-                    "No loaded prices for " + selected + ". Load its prices on the Watchlist "
-                            + "screen first.");
-            reloadTickers();
-            return;
-        }
-
         statusLabel.setText(" ");
-        final Ticker ticker = stock.getTicker();
-        final List<DailyPrice> prices = stock.getDailyPrices();
-        final TradingStrategy strategy = buildStrategy();
-        controller.runBacktest(ticker, strategy, prices);
-    }
-
-
-
-    /**
-     * Builds the strategy the dropdown currently names, using the parameters the user saved
-     * on that strategy's configuration screen. When they have not configured it yet, the
-     * default is used - both defaults sit inside the free tier's ~100-trading-day compact
-     * response, so neither throws on a freshly loaded ticker.
-     *
-     * @return the chosen, configured strategy
-     */
-    private TradingStrategy buildStrategy() {
+        final String symbol = (String) selected;
         if (RSI_MOMENTUM.equals(strategyBox.getSelectedItem())) {
-            return new RSIMomentumStrategy(momentumConfiguration());
+            final double[] momentum = momentumParameters();
+            controller.runMomentumBacktest(
+                    symbol, (int) momentum[0], momentum[1], momentum[2]);
         }
-        return new MovingAverageCrossoverStrategy(movingAverageConfiguration());
+        else {
+            final int[] windows = movingAverageWindows();
+            controller.runMovingAverageBacktest(symbol, windows[0], windows[1]);
+        }
     }
 
     /**
-     * The Momentum configuration the user saved on the Momentum screen, or the default when
-     * they have not configured one this session.
+     * The Moving Average windows the user saved on the Moving Average screen, or the
+     * defaults when they have not configured any this session. The screen stores its
+     * windows as separate integers, so both must be present before they are used.
      *
-     * <p>Package-private so {@code BacktestViewTest} can assert the saved configuration is
-     * read rather than a hardcoded one.
+     * <p>Package-private so {@code BacktestViewTest} can assert the saved windows are read
+     * rather than hardcoded ones.
      *
-     * @return the configuration to run the RSI Momentum strategy with
+     * @return the short window followed by the long window
      */
-    MomentumConfiguration momentumConfiguration() {
-        final MomentumConfiguration saved = momentumViewModel.getState().getConfiguration();
-        return saved != null ? saved : DEFAULT_MOMENTUM;
-    }
-
-    /**
-     * The Moving Average configuration the user saved on the Moving Average screen, or the
-     * default when they have not configured one this session. The screen stores its windows
-     * as separate integers, so both must be present before they are used.
-     *
-     * <p>Package-private so {@code BacktestViewTest} can assert the saved configuration is
-     * read rather than a hardcoded one.
-     *
-     * @return the configuration to run the Moving Average Crossover strategy with
-     */
-    MovingAverageConfiguration movingAverageConfiguration() {
+    int[] movingAverageWindows() {
         final MovingAverageState state = movingAverageViewModel.getState();
         final Integer shortWindow = state.getConfiguredShortWindow();
         final Integer longWindow = state.getConfiguredLongWindow();
+        final int[] windows;
         if (shortWindow != null && longWindow != null) {
-            return new MovingAverageConfiguration(shortWindow, longWindow);
+            windows = new int[] {shortWindow, longWindow};
         }
-        return DEFAULT_MOVING_AVERAGE;
+        else {
+            windows = new int[] {DEFAULT_SHORT_WINDOW, DEFAULT_LONG_WINDOW};
+        }
+        return windows;
+    }
+
+    /**
+     * The Momentum parameters the user saved on the Momentum screen, or the defaults when
+     * they have not configured any this session.
+     *
+     * <p>Package-private so {@code BacktestViewTest} can assert the saved parameters are
+     * read rather than hardcoded ones.
+     *
+     * @return the RSI period, the oversold threshold and the overbought threshold
+     */
+    double[] momentumParameters() {
+        final MomentumState state = momentumViewModel.getState();
+        final double[] parameters;
+        if (state.isConfigured()) {
+            parameters = new double[] {
+                    state.getConfiguredPeriod(),
+                    state.getConfiguredOversoldThreshold(),
+                    state.getConfiguredOverboughtThreshold()};
+        }
+        else {
+            parameters = new double[] {
+                    DEFAULT_RSI_PERIOD, DEFAULT_OVERSOLD, DEFAULT_OVERBOUGHT};
+        }
+        return parameters;
     }
 }

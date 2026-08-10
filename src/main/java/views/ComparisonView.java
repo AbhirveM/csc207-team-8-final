@@ -1,8 +1,8 @@
-package view;
+package views;
 
 import interface_adapter.comparison.ComparisonController;
 import interface_adapter.comparison.ComparisonViewModel;
-import view.chart.BarChartPanel;
+import views.chart.BarChartPanel;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;

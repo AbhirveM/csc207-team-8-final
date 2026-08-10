@@ -1,4 +1,4 @@
-package view;
+package views;
 
 import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
@@ -265,7 +265,7 @@ public final class MomentumConfigurationView extends JPanel {
             errorLabel.setText(
                     ERROR_PREFIX + state.getErrorMessage());
         }
-        else if (state.getConfiguration() != null) {
+        else if (state.isConfigured()) {
             statusLabel.setText(
                     "Momentum configuration saved.");
             errorLabel.setText(BLANK_LINE);

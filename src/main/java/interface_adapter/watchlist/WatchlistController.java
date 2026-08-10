@@ -21,8 +21,8 @@ import use_case.watchlist.ShowWatchlistInputData;
  * and hide the regression if the two ever disagreed.
  *
  * <p>All four methods are {@code void} and synchronous. The view is responsible for calling
- * them off the event dispatch thread; results arrive through
- * {@link WatchlistViewModel}, not through a return value.
+ * them off the event dispatch thread; results arrive through the view model, not through a
+ * return value.
  */
 public final class WatchlistController {
 

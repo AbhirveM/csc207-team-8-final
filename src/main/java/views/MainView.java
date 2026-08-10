@@ -1,4 +1,4 @@
-package view;
+package views;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;

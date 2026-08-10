@@ -12,9 +12,6 @@ import data_access.InMemoryMarketDataGateway;
 import data_access.InMemoryStockRepository;
 import entity.BacktestEngine;
 import entity.BacktestResult;
-import entity.MovingAverageConfiguration;
-import entity.MovingAverageCrossoverStrategy;
-import entity.Stock;
 import entity.Watchlist;
 import interface_adapter.backtest.BacktestController;
 import interface_adapter.backtest.BacktestPresenter;
@@ -78,8 +75,6 @@ class IntegrationWiringTest {
 
         addTicker.execute(new AddTickerInputData("AAPL"));
 
-        final Stock stock = stockRepository.findBySymbol("AAPL").orElseThrow();
-
         // --- The backtest half, wired exactly as Main wires it. ---
         final BacktestViewModel backtestViewModel = new BacktestViewModel();
         final BacktestPresenter backtestPresenter = new BacktestPresenter(backtestViewModel);
@@ -97,14 +92,23 @@ class IntegrationWiringTest {
             public void prepareFailView(String errorMessage) {
                 backtestPresenter.prepareFailView(errorMessage);
             }
+
+            @Override
+            public void presentAvailableTickers(List<String> tickerSymbols) {
+                backtestPresenter.presentAvailableTickers(tickerSymbols);
+            }
         };
         final BacktestController backtestController = new BacktestController(
-                new RunBacktestInteractor(new BacktestEngine(), backtestOutput));
+                new RunBacktestInteractor(
+                        new BacktestEngine(), stockRepository, backtestOutput));
 
-        backtestController.runBacktest(
-                stock.getTicker(),
-                new MovingAverageCrossoverStrategy(new MovingAverageConfiguration(5, 20)),
-                stock.getDailyPrices());
+        // The symbol the watchlist loaded, named as text. Resolving it back to the stock the
+        // repository holds is the interactor's job, which is what the screen relies on.
+        backtestController.loadAvailableTickers();
+        assertEquals(List.of("AAPL"), backtestViewModel.getAvailableTickers(),
+                "the loaded ticker should be offered to the backtest screen");
+
+        backtestController.runMovingAverageBacktest("AAPL", 5, 20);
 
         // The presenter rendered a summary, and the decorator filed the result for comparison.
         assertNotNull(backtestViewModel.getSummary(),

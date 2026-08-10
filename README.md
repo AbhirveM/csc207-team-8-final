@@ -373,9 +373,17 @@ src/main/java/
 ├── use_case/
 ├── interface_adapter/
 ├── data_access/
-├── view/
+├── views/
 └── app/
 ```
+
+The directory names are the ones the Clean Architecture Visualizer (`cave verify`) looks for:
+it scans `entity`, `use_case`, `interface_adapter`, `data_access` and `views` by name, and
+silently skips any layer whose directory is named otherwise. `views` is plural for that
+reason, and `data_access` must *not* be renamed to `database` — the checker classifies a
+`database` directory as a plain datastore rather than a gateway, which turns the correct
+`FileWatchlistDataAccessObject implements WatchlistDataAccessInterface` inversion into a
+reported violation.
 
 ## Entities
 

@@ -1,6 +1,6 @@
-package view.chart;
+package views.chart;
 
-import view.Theme;
+import views.Theme;
 
 import javax.swing.JPanel;
 import java.awt.Color;

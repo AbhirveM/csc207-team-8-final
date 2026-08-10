@@ -1,4 +1,4 @@
-package view.chart;
+package views.chart;
 
 import org.junit.jupiter.api.Test;
 

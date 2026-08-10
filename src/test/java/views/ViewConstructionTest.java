@@ -1,4 +1,4 @@
-package view;
+package views;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -21,7 +21,6 @@ import javax.swing.UIManager;
 
 import org.junit.jupiter.api.Test;
 
-import data_access.InMemoryStockRepository;
 import interface_adapter.backtest.BacktestController;
 import interface_adapter.backtest.BacktestViewModel;
 import interface_adapter.comparison.ComparisonController;
@@ -34,6 +33,8 @@ import interface_adapter.moving_average.MovingAverageViewModel;
 import interface_adapter.watchlist.WatchlistController;
 import interface_adapter.watchlist.WatchlistState;
 import interface_adapter.watchlist.WatchlistViewModel;
+import use_case.backtest.RunBacktestInputBoundary;
+import use_case.backtest.RunBacktestInputData;
 
 /**
  * The restyle rewrote every builder method in the view package, and the accessibility work
@@ -350,8 +351,17 @@ class ViewConstructionTest {
     private static BacktestView backtestView() {
         return new BacktestView(
                 new BacktestViewModel(),
-                new BacktestController(inputData -> { }),
-                new InMemoryStockRepository(),
+                new BacktestController(new RunBacktestInputBoundary() {
+                    @Override
+                    public void execute(RunBacktestInputData inputData) {
+                        // intentionally empty: no run happens in a construction test
+                    }
+
+                    @Override
+                    public void loadAvailableTickers() {
+                        // intentionally empty: the chooser stays empty here
+                    }
+                }),
                 new MomentumViewModel(),
                 new MovingAverageViewModel());
     }
