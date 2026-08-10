@@ -103,11 +103,18 @@ are **not** persisted — see §4.
 
 A grader will run these checks, so we name them ourselves.
 
-No class under `src/main/java` imports against the direction of control any more: the view layer
-imports neither `entity` nor `use_case` nor `data_access`, and `entity` and `use_case` import
-nothing outward. The five `interface_adapter` classes that import `entity`
-(`BacktestPresenter`, `ComparisonPresenter`, `CompletedBacktestStore`, `MomentumPresenter`,
-`PersistencePresenter`) point *inward*, which the Dependency Rule allows.
+No class under `src/main/java` imports against the direction of control any more. The view layer
+imports no `entity` and no `data_access`, and `entity` and `use_case` import nothing outward. The
+five `interface_adapter` classes that import `entity` (`BacktestPresenter`, `ComparisonPresenter`,
+`CompletedBacktestStore`, `MomentumPresenter`, `PersistencePresenter`) point *inward*, which the
+Dependency Rule allows.
+
+The view layer holds exactly one `use_case` import, so a grep turns it up rather than the zero a
+blanket claim would promise: `WatchlistView` imports `use_case.watchlist.ChartPeriod`, the enum the
+period combo's model holds. It points inward, and it carries no behaviour — no rule about how a
+period is applied lives in the view, which hands the chosen constant to the controller and paints
+what comes back, exactly as it does with a ticker symbol. The class javadoc says the same thing at
+the source.
 
 What remains are design smells rather than import-direction violations.
 
@@ -135,9 +142,11 @@ builds the strategy from a `RunBacktestInputData` factory — the same shape the
 already used. Closed by `3183fa1` (PR #49); `ComparisonView` and `BacktestResultsView` were cleaned
 earlier in `cca8f63`.
 
-One caveat, so a whole-tree grep holds no surprises: the four watchlist **interactor tests** import
-`data_access` implementations. That is test wiring, not production dependency direction — the rule
-is about `src/main`, which is clean.
+One caveat, so a whole-tree grep holds no surprises: seven **test** files import `data_access`
+implementations — the four watchlist interactor tests plus `app.IntegrationWiringTest`,
+`use_case.watchlist.MarketDataHandoffTest` and `use_case.watchlist.WatchlistSnapshotFactoryTest`.
+That is test wiring, not production dependency direction — the rule is about `src/main`, which is
+clean.
 
 ## 5. Design patterns
 
