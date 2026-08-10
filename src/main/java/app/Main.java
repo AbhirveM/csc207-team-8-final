@@ -287,7 +287,11 @@ public class Main {
                         shown.getSelectedSymbol(),
                         WatchlistViewModel.SAMPLE_DATA_STATUS + " " + shown.getStatusMessage(),
                         shown.getErrorMessage(),
-                        shown.getTickerFieldText()));
+                        shown.getTickerFieldText(),
+                        // Carried explicitly rather than through the no-chart overload: this
+                        // path only rewords the status line, and must not quietly discard a
+                        // series the state it is deriving from already holds.
+                        shown.getPriceChart()));
             }
         });
     }

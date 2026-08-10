@@ -5,6 +5,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 
@@ -56,7 +57,14 @@ public final class PanelHeader {
         if (meta != null) {
             meta.setFont(Theme.FONT_MONO);
             meta.setForeground(Theme.FG_MUTED);
-            band.add(meta, BorderLayout.EAST);
+            meta.setHorizontalAlignment(SwingConstants.RIGHT);
+            // CENTER rather than EAST, which is not a cosmetic choice. BorderLayout gives an
+            // EAST child its full preferred width and lays WEST out independently, so a meta
+            // string wider than the band left over the title paints straight across it - the
+            // title is still there, just unreadable underneath. CENTER takes only what is left
+            // after the title, and a JLabel clips its own text with an ellipsis rather than
+            // overflowing. A band can now be too narrow for its readout, but never illegible.
+            band.add(meta, BorderLayout.CENTER);
         }
         return band;
     }

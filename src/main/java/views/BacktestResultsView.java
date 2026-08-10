@@ -57,6 +57,9 @@ public class BacktestResultsView extends JPanel {
     private final JLabel winRateLabel = valueLabel(WIN_RATE_LABEL, Theme.FONT_MONO);
     private final JLabel statusLabel = new JLabel(BLANK_LINE);
 
+    private final LineChart equityChart = new LineChart("Portfolio value");
+    private final JLabel equityMeta = new JLabel(BLANK_LINE);
+
     private final DefaultTableModel tableModel;
 
     public BacktestResultsView(BacktestViewModel viewModel) {
@@ -74,7 +77,17 @@ public class BacktestResultsView extends JPanel {
         addMetric(summaryPanel, 1, 1, TOTAL_RETURN_LABEL, totalReturnLabel);
         addMetric(summaryPanel, 0, 2, TRADES_LABEL, numberOfTradesLabel);
         addMetric(summaryPanel, 1, 2, WIN_RATE_LABEL, winRateLabel);
-        add(PanelHeader.region(new JLabel("Result"), null, summaryPanel), BorderLayout.NORTH);
+        // The curve sits between the headline figures and the trade log: it explains the former
+        // and is explained by the latter, so it belongs between them rather than under both.
+        final JPanel head = new JPanel(new BorderLayout(0, Theme.MD));
+        head.setBackground(Theme.BG);
+        head.add(PanelHeader.region(new JLabel("Result"), null, summaryPanel), BorderLayout.NORTH);
+        final JLabel equityHeading = new JLabel("Portfolio value");
+        equityHeading.setLabelFor(equityChart);
+        head.add(PanelHeader.region(equityHeading, equityMeta, equityChart), BorderLayout.CENTER);
+        // A BorderLayout NORTH slot takes its child's preferred height, and the chart's is
+        // Theme.CHART_HEIGHT, so the trade log below keeps everything left over.
+        add(head, BorderLayout.NORTH);
 
         final String[] columns = {"Entry Date", "Entry Price", "Quantity", "Exit Date",
                 "Exit Price", "Return %"};
@@ -139,14 +152,30 @@ public class BacktestResultsView extends JPanel {
         setValue(numberOfTradesLabel, summary.numberOfTrades());
         setValue(winRateLabel, summary.winRate());
 
+        // The full sentence goes on the chart, where it becomes the accessible description; the
+        // short signed form goes in the band, which has room for a few words beside the title.
+        // The line's colour repeats what the sign in both of them already says.
+        final BacktestViewModel.EquityCurve curve = viewModel.getEquityCurve();
+        equityChart.setSeries(new LineChart.Series(curve.values(), curve.lowerBound(),
+                curve.upperBound(), curve.valueTicks(), curve.timeTicks(), curve.summary()));
+        equityMeta.setText(curve.meta().isEmpty() ? BLANK_LINE : curve.meta());
+
         for (final BacktestViewModel.TradeRow row : viewModel.getTradeRows()) {
             tableModel.addRow(new Object[] {row.entryDate(), row.entryPrice(), row.quantity(),
                     row.exitDate(), row.exitPrice(), row.returnPercent()});
         }
     }
 
-    /** Clears all displayed summary information. */
+    /**
+     * Clears all displayed summary information, including the curve.
+     *
+     * <p>Reached on both the error path and the nothing-has-run path. The curve is cleared
+     * rather than left standing: a plotted run under an error message is a picture of something
+     * that is no longer on screen anywhere else.
+     */
     private void clearSummary() {
+        equityChart.setSeries(LineChart.Series.empty());
+        equityMeta.setText(BLANK_LINE);
         setValue(tickerLabel, NO_VALUE);
         setValue(strategyLabel, NO_VALUE);
         setValue(finalCapitalLabel, NO_VALUE);

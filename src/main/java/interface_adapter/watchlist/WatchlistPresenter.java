@@ -2,8 +2,11 @@ package interface_adapter.watchlist;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
+import interface_adapter.chart.AxisScale;
+import interface_adapter.chart.ChartTick;
 import use_case.watchlist.AddTickerOutputBoundary;
 import use_case.watchlist.AddTickerOutputData;
 import use_case.watchlist.RefreshTickerOutputBoundary;
@@ -52,6 +55,27 @@ public final class WatchlistPresenter
 
     /** How a blank symbol is referred to, so a blank-input message still reads as English. */
     private static final String UNTYPED_SYMBOL = "the symbol you typed";
+
+    /**
+     * How a price is written into a chart's axis labels and summary. Two decimals and no
+     * currency mark, matching the figures in the daily-price table the chart sits above -
+     * a gutter label reading {@code $249.68} beside a column reading {@code 249.68} would
+     * look like two different quantities.
+     */
+    private static final String MONEY_FORMAT = "%.2f";
+
+    /**
+     * Roughly how many gaps the value axis is divided into. A target rather than a count:
+     * {@link AxisScale} rounds outwards to numbers worth printing, which can land one either
+     * side of this.
+     */
+    private static final int AXIS_INTERVALS = 4;
+
+    /**
+     * How many dates are aimed at along the foot. The chart drops any that would collide, so
+     * this is the most that can appear rather than the number that will.
+     */
+    private static final int DATE_TICKS = 5;
 
     private final WatchlistViewModel viewModel;
 
@@ -217,7 +241,11 @@ public final class WatchlistPresenter
                 current.getSelectedSymbol(),
                 current.getStatusMessage(),
                 messageFor(failure),
-                current.getTickerFieldText()));
+                current.getTickerFieldText(),
+                // Preserved for the same reason the rows above it are: the chart is drawn
+                // directly over the price table, so clearing one and keeping the other would
+                // leave the screen contradicting itself while the error is on display.
+                current.getPriceChart()));
     }
 
     /**
@@ -313,7 +341,136 @@ public final class WatchlistPresenter
                 snapshot.getSelectedSymbol(),
                 statusMessage,
                 "",
-                tickerFieldText));
+                tickerFieldText,
+                chartFor(snapshot)));
+    }
+
+    /**
+     * Builds the close-price series for the selected ticker, with every label already
+     * formatted - the chart itself composes no text.
+     *
+     * <p>The dates come off the snapshot's price rows rather than being carried separately, and
+     * the two lists run in opposite directions: {@code rows} is newest-first, {@code closes} is
+     * oldest-first. {@code closes} is also the <em>tail</em> of the history when a period is in
+     * force, while {@code rows} stays whole. Both facts fall out of one index expression, in
+     * {@link #dateTicksFor}, which is the one thing in this method worth reading twice.
+     *
+     * @param snapshot the watchlist as the use case left it
+     * @return the chart to paint, or an empty one when the selection has no prices
+     */
+    private static WatchlistState.PriceChart chartFor(WatchlistSnapshot snapshot) {
+        final List<Double> closes = snapshot.getSelectedCloses();
+        final List<WatchlistSnapshot.PriceRow> rows = snapshot.getSelectedPriceRows();
+        if (closes.isEmpty() || rows.isEmpty()) {
+            return WatchlistState.PriceChart.empty();
+        }
+
+        double low = closes.get(0);
+        double high = closes.get(0);
+        for (final Double close : closes) {
+            low = Math.min(low, close);
+            high = Math.max(high, close);
+        }
+
+        final double first = closes.get(0);
+        final double latest = closes.get(closes.size() - 1);
+
+        // Rounded bounds rather than the raw low and high: scaling to the extremes makes every
+        // series touch both edges of the frame, so a 2% drift looks like a crash.
+        final AxisScale scale = AxisScale.forRange(low, high, AXIS_INTERVALS);
+        final List<ChartTick> valueTicks = new ArrayList<>();
+        for (final Double value : scale.tickValues()) {
+            valueTicks.add(new ChartTick(value, money(value)));
+        }
+
+        // The band's meta slot is a few words wide, so it carries only the part the plotted
+        // line cannot be trusted to convey on its own: the direction, with an explicit sign.
+        // The whole sentence goes to the accessible description instead.
+        final String meta = String.format("%dD %s", closes.size(), signedChange(first, latest));
+        final String summary = String.format(
+                "Close price for %s, %d days, low %s, high %s, latest %s, %s over the window.",
+                snapshot.getSelectedSymbol(), closes.size(), money(low), money(high), money(latest),
+                signedChange(first, latest));
+
+        return new WatchlistState.PriceChart(closes, scale.lowerBound(), scale.upperBound(),
+                valueTicks, dateTicksFor(closes.size(), rows), snapshot.getChartPeriod(),
+                meta, summary);
+    }
+
+    /**
+     * Spreads a handful of dates across the plotted window.
+     *
+     * <p><strong>The index arithmetic.</strong> {@code closes} holds the most recent
+     * {@code count} closes, oldest first. {@code rows} holds the <em>whole</em> history, newest
+     * first. So the newest close and the first row are the same day, and walking backwards
+     * through the rows walks forwards through the closes: the date for close {@code index} is
+     * {@code rows.get(count - 1 - index)}. Getting this backwards plots the right line under the
+     * wrong dates, which nothing on screen would give away.
+     *
+     * @param count how many closes are plotted
+     * @param rows  the whole price history, newest first
+     * @return between one and {@value #DATE_TICKS} ticks, ascending by index, with no repeats
+     */
+    private static List<ChartTick> dateTicksFor(int count, List<WatchlistSnapshot.PriceRow> rows) {
+        final List<ChartTick> ticks = new ArrayList<>();
+        int previous = -1;
+        for (int tick = 0; tick < DATE_TICKS; tick++) {
+            final int index = tick * (count - 1) / (DATE_TICKS - 1);
+            // A window shorter than the tick count maps several ticks onto one day.
+            if (index > previous && count - 1 - index < rows.size()) {
+                ticks.add(new ChartTick(index, rows.get(count - 1 - index).date()));
+                previous = index;
+            }
+        }
+        return ticks;
+    }
+
+    /**
+     * Writes the movement across the window with an explicit sign, which is what makes the
+     * plotted line's colour redundant rather than load-bearing.
+     *
+     * @param first  the oldest close in the series
+     * @param latest the newest close in the series
+     * @return the change and, when the opening price allows one to be computed, the percentage
+     *         beside it - both signed, as {@code TableStyler.SignedRenderer} signs a cell
+     */
+    private static String signedChange(double first, double latest) {
+        final double change = latest - first;
+        final String signedAmount = signed(change);
+        final String result;
+        if (first > 0.0) {
+            result = signedAmount + " (" + signed(change / first * 100.0) + "%)";
+        }
+        else {
+            result = signedAmount;
+        }
+        return result;
+    }
+
+    /**
+     * @param value a movement, which may be negative
+     * @return the value to two decimals, carrying an explicit {@code +} when it is positive;
+     *         the minus sign the format already supplies covers the other direction
+     */
+    private static String signed(double value) {
+        final String formatted = money(value);
+        final String result;
+        if (value > 0.0) {
+            result = "+" + formatted;
+        }
+        else {
+            result = formatted;
+        }
+        return result;
+    }
+
+    /**
+     * @param value a price to write into a chart label
+     * @return the price to two decimals, in a fixed locale so the decimal mark cannot drift
+     *         from the one the price table beside it uses
+     */
+    private static String money(double value) {
+        return String.format(Locale.ROOT, MONEY_FORMAT, value);
     }
 
     /**

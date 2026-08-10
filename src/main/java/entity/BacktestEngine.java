@@ -64,6 +64,17 @@ public class BacktestEngine {
                 new ArrayList<>();
 
         /*
+         * The portfolio's mark-to-market value at every close, so the run can be shown as a
+         * path rather than as a single closing figure. Day 0 is seeded with the starting
+         * capital because nothing has executed before the first close; the loop below appends
+         * one entry per day it marks, which leaves exactly prices.size() entries.
+         */
+        final List<Double> equityCurve =
+                new ArrayList<>(prices.size());
+
+        equityCurve.add(INITIAL_CAPITAL);
+
+        /*
          * A signal produced on day i is executed using
          * the opening price on day i + 1.
          *
@@ -122,6 +133,13 @@ public class BacktestEngine {
                 entryDate = null;
                 entryPrice = 0.0;
             }
+
+            /*
+             * Mark the day this iteration executed on, after both branches, so the entry
+             * reflects the position as it stands at that day's close.
+             */
+            equityCurve.add(
+                    cash + shares * executionDay.getClose());
         }
 
         /*
@@ -152,6 +170,17 @@ public class BacktestEngine {
                             shares));
         }
 
+        /*
+         * Overwrite the final mark with the settled cash. Arithmetically this changes nothing -
+         * the liquidation above uses the same final close the mark-to-market already used, and
+         * with no open position the cash is that value - but it makes the last entry bit-for-bit
+         * equal to the final capital, which the presenter's summary and the tests both rely on
+         * rather than comparing within a tolerance.
+         */
+        equityCurve.set(
+                equityCurve.size() - 1,
+                cash);
+
         final double finalCapital = cash;
 
         final double totalReturn =
@@ -172,7 +201,10 @@ public class BacktestEngine {
                 finalCapital,
                 totalReturn,
                 numberOfTrades,
-                winRate);
+                winRate,
+                List.copyOf(equityCurve),
+                prices.get(0).getDate(),
+                prices.get(prices.size() - 1).getDate());
     }
 
     /**

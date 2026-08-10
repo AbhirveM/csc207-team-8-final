@@ -448,6 +448,149 @@ class BacktestEngineTest {
                         prices));
     }
 
+    @Test
+    void equityCurveHasOneEntryPerTradingDayAndStartsAtTheInitialCapital() {
+        final BacktestEngine engine =
+                new BacktestEngine();
+
+        final List<DailyPrice> prices = List.of(
+                createPrice(1, 100.0, 100.0),
+                createPrice(2, 50.0, 50.0),
+                createPrice(3, 60.0, 60.0)
+        );
+
+        final TradingStrategy strategy =
+                new FixedSignalStrategy(
+                        SignalType.BUY,
+                        SignalType.SELL,
+                        SignalType.HOLD);
+
+        final List<Double> curve =
+                engine.run(createTicker(), strategy, prices)
+                        .getEquityCurve();
+
+        assertEquals(prices.size(), curve.size());
+
+        assertEquals(
+                BacktestEngine.INITIAL_CAPITAL,
+                curve.get(0),
+                DELTA);
+    }
+
+    @Test
+    void equityCurveEndsExactlyAtTheFinalCapital() {
+        // The presenter prints the last point of the curve and the final capital as two
+        // figures in the same sentence, so they have to be the same number and not merely
+        // close: the last entry is overwritten with the settled cash for this reason.
+        final BacktestEngine engine =
+                new BacktestEngine();
+
+        final List<DailyPrice> prices = List.of(
+                createPrice(1, 100.0, 100.0),
+                createPrice(2, 50.0, 50.0),
+                createPrice(3, 60.0, 62.0)
+        );
+
+        final TradingStrategy strategy =
+                new FixedSignalStrategy(
+                        SignalType.BUY,
+                        SignalType.HOLD,
+                        SignalType.HOLD);
+
+        final BacktestResult result =
+                engine.run(createTicker(), strategy, prices);
+
+        final List<Double> curve =
+                result.getEquityCurve();
+
+        assertEquals(
+                result.getFinalCapital(),
+                curve.get(curve.size() - 1),
+                1e-9);
+    }
+
+    @Test
+    void aStrategyThatNeverTradesLeavesTheCurveFlatAtTheInitialCapital() {
+        final BacktestEngine engine =
+                new BacktestEngine();
+
+        final List<DailyPrice> prices = List.of(
+                createPrice(1, 100.0, 110.0),
+                createPrice(2, 120.0, 90.0),
+                createPrice(3, 80.0, 130.0)
+        );
+
+        final TradingStrategy strategy =
+                new FixedSignalStrategy(
+                        SignalType.HOLD,
+                        SignalType.HOLD,
+                        SignalType.HOLD);
+
+        final List<Double> curve =
+                engine.run(createTicker(), strategy, prices)
+                        .getEquityCurve();
+
+        for (final Double value : curve) {
+            assertEquals(
+                    BacktestEngine.INITIAL_CAPITAL,
+                    value,
+                    DELTA);
+        }
+    }
+
+    @Test
+    void aSingleDayOfPricesStillProducesAOneEntryCurve() {
+        // The execution loop never runs here, so the curve is the seed alone. Off by one and
+        // this is either empty or two entries long.
+        final BacktestEngine engine =
+                new BacktestEngine();
+
+        final List<DailyPrice> prices = List.of(
+                createPrice(1, 100.0, 100.0));
+
+        final TradingStrategy strategy =
+                new FixedSignalStrategy(
+                        SignalType.BUY);
+
+        final List<Double> curve =
+                engine.run(createTicker(), strategy, prices)
+                        .getEquityCurve();
+
+        assertEquals(1, curve.size());
+
+        assertEquals(
+                BacktestEngine.INITIAL_CAPITAL,
+                curve.get(0),
+                DELTA);
+    }
+
+    @Test
+    void theRunCarriesTheDatesItsPricesSpanned() {
+        final BacktestEngine engine =
+                new BacktestEngine();
+
+        final List<DailyPrice> prices = List.of(
+                createPrice(1, 100.0, 100.0),
+                createPrice(4, 100.0, 100.0)
+        );
+
+        final TradingStrategy strategy =
+                new FixedSignalStrategy(
+                        SignalType.HOLD,
+                        SignalType.HOLD);
+
+        final BacktestResult result =
+                engine.run(createTicker(), strategy, prices);
+
+        assertEquals(
+                LocalDate.of(2026, 1, 1),
+                result.getStartDate());
+
+        assertEquals(
+                LocalDate.of(2026, 1, 4),
+                result.getEndDate());
+    }
+
     private Ticker createTicker() {
         return new Ticker(
                 "TEST",

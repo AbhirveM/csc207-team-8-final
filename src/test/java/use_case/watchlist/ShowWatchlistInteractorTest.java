@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.List;
+
 import data_access.InMemoryStockRepository;
 import entity.Stock;
 import entity.Ticker;
@@ -47,7 +49,63 @@ class ShowWatchlistInteractorTest {
     }
 
     private void execute(String selectedSymbol) {
-        interactor.execute(new ShowWatchlistInputData(selectedSymbol));
+        interactor.execute(new ShowWatchlistInputData(selectedSymbol, ChartPeriod.ALL));
+    }
+
+    private void execute(String selectedSymbol, ChartPeriod period) {
+        interactor.execute(new ShowWatchlistInputData(selectedSymbol, period));
+    }
+
+    @Test
+    void theRequestedPeriodReachesTheSnapshotAndNarrowsTheSeriesToItsTail() {
+        // The tail, not the head. subList(0, days) compiles and runs and plots the oldest month
+        // under a label reading "1M", which nothing on screen would give away.
+        seed("AAPL", "Apple Inc.", 40);
+
+        execute("AAPL", ChartPeriod.ONE_MONTH);
+
+        final WatchlistSnapshot snapshot = presenter.getShowResult().getSnapshot();
+        assertEquals(ChartPeriod.ONE_MONTH, snapshot.getChartPeriod());
+        assertEquals(21, snapshot.getSelectedCloses().size());
+
+        // The last close is the same either way; the first is what tells the two apart.
+        execute("AAPL", ChartPeriod.ALL);
+        final List<Double> all = presenter.getShowResult().getSnapshot().getSelectedCloses();
+        execute("AAPL", ChartPeriod.ONE_MONTH);
+        final List<Double> month = presenter.getShowResult().getSnapshot().getSelectedCloses();
+
+        assertEquals(all.get(all.size() - 1), month.get(month.size() - 1),
+                "the window must end on the most recent close");
+        assertEquals(all.get(all.size() - 21), month.get(0),
+                "the window must start 21 days back, not at the beginning of the history");
+    }
+
+    @Test
+    void aPeriodLongerThanTheHistoryClampsToEverythingRatherThanFailing() {
+        // 120 days of offline data means 6M and 1Y both show everything. That is the correct
+        // answer to the question the user asked, not an error to report.
+        seed("AAPL", "Apple Inc.", 30);
+
+        execute("AAPL", ChartPeriod.ONE_YEAR);
+
+        final WatchlistSnapshot snapshot = presenter.getShowResult().getSnapshot();
+        assertEquals(30, snapshot.getSelectedCloses().size());
+        assertEquals(0, presenter.getFailureCount());
+    }
+
+    @Test
+    void narrowingTheChartLeavesTheDailyPriceTableWhole() {
+        // The table is the audit trail behind the chart, and its row count is echoed by the
+        // "Days of history" column beside it. Shortening one without the other would have the
+        // same ticker report two different histories on one screen.
+        seed("AAPL", "Apple Inc.", 40);
+
+        execute("AAPL", ChartPeriod.ONE_MONTH);
+
+        final WatchlistSnapshot snapshot = presenter.getShowResult().getSnapshot();
+        assertEquals(21, snapshot.getSelectedCloses().size());
+        assertEquals(40, snapshot.getSelectedPriceRows().size());
+        assertEquals(40, snapshot.getTickerRows().get(0).priceCount());
     }
 
     @Test

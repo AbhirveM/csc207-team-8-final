@@ -108,6 +108,6 @@ class CompletedBacktestStoreTest {
      */
     private static BacktestResult result(String symbol, String strategyName, double totalReturn) {
         return new BacktestResult(new Ticker(symbol, ""), strategyName, List.of(),
-                10000.0, totalReturn, 1, 100.0);
+                10000.0, totalReturn, 1, 100.0, List.of(), null, null);
     }
 }

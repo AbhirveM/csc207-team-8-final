@@ -118,6 +118,35 @@ public final class Theme {
     /** Height of the top navigation bar. */
     public static final int NAV_HEIGHT = 40;
 
+    /** The preferred height of a chart region, sized to read at a glance without owning the screen. */
+    public static final int CHART_HEIGHT = 148;
+
+    /**
+     * The left gutter a chart reserves for its value-axis labels.
+     *
+     * <p>Wide enough for {@code "$11000.00"}, which is 72 pixels of {@link #FONT_MONO} plus the
+     * {@link #XS} gap to the plot frame. It was 56 and the comment beside it claimed the same
+     * thing, but 56 never fit: the equity curve's gutter was painting {@code "1000.00"} where it
+     * meant {@code "$10000.00"}. Nothing failed, because no test could see the gutter and nobody
+     * had looked at the backtest chart on screen.
+     */
+    public static final int CHART_GUTTER = 80;
+
+    /** The bottom strip a chart reserves for its date-axis labels. */
+    public static final int CHART_FOOT = 18;
+
+    /*
+     * There is deliberately no CHART_GRID_LINES token any more. A chart no longer decides how
+     * many gridlines to draw: it draws one per labelled tick, and the ticks are chosen by
+     * interface_adapter.chart.AxisScale on the presenter's side of the boundary, because which
+     * numbers a user reads off an axis is a presentation decision rather than a paint one. A
+     * constant here that nothing in view reads would only describe a rule this package no
+     * longer owns.
+     */
+
+    /** The stroke width of a plotted series. */
+    public static final float CHART_STROKE = 1.5f;
+
     // --- Type ---
 
     /** Base point size for all text. */

@@ -3,6 +3,9 @@ package interface_adapter.watchlist;
 import java.util.List;
 import java.util.Objects;
 
+import interface_adapter.chart.ChartTick;
+import use_case.watchlist.ChartPeriod;
+
 /**
  * Everything {@code WatchlistView} needs in order to paint itself, and nothing else.
  *
@@ -58,12 +61,51 @@ public final class WatchlistState {
                            String close, String volume) {
     }
 
+    /**
+     * The close-price series for the selected ticker, together with the axis it is scaled
+     * against, its labelled ticks, and the spoken summary the presenter has already formatted.
+     *
+     * <p>The same deliberate duplication as {@link TickerRow} and {@link PriceRow}: this carries
+     * {@code LineChart.Series} component for component, so the view hands it straight over
+     * without composing anything. The two extras are {@code meta}, which belongs to the header
+     * band rather than to the plot, and {@code period}, which belongs to the control beside it.
+     *
+     * <p>The period rides here rather than beside it on the state because restoring the control
+     * is a chart concern: it exists so a repopulate can put the combo back where the user left
+     * it, and so what the combo reads can never disagree with what the line shows.
+     *
+     * @param closes     the closing prices, <em>oldest first</em> - the opposite order to
+     *                   {@link #getPriceRows()}, because a line runs forwards in time - and
+     *                   already narrowed to {@code period}
+     * @param lowerBound the value at the foot of the axis, below the lowest close so the line
+     *                   clears the frame
+     * @param upperBound the value at the head of the axis, above the highest close
+     * @param valueTicks the labelled marks down the gutter, each also drawn as a gridline
+     * @param timeTicks  the labelled dates along the foot, each tick's value being a point index
+     *                   into {@code closes}
+     * @param period     the window {@code closes} was narrowed to, so the control can be restored
+     * @param meta       the compact signed readout for the header band's meta slot, which has
+     *                   room for about four words beside the region title
+     * @param summary    the full sentence, spoken as the chart's accessible description
+     */
+    public record PriceChart(List<Double> closes, double lowerBound, double upperBound,
+                             List<ChartTick> valueTicks, List<ChartTick> timeTicks,
+                             ChartPeriod period, String meta, String summary) {
+
+        /** @return the chart shown when nothing is selected or the selection has no prices. */
+        public static PriceChart empty() {
+            return new PriceChart(List.of(), 0.0, 1.0, List.of(), List.of(), ChartPeriod.ALL,
+                    "", "No data.");
+        }
+    }
+
     private final List<TickerRow> tickerRows;
     private final List<PriceRow> priceRows;
     private final String selectedSymbol;
     private final String statusMessage;
     private final String errorMessage;
     private final String tickerFieldText;
+    private final PriceChart priceChart;
 
     /**
      * @param tickerRows      one row per watchlist ticker, copied defensively
@@ -74,12 +116,15 @@ public final class WatchlistState {
      * @param errorMessage    what the error label reads, or {@code ""} when there is no error
      * @param tickerFieldText what the ticker field should contain; {@code ""} after a
      *                        success, and the text the user typed after a failure
+     * @param priceChart      the close-price series for {@code selectedSymbol}
      * @throws NullPointerException     if any argument is null
      * @throws IllegalArgumentException if {@code statusMessage} is blank
      */
     public WatchlistState(List<TickerRow> tickerRows, List<PriceRow> priceRows,
                           String selectedSymbol, String statusMessage,
-                          String errorMessage, String tickerFieldText) {
+                          String errorMessage, String tickerFieldText,
+                          PriceChart priceChart) {
+        this.priceChart = Objects.requireNonNull(priceChart, "Price chart cannot be null");
         Objects.requireNonNull(tickerRows, "Ticker rows cannot be null");
         Objects.requireNonNull(priceRows, "Price rows cannot be null");
         Objects.requireNonNull(statusMessage, "Status message cannot be null");
@@ -97,12 +142,37 @@ public final class WatchlistState {
     }
 
     /**
+     * The states that carry no chart.
+     *
+     * <p>Kept as an overload rather than folded into the canonical constructor because the
+     * great majority of the call sites - every one that is asserting on rows, prose or the
+     * ticker field - has nothing to say about a series, and threading an explicit
+     * {@code PriceChart.empty()} through all of them would be churn that hides the handful of
+     * places the chart is actually the point.
+     *
+     * @param tickerRows      one row per watchlist ticker, copied defensively
+     * @param priceRows       the daily prices for {@code selectedSymbol}, copied defensively
+     * @param selectedSymbol  the symbol whose prices are shown, or {@code ""} for none
+     * @param statusMessage   what the status label reads; must not be blank
+     * @param errorMessage    what the error label reads, or {@code ""} when there is no error
+     * @param tickerFieldText what the ticker field should contain
+     * @throws NullPointerException     if any argument is null
+     * @throws IllegalArgumentException if {@code statusMessage} is blank
+     */
+    public WatchlistState(List<TickerRow> tickerRows, List<PriceRow> priceRows,
+                          String selectedSymbol, String statusMessage,
+                          String errorMessage, String tickerFieldText) {
+        this(tickerRows, priceRows, selectedSymbol, statusMessage, errorMessage,
+                tickerFieldText, PriceChart.empty());
+    }
+
+    /**
      * The state the view model holds before any use case has run.
      *
      * @return an empty watchlist with nothing selected and no error
      */
     public static WatchlistState initial() {
-        return new WatchlistState(List.of(), List.of(), "", READY, "", "");
+        return new WatchlistState(List.of(), List.of(), "", READY, "", "", PriceChart.empty());
     }
 
     /** @return one row per watchlist ticker. Never null; empty when the watchlist is. */
@@ -148,6 +218,14 @@ public final class WatchlistState {
     }
 
     /**
+     * @return the close-price series for the selected ticker. Never null; carries an empty
+     *         list of closes when there is nothing to plot.
+     */
+    public PriceChart getPriceChart() {
+        return priceChart;
+    }
+
+    /**
      * Value equality, so a presenter test can assert on a whole state at once.
      *
      * <p>This is not used to skip repaints - see the class javadoc.
@@ -169,14 +247,15 @@ public final class WatchlistState {
                 && selectedSymbol.equals(that.selectedSymbol)
                 && statusMessage.equals(that.statusMessage)
                 && errorMessage.equals(that.errorMessage)
-                && tickerFieldText.equals(that.tickerFieldText);
+                && tickerFieldText.equals(that.tickerFieldText)
+                && priceChart.equals(that.priceChart);
     }
 
-    /** @return a hash consistent with {@link #equals(Object)} over all six fields. */
+    /** @return a hash consistent with {@link #equals(Object)} over all seven fields. */
     @Override
     public int hashCode() {
         return Objects.hash(tickerRows, priceRows, selectedSymbol, statusMessage,
-                errorMessage, tickerFieldText);
+                errorMessage, tickerFieldText, priceChart);
     }
 
     /**
@@ -190,6 +269,7 @@ public final class WatchlistState {
                 + ", selectedSymbol='" + selectedSymbol + "'"
                 + ", statusMessage='" + statusMessage + "'"
                 + ", errorMessage='" + errorMessage + "'"
-                + ", tickerFieldText='" + tickerFieldText + "'}";
+                + ", tickerFieldText='" + tickerFieldText + "'"
+                + ", priceChart=" + priceChart.closes().size() + "}";
     }
 }

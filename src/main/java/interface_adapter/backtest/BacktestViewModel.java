@@ -5,6 +5,8 @@ import java.beans.PropertyChangeSupport;
 import java.util.Collections;
 import java.util.List;
 
+import interface_adapter.chart.ChartTick;
+
 /**
  * The observable state of the backtest results screen.
  *
@@ -46,10 +48,47 @@ public class BacktestViewModel {
                            String exitDate, String exitPrice, String returnPercent) {
     }
 
+    /**
+     * The path the run took, together with the axis it is scaled against, its labelled ticks,
+     * and the spoken summary the presenter has already formatted for it.
+     *
+     * <p>The same components as {@code WatchlistState.PriceChart} minus its chart period, and for
+     * the same reason: it carries {@code LineChart.Series} so the view can hand it straight over
+     * without composing anything.
+     *
+     * <p><strong>There is no period selector on this chart</strong>, deliberately. The curve is
+     * the whole run by definition, and a window over it would leave a plot that disagreed with
+     * the total return reported beside it.
+     *
+     * @param values     the portfolio value at every close, oldest first
+     * @param lowerBound the value at the foot of the axis, below the lowest point reached
+     * @param upperBound the value at the head of the axis, above the highest point reached
+     * @param valueTicks the labelled marks down the gutter, each also drawn as a gridline
+     * @param timeTicks  the labelled dates along the foot, each tick's value being a point index
+     *                   into {@code values}. There are exactly two - the run's start and end -
+     *                   because {@code BacktestResult} carries no per-point dates to label the
+     *                   middle of the run with
+     * @param meta       the compact signed readout for the header band's meta slot, which has
+     *                   room for about four words beside the region title
+     * @param summary    the full sentence, spoken as the chart's accessible description; it
+     *                   states the direction in words and with an explicit sign, so the line's
+     *                   colour carries nothing on its own
+     */
+    public record EquityCurve(List<Double> values, double lowerBound, double upperBound,
+                              List<ChartTick> valueTicks, List<ChartTick> timeTicks,
+                              String meta, String summary) {
+
+        /** @return the curve shown before a run, and after one that failed. */
+        public static EquityCurve empty() {
+            return new EquityCurve(List.of(), 0.0, 1.0, List.of(), List.of(), "", "No data.");
+        }
+    }
+
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     private Summary summary;
     private List<TradeRow> tradeRows = Collections.emptyList();
+    private EquityCurve equityCurve = EquityCurve.empty();
     private String errorMessage = "";
     private List<String> availableTickers = Collections.emptyList();
 
@@ -58,10 +97,12 @@ public class BacktestViewModel {
      *
      * @param summary   the headline figures
      * @param tradeRows the trade log, oldest first
+     * @param equityCurve the path the portfolio took, for the chart between the two
      */
-    public void setResult(Summary summary, List<TradeRow> tradeRows) {
+    public void setResult(Summary summary, List<TradeRow> tradeRows, EquityCurve equityCurve) {
         this.summary = summary;
         this.tradeRows = List.copyOf(tradeRows);
+        this.equityCurve = equityCurve;
         this.errorMessage = "";
         support.firePropertyChange(RESULT_PROPERTY, null, summary);
     }
@@ -74,6 +115,9 @@ public class BacktestViewModel {
     public void setError(String errorMessage) {
         this.summary = null;
         this.tradeRows = Collections.emptyList();
+        // Cleared with the rest of the result: a curve left under an error message is a picture
+        // of a run that is no longer on screen.
+        this.equityCurve = EquityCurve.empty();
         this.errorMessage = errorMessage;
         support.firePropertyChange(RESULT_PROPERTY, null, null);
     }
@@ -89,6 +133,14 @@ public class BacktestViewModel {
 
     public List<TradeRow> getTradeRows() {
         return tradeRows;
+    }
+
+    /**
+     * @return the path the last successful run took. Never null; carries no values before a
+     *         run and after a failure.
+     */
+    public EquityCurve getEquityCurve() {
+        return equityCurve;
     }
 
     public String getErrorMessage() {

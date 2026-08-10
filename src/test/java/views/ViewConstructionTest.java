@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.FocusTraversalPolicy;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.List;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.InputMap;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JTable;
@@ -30,11 +32,13 @@ import interface_adapter.momentum.MomentumController;
 import interface_adapter.momentum.MomentumViewModel;
 import interface_adapter.moving_average.MovingAverageController;
 import interface_adapter.moving_average.MovingAverageViewModel;
+import interface_adapter.chart.ChartTick;
 import interface_adapter.watchlist.WatchlistController;
 import interface_adapter.watchlist.WatchlistState;
 import interface_adapter.watchlist.WatchlistViewModel;
 import use_case.backtest.RunBacktestInputBoundary;
 import use_case.backtest.RunBacktestInputData;
+import use_case.watchlist.ChartPeriod;
 
 /**
  * The restyle rewrote every builder method in the view package, and the accessibility work
@@ -95,6 +99,85 @@ class ViewConstructionTest {
         WatchlistView view = watchlistView();
         assertTrue(view.isFocusTraversalPolicyProvider());
         assertNotNull(view.getFocusTraversalPolicy());
+    }
+
+    @Test
+    void bothScreensCarryANamedFocusableChart() {
+        // Focusable so a keyboard-only user can land on the chart at all, and named so that
+        // landing on it announces something other than "panel".
+        LineChart closePrice = chartNamed(watchlistView(), "Close price");
+        assertTrue(closePrice.isFocusable());
+        LineChart portfolioValue = chartNamed(
+                new BacktestResultsView(new BacktestViewModel()), "Portfolio value");
+        assertTrue(portfolioValue.isFocusable());
+    }
+
+    @Test
+    void everyChartSaysInWordsWhatItsLineSaysInShape() throws Exception {
+        // The accessible description is the non-visual half of the chart. It must never be
+        // left at whatever it was built with once real data has arrived.
+        WatchlistViewModel viewModel = new WatchlistViewModel();
+        WatchlistView view = new WatchlistView(viewModel, noOpWatchlistController());
+        LineChart chart = chartNamed(view, "Close price");
+        assertEquals("No data.", chart.getAccessibleContext().getAccessibleDescription());
+
+        viewModel.setState(new WatchlistState(
+                List.of(), List.of(), "AAPL", "Loaded.", "", "",
+                new WatchlistState.PriceChart(List.of(1.0, 2.0), 0.0, 3.0,
+                        List.of(new ChartTick(0.0, "0.00"), new ChartTick(3.0, "3.00")),
+                        List.of(new ChartTick(0, "2026-01-05"), new ChartTick(1, "2026-01-09")),
+                        ChartPeriod.ALL, "2D +1.00",
+                        "Close price for AAPL, 2 days.")));
+        flushEventQueue();
+        assertEquals("Close price for AAPL, 2 days.",
+                chart.getAccessibleContext().getAccessibleDescription());
+    }
+
+    @Test
+    void theChartCarriesAPeriodSelectorThatIsNamedLabelledAndReachable() {
+        WatchlistView view = watchlistView();
+        List<JComboBox> combos = descendants(view, JComboBox.class);
+        assertEquals(1, combos.size(), "the watchlist should have exactly one combo box");
+
+        JComboBox<?> periodBox = combos.get(0);
+        assertEquals("Chart period",
+                periodBox.getAccessibleContext().getAccessibleName());
+        assertNotNull(periodBox.getToolTipText());
+        assertEquals(ChartPeriod.values().length, periodBox.getItemCount());
+        assertEquals(ChartPeriod.ALL, periodBox.getSelectedItem(),
+                "the whole history is what the screen opens on");
+
+        JLabel periodLabel = labelStartingWith(view, "Period");
+        assertEquals(periodBox, periodLabel.getLabelFor());
+        assertEquals('P', periodLabel.getDisplayedMnemonic(),
+                "the mnemonic must be a character the label actually contains");
+    }
+
+    @Test
+    void thePeriodSelectorIsInTheFocusOrderBetweenTheChartAndThePriceTable() {
+        WatchlistView view = watchlistView();
+        FocusTraversalPolicy policy = view.getFocusTraversalPolicy();
+        LineChart chart = chartNamed(view, "Close price");
+        JComboBox<?> periodBox = descendants(view, JComboBox.class).get(0);
+
+        assertEquals(periodBox, policy.getComponentAfter(view, chart));
+        assertEquals(tableNamed(view, "Daily prices"), policy.getComponentAfter(view, periodBox));
+    }
+
+    @Test
+    void narrowingTheChartDoesNotAddATableToTheWatchlist() {
+        // The period control is a combo box beside the plot, not a third region. Two tables is
+        // the contract the watchlist screen has had since it was built.
+        assertEquals(2, descendants(watchlistView(), JTable.class).size());
+    }
+
+    @Test
+    void theChartHeadingLabelsTheChartItSitsOver() {
+        // Uppercased for the eye by Controls.heading, but still bound to the chart, which is
+        // what a screen reader follows.
+        WatchlistView view = watchlistView();
+        assertEquals(chartNamed(view, "Close price"),
+                labelStartingWith(view, "CLOSE PRICE").getLabelFor());
     }
 
     @Test
@@ -307,6 +390,22 @@ class ViewConstructionTest {
         assertTrue(!table.areFocusTraversalKeysSet(
                         java.awt.KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS),
                 "a table still swallows Shift+Tab");
+    }
+
+    /**
+     * Finds the chart carrying the given accessible name.
+     *
+     * @param root the container to search
+     * @param name the accessible name to match
+     * @return the chart
+     */
+    private static LineChart chartNamed(Container root, String name) {
+        for (LineChart chart : descendants(root, LineChart.class)) {
+            if (name.equals(chart.getAccessibleContext().getAccessibleName())) {
+                return chart;
+            }
+        }
+        throw new AssertionError("no chart named " + name);
     }
 
     /**

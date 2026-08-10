@@ -12,6 +12,7 @@ import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -27,6 +28,7 @@ import javax.swing.table.DefaultTableModel;
 import interface_adapter.watchlist.WatchlistController;
 import interface_adapter.watchlist.WatchlistState;
 import interface_adapter.watchlist.WatchlistViewModel;
+import use_case.watchlist.ChartPeriod;
 
 /**
  * The Swing panel for watchlist management.
@@ -36,6 +38,11 @@ import interface_adapter.watchlist.WatchlistViewModel;
  * anything - it copies strings into widgets. The only thing it branches on is
  * {@link WatchlistState#isErrorPresent()}, and the only user-facing prose it owns is the
  * literal {@code "Error: "} prefix and the static control labels.
+ *
+ * <p>The one {@code use_case} import is {@link ChartPeriod}, which the period combo's model
+ * holds. It is an enum of fixed labels with no behaviour, so no rule about how a period is
+ * applied lives here: the view hands the chosen constant to the controller and paints whatever
+ * comes back, exactly as it does with a ticker symbol.
  *
  * <p>Threading. The controller blocks on the network, so every button handler runs its
  * call inside a {@link SwingWorker} and the buttons stay disabled until {@code done}.
@@ -107,6 +114,10 @@ public class WatchlistView extends JPanel {
     private final JTable tickerTable = new JTable(tickerTableModel);
     private final JTable priceTable = new JTable(priceTableModel);
 
+    private final LineChart closeChart = new LineChart("Close price");
+    private final JLabel closeChartMeta = new JLabel(BLANK_LINE);
+    private final JComboBox<ChartPeriod> periodBox = new JComboBox<>(ChartPeriod.values());
+
     private final JLabel statusLabel = new JLabel(BLANK_LINE);
     private final JLabel errorLabel = new JLabel(BLANK_LINE);
 
@@ -148,6 +159,7 @@ public class WatchlistView extends JPanel {
         refreshButton.addActionListener(event -> onRefresh());
         loadPricesButton.addActionListener(event -> onLoadPrices());
         tickerTable.getSelectionModel().addListSelectionListener(this::onTickerSelected);
+        periodBox.addActionListener(event -> onPeriodChosen());
 
         viewModel.addPropertyChangeListener(this::onViewModelChanged);
         render(viewModel.getState());
@@ -204,7 +216,7 @@ public class WatchlistView extends JPanel {
     private JSplitPane buildSplitPane() {
         final JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 buildTablePanel("Watchlist", tickerTable),
-                buildTablePanel("Daily prices", priceTable));
+                buildPricePanel());
         splitPane.setResizeWeight(0.5);
         // The divider is a rule the user can drag, not a piece of furniture: one pixel wide,
         // no bevel, and no one-touch arrows hanging off it.
@@ -214,6 +226,72 @@ public class WatchlistView extends JPanel {
         splitPane.setOneTouchExpandable(false);
         splitPane.setContinuousLayout(true);
         return splitPane;
+    }
+
+    /**
+     * Builds the right-hand side of the split: the close-price chart over the daily-price
+     * table.
+     *
+     * <p>The chart belongs on this side rather than above the whole split because it and the
+     * table below it are both keyed to the selected ticker, where the watchlist table on the
+     * left is not. Putting it over the split would have it change under a table it has nothing
+     * to do with.
+     *
+     * @return the assembled panel
+     */
+    private JPanel buildPricePanel() {
+        // Left unstyled for the same reason the table headings are: PanelHeader.band runs it
+        // through Controls.heading itself. The setLabelFor binding is why it is built here.
+        final JLabel chartHeading = new JLabel("Close price");
+        chartHeading.setLabelFor(closeChart);
+
+        final JPanel chartRegion = PanelHeader.region(chartHeading, closeChartMeta,
+                buildChartBody());
+        // The same horizontal inset buildTablePanel applies, so the band over the chart lines
+        // up with the band over the table beneath it rather than sitting a few pixels wider.
+        chartRegion.setBorder(BorderFactory.createEmptyBorder(0, Theme.SM, 0, Theme.SM));
+
+        final JPanel priceSide = new JPanel(new BorderLayout(0, Theme.MD));
+        priceSide.setBackground(Theme.BG);
+        // NORTH takes the chart's preferred height, which is Theme.CHART_HEIGHT, so the table
+        // keeps every remaining pixel.
+        priceSide.add(chartRegion, BorderLayout.NORTH);
+        priceSide.add(buildTablePanel("Daily prices", priceTable), BorderLayout.CENTER);
+        return priceSide;
+    }
+
+    /**
+     * Builds the plot with its period selector immediately above it.
+     *
+     * <p>The selector sits inside the region rather than in the header band. It belongs to the
+     * chart and not to the screen, so it is not a fifth button on the top strip; but a combo box
+     * is taller than {@link Theme#HEADER_HEIGHT} and would either crush the band or push the
+     * signed readout over the region title, which is exactly the collision {@code PanelHeaderTest}
+     * exists to prevent.
+     *
+     * @return the period row above the plot
+     */
+    private JComponent buildChartBody() {
+        final JLabel periodLabel = Controls.fieldLabel(new JLabel("Period:"));
+        periodLabel.setLabelFor(periodBox);
+        periodLabel.setDisplayedMnemonic('P');
+        Controls.styleComboBox(periodBox);
+        periodBox.setToolTipText("How much price history the chart plots. "
+                + "The table below always shows every day held.");
+        periodBox.getAccessibleContext().setAccessibleName("Chart period");
+
+        final Box periodRow = Box.createHorizontalBox();
+        periodRow.add(periodLabel);
+        periodRow.add(Box.createHorizontalStrut(Theme.SM));
+        periodRow.add(periodBox);
+        periodRow.add(Box.createHorizontalGlue());
+        periodRow.setBorder(BorderFactory.createEmptyBorder(Theme.XS, Theme.SM, Theme.XS, 0));
+
+        final JPanel body = new JPanel(new BorderLayout());
+        body.setBackground(Theme.BG);
+        body.add(periodRow, BorderLayout.NORTH);
+        body.add(closeChart, BorderLayout.CENTER);
+        return body;
     }
 
     /**
@@ -304,7 +382,8 @@ public class WatchlistView extends JPanel {
      */
     private void installFocusOrder() {
         final List<Component> order = List.of(tickerField, addButton, removeButton,
-                refreshButton, loadPricesButton, tickerTable, priceTable, statusLabel);
+                refreshButton, loadPricesButton, tickerTable, closeChart, periodBox, priceTable,
+                statusLabel);
         setFocusTraversalPolicy(new OrderedFocusTraversalPolicy(order));
         setFocusTraversalPolicyProvider(true);
     }
@@ -363,7 +442,42 @@ public class WatchlistView extends JPanel {
         if (row < 0) {
             return;
         }
-        controller.showWatchlist((String) tickerTableModel.getValueAt(row, SYMBOL_COLUMN));
+        controller.showWatchlist((String) tickerTableModel.getValueAt(row, SYMBOL_COLUMN),
+                selectedPeriod());
+    }
+
+    /**
+     * Re-plots the selected ticker over the newly chosen window.
+     *
+     * <p>Ignored while the widgets are being repopulated: {@code render} restores this combo from
+     * the state, which fires this listener, which would call Show Watchlist again. That loop has
+     * no natural end, so it is guarded by the same {@code repopulating} flag the ticker table
+     * uses rather than by a second mechanism.
+     *
+     * <p>Called straight through on the event dispatch thread rather than through
+     * {@link #runInBackground(Runnable)}, exactly as {@link #onTickerSelected} is and for the same
+     * reason: Show Watchlist performs no I/O, so a worker would buy nothing but a flicker of
+     * disabled buttons - and it would re-enter through {@code done}, which re-issues Show.
+     */
+    private void onPeriodChosen() {
+        if (repopulating) {
+            return;
+        }
+        final String symbol = viewModel.getState().getSelectedSymbol();
+        if (!symbol.isEmpty()) {
+            controller.showWatchlist(symbol, selectedPeriod());
+        }
+    }
+
+    /**
+     * @return the window the period combo is currently on, never null
+     */
+    private ChartPeriod selectedPeriod() {
+        ChartPeriod period = ChartPeriod.ALL;
+        if (periodBox.getSelectedItem() instanceof ChartPeriod chosen) {
+            period = chosen;
+        }
+        return period;
     }
 
     /**
@@ -388,8 +502,25 @@ public class WatchlistView extends JPanel {
             @Override
             protected void done() {
                 setButtonsEnabled(true);
+                reapplyChartPeriod();
             }
         }.execute();
+    }
+
+    /**
+     * Re-plots the selection over the chosen window after a use case that had no opinion on it.
+     *
+     * <p>Add, Remove and Refresh build their snapshot with the whole history, because the user
+     * asked to change the list rather than to change the window. Without this the chart would
+     * quietly widen to everything while the combo still read "3M". Show Watchlist is synchronous
+     * and does no I/O, so this is a plain call on the event dispatch thread; it cannot recur,
+     * because Show never runs through {@link #runInBackground(Runnable)}.
+     */
+    private void reapplyChartPeriod() {
+        final String symbol = viewModel.getState().getSelectedSymbol();
+        if (!symbol.isEmpty() && !selectedPeriod().isAll()) {
+            controller.showWatchlist(symbol, selectedPeriod());
+        }
     }
 
     /**
@@ -442,6 +573,9 @@ public class WatchlistView extends JPanel {
                         row.priceCount(), row.latestDate(), row.latestClose()});
             }
             restoreSelection(state.getSelectedSymbol());
+            // Inside the guard: setting the combo fires its action listener, which would call
+            // Show Watchlist again and land back here.
+            periodBox.setSelectedItem(state.getPriceChart().period());
         }
         finally {
             repopulating = false;
@@ -452,6 +586,15 @@ public class WatchlistView extends JPanel {
             priceTableModel.addRow(new Object[] {row.date(), row.open(), row.high(),
                     row.low(), row.close(), row.volume()});
         }
+
+        // Two readouts of the same fact at two lengths: the full sentence goes to the chart,
+        // where it becomes the accessible description, and the short signed form goes in the
+        // band beside the title, which has room for a few words and no more. The line's colour
+        // says it a third time and is the only one of the three that is optional.
+        final WatchlistState.PriceChart chart = state.getPriceChart();
+        closeChart.setSeries(new LineChart.Series(chart.closes(), chart.lowerBound(),
+                chart.upperBound(), chart.valueTicks(), chart.timeTicks(), chart.summary()));
+        closeChartMeta.setText(metaOrBlank(chart.meta()));
 
         tickerField.setText(state.getTickerFieldText());
         statusLabel.setText(state.getStatusMessage());
@@ -476,6 +619,23 @@ public class WatchlistView extends JPanel {
             errorLabel.setText(BLANK_LINE);
             errorLabel.getAccessibleContext().setAccessibleDescription("No error.");
         }
+    }
+
+    /**
+     * Keeps a meta label from collapsing when there is nothing to report.
+     *
+     * @param meta the readout the presenter supplied, possibly empty
+     * @return the readout, or a blank line so the band keeps its height
+     */
+    private static String metaOrBlank(final String meta) {
+        final String result;
+        if (meta.isEmpty()) {
+            result = BLANK_LINE;
+        }
+        else {
+            result = meta;
+        }
+        return result;
     }
 
     /**

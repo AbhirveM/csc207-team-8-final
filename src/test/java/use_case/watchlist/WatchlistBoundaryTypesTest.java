@@ -99,8 +99,32 @@ class WatchlistBoundaryTypesTest {
 
     @Test
     void showWatchlistInputDataNormalizesNullToNoSelection() {
-        assertEquals("", new ShowWatchlistInputData(null).getSelectedSymbol());
-        assertEquals("AAPL", new ShowWatchlistInputData("AAPL").getSelectedSymbol());
+        assertEquals("",
+                new ShowWatchlistInputData(null, ChartPeriod.ALL).getSelectedSymbol());
+        assertEquals("AAPL",
+                new ShowWatchlistInputData("AAPL", ChartPeriod.ALL).getSelectedSymbol());
+    }
+
+    @Test
+    void showWatchlistInputDataNormalizesANullPeriodToTheWholeHistory() {
+        // A caller with no opinion gets everything, which is what every path except the period
+        // combo is. Leaving it null would put a null into the snapshot and out to the view.
+        assertEquals(ChartPeriod.ALL, new ShowWatchlistInputData("AAPL", null).getChartPeriod());
+        assertEquals(ChartPeriod.THREE_MONTHS,
+                new ShowWatchlistInputData("AAPL", ChartPeriod.THREE_MONTHS).getChartPeriod());
+    }
+
+    @Test
+    void chartPeriodsAreOrderedShortestFirstAndOnlyAllIsUnbounded() {
+        // The combo shows them in declaration order, so the order is part of the contract.
+        assertEquals(List.of(ChartPeriod.ONE_MONTH, ChartPeriod.THREE_MONTHS,
+                        ChartPeriod.SIX_MONTHS, ChartPeriod.ONE_YEAR, ChartPeriod.ALL),
+                List.of(ChartPeriod.values()));
+        assertEquals(21, ChartPeriod.ONE_MONTH.tradingDays());
+        assertEquals(252, ChartPeriod.ONE_YEAR.tradingDays());
+        assertTrue(ChartPeriod.ALL.isAll());
+        assertFalse(ChartPeriod.ONE_YEAR.isAll());
+        assertEquals("3M", ChartPeriod.THREE_MONTHS.toString());
     }
 
     @Test
