@@ -98,7 +98,7 @@ class WatchlistStateTest {
     @Test
     void statesDifferingInTheirStatusMessageAreUnequal() {
         assertNotEquals(state("AAPL", "Ready.", "", ""),
-                state("AAPL", "Showing 1 tickers.", "", ""));
+                state("AAPL", "Showing 1 ticker.", "", ""));
     }
 
     @Test
@@ -271,13 +271,13 @@ class WatchlistStateTest {
 
     @Test
     void toStringNamesTheProseFieldsSoAFailingAssertionIsReadable() {
-        final WatchlistState state = state("AAPL", "Showing 1 tickers.", "No network.", "aapl");
+        final WatchlistState state = state("AAPL", "Showing 1 ticker.", "No network.", "aapl");
 
         final String text = state.toString();
 
         assertTrue(text.contains("WatchlistState{"), text);
         assertTrue(text.contains("AAPL"), text);
-        assertTrue(text.contains("Showing 1 tickers."), text);
+        assertTrue(text.contains("Showing 1 ticker."), text);
         assertTrue(text.contains("No network."), text);
         assertTrue(text.contains("aapl"), text);
     }

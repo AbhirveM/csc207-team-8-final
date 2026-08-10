@@ -194,12 +194,22 @@ public final class WatchlistPresenter
         Objects.requireNonNull(outputData, "Output data cannot be null");
         final int tickerCount = outputData.getTickerCount();
 
+        /*
+         * A one-ticker watchlist is the single most common state in a demo - it is what
+         * the screen shows immediately after the first Add - so "Showing 1 tickers."
+         * was the most visible string in the application. The singular is spelled out
+         * rather than built from a conditional suffix: this is the only pluralized
+         * count in the presenter, and one literal per branch stays readable.
+         */
         final String status;
-        if (tickerCount > 0) {
-            status = String.format("Showing %d tickers.", tickerCount);
+        if (tickerCount == 0) {
+            status = "Your watchlist is empty. Add a ticker to begin.";
+        }
+        else if (tickerCount == 1) {
+            status = "Showing 1 ticker.";
         }
         else {
-            status = "Your watchlist is empty. Add a ticker to begin.";
+            status = String.format("Showing %d tickers.", tickerCount);
         }
 
         final WatchlistSnapshot snapshot = outputData.getSnapshot();
