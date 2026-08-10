@@ -9,6 +9,8 @@ Companion diagrams:
 - [Use case diagram](use-case-diagram.md) — actors and the ten use cases
 - [Entity class diagram](entity-class-diagram.md) — the innermost layer in full
 - [Sequence diagrams](sequence-diagrams.md) — runtime call order for three use cases
+- [Use cases and edge cases](use-cases-and-edge-cases.md) — every use case, its failure paths, and
+  the known gaps
 - [Add Ticker — full use case](add-ticker-use-case.md) — one feature end-to-end
 
 ---

@@ -6,6 +6,13 @@ import java.io.Serializable;
  * A stock ticker symbol, e.g. "AAPL".
  */
 public class Ticker implements Serializable {
+
+    // Pinned to the value the JVM computed before it was declared, so save files written
+    // by an earlier build still load. Declaring a fresh 1L here would have changed the UID
+    // and made every existing watchlist.dat an InvalidClassException - which the DAO reads
+    // as corruption and recovers from by resetting, the exact data loss this prevents.
+    private static final long serialVersionUID = -2803816898474223090L;
+
     private final String symbol;
     private final String companyName;
 
