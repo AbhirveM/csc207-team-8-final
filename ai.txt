@@ -1,0 +1,32 @@
+TOOLS USED
+----------
+- Claude Code (Anthropic) — an agentic coding assistant used from the terminal.
+
+
+HOW AI WAS USED
+---------------
+1. Planning and design
+   - Drafting and refining the phased implementation plan (see plan/) and architectural decision notes (plan/decisions.md).
+   - Producing first drafts of documentation: README sections, the architecture and use-case notes under docs/, and the accessibility report (accessibility-report.md).
+
+2. Implementation assistance
+   - Boilerplate for the Clean Architecture layers (controllers, presenters,
+     view models, interactors) once the interfaces were agreed.
+   - Scaffolding for Swing views and the Alpha Vantage data-access gateway.
+   - Suggesting edge cases and error handling for API/network failures.
+
+3. Tests
+   - Generating first-draft JUnit tests, which were then reviewed and
+     corrected by team members. All tests were run locally before merging.
+
+4. Build and tooling
+   - Configuring the Maven build (pom.xml), including the Checkstyle,
+     JaCoCo, and Shade plugins.
+
+
+WHAT AI WAS NOT USED FOR / HUMAN OVERSIGHT
+------------------------------------------
+- Final design decisions, code review, and the choice of what to merge were
+  made by team members.
+- Every AI-suggested change was compiled, tested (JUnit + Checkstyle), and
+  reviewed before being committed. No AI output was committed unread.
