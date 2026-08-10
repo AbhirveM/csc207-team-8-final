@@ -274,6 +274,32 @@ class WatchlistPresenterTest {
         assertEquals("", viewModel.getState().getErrorMessage());
     }
 
+    /**
+     * One ticker is the state the screen sits in straight after the first Add, so the
+     * plural-only format string was the most-seen string in the application.
+     */
+    @Test
+    void showWithOneTickerUsesTheSingularNoun() {
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(
+                1, snapshotWith(tickerRow("AAPL", "Apple Inc.", 100))));
+
+        assertEquals("Showing 1 ticker.", viewModel.getState().getStatusMessage());
+        assertEquals("", viewModel.getState().getErrorMessage());
+    }
+
+    /**
+     * Two is the boundary the singular branch must not swallow: guarding on
+     * {@code == 1} rather than {@code < 2} is what keeps this passing.
+     */
+    @Test
+    void showWithTwoTickersStaysPlural() {
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(
+                2, snapshotWith(tickerRow("AAPL", "Apple Inc.", 100),
+                        tickerRow("MSFT", "Microsoft Corporation", 100))));
+
+        assertEquals("Showing 2 tickers.", viewModel.getState().getStatusMessage());
+    }
+
     @Test
     void showWithAnEmptyWatchlistInvitesTheUserToAddATicker() {
         presenter.prepareSuccessView(new ShowWatchlistOutputData(0, snapshotWith()));
@@ -405,7 +431,7 @@ class WatchlistPresenterTest {
         presenter.prepareFailView(
                 new WatchlistFailure(WatchlistFailure.Kind.NETWORK, "AAPL"));
 
-        assertEquals("Showing 1 tickers.", viewModel.getState().getStatusMessage());
+        assertEquals("Showing 1 ticker.", viewModel.getState().getStatusMessage());
     }
 
     @Test
@@ -713,7 +739,7 @@ class WatchlistPresenterTest {
                 List.of(new WatchlistState.PriceRow(
                         "2024-05-31", "188.00", "191.00", "187.50", "190.50", "51000000")),
                 "AAPL",
-                "Showing 1 tickers.",
+                "Showing 1 ticker.",
                 "",
                 tickerFieldText);
     }
