@@ -88,6 +88,35 @@
             </plugin>
 
             <!--
+              Packages an executable "fat" JAR: all runtime dependencies
+              (org.json, FlatLaf) are shaded in and the manifest's Main-Class
+              points at app.Main, so the build output runs with a plain
+              `java -jar target/team-8-final-1.0-SNAPSHOT.jar` - no classpath
+              wrangling. Bound to the package phase, so `mvn clean package`
+              produces it. The original thin JAR is replaced in place.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>app.Main</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
               Line-coverage evidence for the testing rubric. Report only - the
               "check" goal is deliberately NOT bound, so a coverage shortfall
               never breaks the build. Run `mvn clean verify`, then open

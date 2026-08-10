@@ -10,8 +10,8 @@ import java.util.List;
  *
  * <p>No Swing imports here on purpose - the view observes this via {@link PropertyChangeSupport},
  * keeping the view model framework-agnostic. It also carries no entities: every field is a
- * display-ready {@code String} produced by {@link ComparisonPresenter}, so the view never formats,
- * rounds or localises anything and {@code view} never needs to import {@code entity}.
+ * display-ready {@code String} produced by the presenter, so the view never formats, rounds
+ * or localises anything and the view layer never needs to import {@code entity}.
  */
 public class ComparisonViewModel {
 

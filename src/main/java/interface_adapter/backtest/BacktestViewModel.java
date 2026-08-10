@@ -11,13 +11,14 @@ import interface_adapter.chart.ChartTick;
  * The observable state of the backtest results screen.
  *
  * <p>No Swing imports are used here so the view model remains framework-independent, and no
- * entities either: {@link BacktestPresenter} formats everything, so {@code view} never imports
+ * entities either: the presenter formats everything, so the view layer never imports
  * {@code entity}.
  */
 public class BacktestViewModel {
 
     public static final String VIEW_NAME = "backtest";
     public static final String RESULT_PROPERTY = "result";
+    public static final String TICKERS_PROPERTY = "availableTickers";
 
     /**
      * The headline figures of a completed run, already formatted for display.
@@ -89,6 +90,7 @@ public class BacktestViewModel {
     private List<TradeRow> tradeRows = Collections.emptyList();
     private EquityCurve equityCurve = EquityCurve.empty();
     private String errorMessage = "";
+    private List<String> availableTickers = Collections.emptyList();
 
     /**
      * Shows a completed run.
@@ -143,6 +145,24 @@ public class BacktestViewModel {
 
     public String getErrorMessage() {
         return errorMessage;
+    }
+
+    /**
+     * Shows which tickers a run could be asked for.
+     *
+     * <p>Fired on its own property rather than {@link #RESULT_PROPERTY}: the chooser is
+     * repopulated every time the screen is shown, and that must not be mistaken for a run
+     * having finished.
+     *
+     * @param tickerSymbols the symbols with loaded price history, sorted; possibly empty
+     */
+    public void setAvailableTickers(List<String> tickerSymbols) {
+        this.availableTickers = List.copyOf(tickerSymbols);
+        support.firePropertyChange(TICKERS_PROPERTY, null, this.availableTickers);
+    }
+
+    public List<String> getAvailableTickers() {
+        return availableTickers;
     }
 
     /**

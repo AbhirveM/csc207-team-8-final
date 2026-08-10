@@ -7,15 +7,15 @@ import data_access.InMemoryMarketDataGateway;
 import data_access.InMemoryStockRepository;
 import entity.BacktestEngine;
 import entity.Watchlist;
-import view.BacktestView;
-import view.ComparisonView;
-import view.LookAndFeel;
-import view.MainView;
-import view.MomentumConfigurationView;
-import view.MovingAverageConfigurationView;
-import view.ViewManager;
-import view.ViewManagerModel;
-import view.WatchlistView;
+import views.BacktestView;
+import views.ComparisonView;
+import views.LookAndFeel;
+import views.MainView;
+import views.MomentumConfigurationView;
+import views.MovingAverageConfigurationView;
+import views.ViewManager;
+import views.ViewManagerModel;
+import views.WatchlistView;
 import interface_adapter.backtest.BacktestController;
 import interface_adapter.backtest.BacktestPresenter;
 import interface_adapter.backtest.BacktestViewModel;
@@ -58,6 +58,8 @@ import use_case.watchlist.ShowWatchlistInteractor;
 import use_case.watchlist.StockRepository;
 
 import javax.swing.SwingUtilities;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -154,14 +156,22 @@ public class Main {
         });
         SaveWatchlist.InputBoundary saveWatchlistInteractor =
                 new SaveWatchlist.Interactor(watchlistDataAccess, persistencePresenter);
+        // The restored watchlist is what the four watchlist interactors are built around, so
+        // the builder needs the object itself rather than a status line. It takes it from the
+        // load boundary here and lets the presenter word the outcome, which is what keeps the
+        // entity off PersistenceViewModel and out of reach of the views.
+        RestoredWatchlist restoredWatchlist = new RestoredWatchlist(persistencePresenter);
         LoadWatchlist.InputBoundary loadWatchlistInteractor =
-                new LoadWatchlist.Interactor(watchlistDataAccess, persistencePresenter);
+                new LoadWatchlist.Interactor(watchlistDataAccess, restoredWatchlist);
         // --- Watchlist (Member 1) ---
-        // Gateway selection. This is the only place in the codebase that reads the
-        // environment: with no key configured the app runs fully offline against synthetic
-        // sample data rather than failing, so a grader without a key still sees the feature.
-        // There is no .env, no default key in code, and the key never appears in a message.
-        Optional<String> apiKey = AlphaVantageMarketDataAccessObject.apiKeyFromEnvironment();
+        // Gateway selection. This is the only place in the codebase that resolves the key:
+        // the real process environment is consulted first, then a project-local .env as a
+        // fallback so `java -jar` works without exporting the variable by hand. With no key
+        // from either source the app runs fully offline against synthetic sample data rather
+        // than failing, so a grader without a key still sees the feature. No default key
+        // lives in code, and the key never appears in a message.
+        Optional<String> apiKey = AlphaVantageMarketDataAccessObject.apiKeyFromEnvironment()
+                .or(() -> DotEnv.valueOf(AlphaVantageMarketDataAccessObject.API_KEY_ENV_VARIABLE));
         MarketDataGateway marketDataGateway;
         if (apiKey.isPresent()) {
             marketDataGateway = new CachingMarketDataGateway(
@@ -174,10 +184,7 @@ public class Main {
         // Seed the watchlist from disk. This is what consumes loadWatchlistInteractor above;
         // a load failure leaves the view model's watchlist null, which degrades to empty.
         loadWatchlistInteractor.execute();
-        Watchlist watchlist = persistenceViewModel.getWatchlist();
-        if (watchlist == null) {
-            watchlist = new Watchlist();
-        }
+        Watchlist watchlist = restoredWatchlist.orEmpty();
 
         StockRepository stockRepository = new InMemoryStockRepository();
         WatchlistViewModel watchlistViewModel = new WatchlistViewModel();
@@ -227,15 +234,22 @@ public class Main {
             public void prepareFailView(String errorMessage) {
                 backtestPresenter.prepareFailView(errorMessage);
             }
+
+            @Override
+            public void presentAvailableTickers(List<String> tickerSymbols) {
+                backtestPresenter.presentAvailableTickers(tickerSymbols);
+            }
         };
+        // The interactor holds the repository, not the view: the screen names a symbol and
+        // the use case resolves it to price history.
         RunBacktestInteractor runBacktest =
-                new RunBacktestInteractor(backtestEngine, backtestOutput);
+                new RunBacktestInteractor(backtestEngine, stockRepository, backtestOutput);
         BacktestController backtestController = new BacktestController(runBacktest);
         // The backtest reads the strategy parameters the user saved on the two configuration
         // screens (falling back to sensible defaults until they do), so a run reflects the
         // Momentum / Moving Average settings rather than hardcoded numbers.
         BacktestView backtestView = new BacktestView(
-                backtestViewModel, backtestController, stockRepository,
+                backtestViewModel, backtestController,
                 momentumViewModel, movingAverageViewModel);
         mainView.addView(BacktestViewModel.VIEW_NAME, backtestView);
 
@@ -251,6 +265,11 @@ public class Main {
 
         // --- Show the app ---
         SwingUtilities.invokeLater(() -> {
+            // CardLayout shows whichever card was added first, which is Momentum's parameter
+            // form - an RSI period and two thresholds, with nothing on screen explaining what
+            // they are for. Naming the opening screen puts the watchlist first, which is where
+            // the workflow actually starts, and marks its nav button as the active one.
+            viewManagerModel.setActiveView(WatchlistViewModel.VIEW_NAME);
             mainView.setVisible(true);
             // Constructing WatchlistView alone paints WatchlistState.initial() - "Ready." with
             // empty tables - so without this call a watchlist restored from disk would not
@@ -275,5 +294,48 @@ public class Main {
                         shown.getPriceChart()));
             }
         });
+    }
+
+    /**
+     * Catches the watchlist the load use case restores, so the builder can construct the
+     * four watchlist interactors around it.
+     *
+     * <p>This lives in the application builder rather than in an adapter on purpose. The
+     * restored watchlist is wiring, not something a screen paints: parking it on
+     * {@code PersistenceViewModel} made an entity reachable from every holder of that view
+     * model, which is a Frameworks &amp; Drivers class reading Entities. Wording the outcome
+     * for the status bar is still the presenter's job, and this delegates to it.
+     */
+    private static final class RestoredWatchlist implements LoadWatchlist.OutputBoundary {
+
+        private final LoadWatchlist.OutputBoundary presenter;
+        private Watchlist watchlist;
+
+        RestoredWatchlist(LoadWatchlist.OutputBoundary presenter) {
+            this.presenter = Objects.requireNonNull(presenter, "Presenter cannot be null");
+        }
+
+        @Override
+        public void presentWatchlist(Watchlist loaded) {
+            this.watchlist = loaded;
+            presenter.presentWatchlist(loaded);
+        }
+
+        @Override
+        public void prepareFailView(String errorMessage) {
+            presenter.prepareFailView(errorMessage);
+        }
+
+        /**
+         * The restored watchlist, or a new empty one when nothing was loaded.
+         *
+         * <p>A first launch has no {@code watchlist.dat} and a failed load leaves nothing
+         * behind; both degrade to an empty watchlist rather than stopping start-up.
+         *
+         * @return the watchlist to build the application around
+         */
+        Watchlist orEmpty() {
+            return watchlist != null ? watchlist : new Watchlist();
+        }
     }
 }

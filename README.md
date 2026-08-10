@@ -350,6 +350,9 @@ is cached and re-fetched on demand, so a restored row reads "Not loaded" until y
   the Strategy pattern at the centre of the domain.
 - [Sequence diagrams](docs/sequence-diagrams.md) — runtime call order for Add Ticker, Run Backtest,
   and Load Watchlist.
+- [Use cases and edge cases](docs/use-cases-and-edge-cases.md) — all ten use cases, the Clean
+  Architecture chain behind each, every handled failure path with its exact message, and the
+  known gaps.
 - [Add Ticker — full use case](docs/add-ticker-use-case.md) — class diagram, the Dependency Rule
   applied to this feature, and the before/after views of the screen.
 - [Accessibility report](accessibility-report.md) — the seven Principles of Universal Design as
@@ -370,9 +373,17 @@ src/main/java/
 ├── use_case/
 ├── interface_adapter/
 ├── data_access/
-├── view/
+├── views/
 └── app/
 ```
+
+The directory names are the ones the Clean Architecture Visualizer (`cave verify`) looks for:
+it scans `entity`, `use_case`, `interface_adapter`, `data_access` and `views` by name, and
+silently skips any layer whose directory is named otherwise. `views` is plural for that
+reason, and `data_access` must *not* be renamed to `database` — the checker classifies a
+`database` directory as a plain datastore rather than a gateway, which turns the correct
+`FileWatchlistDataAccessObject implements WatchlistDataAccessInterface` inversion into a
+reported violation.
 
 ## Entities
 
