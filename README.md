@@ -40,7 +40,7 @@ The project is developed for **CSC207: Software Design** at the University of To
 | Abhirve Munipalle | AbhirveM         | Watchlist & Alpha Vantage Market Data | Manages stock ticker watchlists, validates ticker input, retrieves historical market data from Alpha Vantage, converts API responses into DailyPrice objects, displays historical price data, and handles API/network errors. |
 | Ratnabh Khare     | RatnabhK  | Strategy Configuration & Moving Average Strategy | Creates and edits strategy configurations, defines shared strategy interfaces, implements the Moving Average Crossover strategy, validates parameters, generates buy/sell signals, and tests the strategy. |
 | Dongyan Zhou      | ZhouDD213 | Momentum Strategy & General Backtesting Engine | Implements the RSI Momentum strategy, validates parameters, generates buy/sell signals, and builds the general backtesting engine to simulate trades and calculate performance metrics such as total return, number of trades, and win rate. |
-| Ziyad Mouftah     | mouftz    | Persistence, Strategy Comparison, Main UI & Integration | Handles saving and loading watchlists and strategy configurations, comparing backtest results, building application navigation, connecting modules through the application builder, and performing final integration testing. |
+| Ziyad Mouftah     | mouftz    | Persistence, Strategy Comparison, Main UI & Integration | Handles saving and loading watchlists, comparing backtest results, building application navigation, connecting modules through the application builder, and performing final integration testing. |
 
 ---
 
@@ -57,6 +57,8 @@ The project is developed for **CSC207: Software Design** at the University of To
 | Moving Average Crossover strategy | **Runs today** |
 | Momentum (RSI) strategy | **Runs today** |
 | Backtest engine and performance summary | **Runs today** |
+| Watchlist close-price chart with 1M / 3M / 6M / 1Y / ALL periods | **Runs today** |
+| Backtest portfolio-value (equity-curve) chart | **Runs today** |
 | Strategy comparison screen | **Runs today** |
 | Strategy configuration persistence | Not implemented |
 
@@ -67,6 +69,7 @@ Users can:
 - Remove tickers from their watchlist
 - View company information and ticker details
 - View recent historical price data
+- Plot closing prices over 1M, 3M, 6M, 1Y, or all loaded history
 
 Example:
 
@@ -105,7 +108,7 @@ Two strategies are available:
 ### Moving Average Crossover Strategy
 
 Signals a buy when the short-term moving average of closing prices crosses above the long-term
-average, and a sell when it crosses back below. It defaults to a 5-day short window and a 20-day
+average, and a sell when it crosses back below. It defaults to a 10-day short window and a 50-day
 long window.
 
 ### RSI Momentum Strategy
@@ -127,14 +130,25 @@ threshold (70) or above.
 After running a backtest, the results screen shows:
 
 - Simulated trade history
-- Buy and sell points
+- Entry and exit dates, prices, quantities, and returns
 - Individual trade gains/losses
 - Total return
 - Number of trades
 - Win rate
+- A portfolio-value (equity-curve) chart over the backtest period
 
 The comparison screen is reachable from the navigation bar and ranks completed backtests against
 each other. Run at least one backtest first; until then it shows its empty state.
+
+### Simulation assumptions
+
+Each backtest starts with **$10,000** and uses an all-in/all-out, long-only simulation. A signal
+calculated after day *i* closes is executed at day *i + 1*'s opening price. Purchases use whole
+shares only, and any open position is liquidated at the final day's closing price. The simulation
+does not model transaction fees, slippage, taxes, dividends, short selling, or fractional shares.
+
+MarketLens is an educational historical simulator. It does not place real trades, connect to a
+brokerage, or provide financial advice. Past simulated performance does not predict future results.
 
 ---
 
@@ -148,8 +162,9 @@ succeeded.
 
 Two honest limitations:
 
-- **Strategy configurations are not persisted.** `WatchlistEntry` does not yet carry a strategy
-  configuration; wiring that up is tracked in issue #7.
+- **Strategy configurations are not persisted.** `WatchlistEntry` has optional configuration
+  fields, but the configuration screens do not write their values into those entries. Configured
+  parameters therefore apply only for the current session.
 - **Price history is not persisted.** Only ticker membership is saved, so prices are re-fetched
   on demand after a restart. This is deliberate — the free API tier allows roughly twenty-five
   requests a day, and hydrating a restored watchlist automatically would spend them at launch.
@@ -220,16 +235,14 @@ This project uses the [Alpha Vantage API](https://www.alphavantage.co/documentat
    setx ALPHA_VANTAGE_API_KEY "your_key_here"
    ```
    After `setx`, open a new terminal for the change to take effect.
-3. The application reads this key at runtime via `System.getenv("ALPHA_VANTAGE_API_KEY")`, at the
-   composition root only. No key is ever committed or defaulted in the source.
+3. The application checks the real `ALPHA_VANTAGE_API_KEY` environment variable first. If it is
+   absent, the composition root automatically checks a project-local `.env` file. A real
+   environment variable always takes precedence.
 
-   As a convenience, copy the committed [`.env.example`](.env.example) to a local `.env` and put your
-   key there. `.env` is gitignored, so it never reaches source control. Note the app does **not**
-   auto-load `.env` — load it into your shell before running, or add the variable to your IntelliJ
-   Run Configuration:
+   As a convenience, copy the committed [`.env.example`](.env.example) to `.env` and put your key
+   there. `.env` is gitignored, so it does not reach source control:
    ```bash
    cp .env.example .env   # then edit .env with your key
-   set -a; source .env; set +a
    ```
 
 **This step is optional.** See [Running without an API key](#running-without-an-api-key) — the
@@ -256,33 +269,19 @@ To also generate the line-coverage report, run `mvn clean verify` and open
 
 ## Run the Application
 
-Compile, then launch `app.Main` with both runtime dependencies — `org.json` and FlatLaf — on the
-classpath. Leaving FlatLaf off fails at startup with
-`NoClassDefFoundError: com/formdev/flatlaf/FlatDarkLaf`, because the look and feel is installed as
-the first statement of `main`.
+Build the executable JAR. Maven Shade packages the runtime dependencies and sets `app.Main` as the
+entry point:
 
 ```bash
-mvn clean compile
-```
-
-macOS / Linux:
-
-```bash
-java -cp "target/classes:$HOME/.m2/repository/org/json/json/20240303/json-20240303.jar:$HOME/.m2/repository/com/formdev/flatlaf/3.6/flatlaf-3.6.jar" app.Main
-```
-
-Windows (PowerShell) — note the `;` separator rather than `:`:
-
-```powershell
-java -cp "target/classes;$env:USERPROFILE\.m2\repository\org\json\json\20240303\json-20240303.jar;$env:USERPROFILE\.m2\repository\com\formdev\flatlaf\3.6\flatlaf-3.6.jar" app.Main
+mvn clean package
+java -jar target/team-8-final-1.0-SNAPSHOT.jar
 ```
 
 The application runs **without an API key**. If `ALPHA_VANTAGE_API_KEY` is not set, it falls back to
 a built-in offline data source with sample history for AAPL, MSFT and TSLA, so the app is fully
 usable with no key and no network connection. The status line says so when this fallback is active.
 
-> **Note:** `mvn exec:java` will not work — this project does not declare the `exec-maven-plugin`.
-> Use the commands above.
+> **Note:** `mvn exec:java` is not configured for this project. Use the executable JAR above.
 
 ---
 
@@ -305,13 +304,13 @@ Confirm the `ALPHA_VANTAGE_API_KEY` environment variable is set in the same term
 # Usage
 
 1. Set up your API key (optional — see Installation above; the app runs fully offline without one).
-2. Launch the application with the `java -cp ...` command in [Run the Application](#run-the-application)
-   (`mvn exec:java` is **not** configured for this project).
+2. Launch the application with the `java -jar ...` command in
+   [Run the Application](#run-the-application).
 3. On the Watchlist screen, add stock tickers and load their price history.
-4. Open the Backtest screen.
-5. Choose a ticker and one of the built-in strategies.
-6. Run the backtest.
-7. Review the trade history and performance statistics.
+4. Select a ticker and choose 1M, 3M, 6M, 1Y, or ALL to inspect its close-price chart.
+5. Optionally configure Moving Average or Momentum parameters for the current session.
+6. Open the Backtest screen, choose a loaded ticker and strategy, and run the backtest.
+7. Review the performance summary, equity curve, and completed-trade log.
 8. Open Compare Strategies to rank the backtests you have run.
 
 Example workflow:
@@ -323,7 +322,7 @@ Backtest screen: choose TSLA + Moving Average Crossover
         ↓
 Run backtest
         ↓
-View return, trades, and win rate
+View return, equity curve, trades, and win rate
         ↓
 Compare Strategies to rank multiple runs
 ```
@@ -334,8 +333,6 @@ Add a ticker symbol, and the application resolves the company name and loads its
 history. Symbols are normalized (`aapl` becomes `AAPL`), blanks and duplicates are rejected with a
 worded explanation, and every provider failure — invalid symbol, network error, quota exhausted —
 is reported in text rather than crashing.
-
-![The Watchlist screen with a ticker added and its price history loaded](docs/after-watchlist-view.png)
 
 The watchlist survives a restart: ticker membership is saved to `watchlist.dat`, while price history
 is cached and re-fetched on demand, so a restored row reads "Not loaded" until you refresh it.
@@ -357,7 +354,9 @@ is cached and re-fetched on demand, so a restored row reads "Not loaded" until y
   applied to this feature, and the before/after views of the screen.
 - [Accessibility report](accessibility-report.md) — the seven Principles of Universal Design as
   they apply to MarketLens, our target users, and who may be excluded.
-- [Test coverage](plan/handoffs/coverage.md) — what is covered, what is not, and why.
+- **Current test coverage:** run `mvn clean verify`, then open
+  `target/site/jacoco/index.html`. The file in `plan/handoffs/coverage.md` is a historical Phase 5
+  snapshot rather than the current report.
 
 ---
 
@@ -414,7 +413,7 @@ Examples:
 
 ## Data Access
 
-Handles persistence — reading and writing watchlist/strategy data to local storage.
+Handles persistence — reading and writing watchlist membership to local storage.
 
 ## View / App
 
