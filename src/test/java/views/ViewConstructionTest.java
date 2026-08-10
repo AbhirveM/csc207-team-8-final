@@ -334,6 +334,13 @@ class ViewConstructionTest {
     }
 
     @Test
+    void theBacktestResultsCarryAVisibleHistoricalPerformanceDisclaimer() {
+        JLabel disclaimer = labelNamed(backtestView(), "Backtest disclaimer");
+        assertTrue(disclaimer.getText().contains("Past performance"));
+        assertTrue(disclaimer.getText().contains("future results"));
+    }
+
+    @Test
     void theComparisonScreenKeepsItsMnemonicTooltipAndTableName() {
         ComparisonView view = new ComparisonView(
                 new ComparisonViewModel(),

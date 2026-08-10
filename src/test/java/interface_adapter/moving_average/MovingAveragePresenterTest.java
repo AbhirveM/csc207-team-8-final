@@ -8,7 +8,6 @@ import use_case.moving_average.ConfigureMovingAverageOutputData;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,7 +56,7 @@ final class MovingAveragePresenterTest {
     }
 
     @Test
-    void failurePreservesInputClearsResultAndNotifiesView() {
+    void failurePreservesInputAndLastValidResultAndNotifiesView() {
         final MovingAverageViewModel viewModel =
                 new MovingAverageViewModel();
 
@@ -80,8 +79,8 @@ final class MovingAveragePresenterTest {
 
         assertEquals("abc", state.getShortWindow());
         assertEquals("50", state.getLongWindow());
-        assertNull(state.getConfiguredShortWindow());
-        assertNull(state.getConfiguredLongWindow());
+        assertEquals(Integer.valueOf(10), state.getConfiguredShortWindow());
+        assertEquals(Integer.valueOf(50), state.getConfiguredLongWindow());
         assertEquals(
                 "Window values must be whole numbers.",
                 state.getStatusMessage());

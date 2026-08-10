@@ -57,7 +57,6 @@ public final class MovingAveragePresenter
 
         final MovingAverageState state = viewModel.getState();
 
-        state.clearConfiguredWindows();
         state.setStatusMessage(errorMessage);
         state.setConfigurationSuccessful(false);
 

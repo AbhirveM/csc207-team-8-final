@@ -50,8 +50,8 @@ public class BacktestView extends JPanel {
     private static final String RSI_MOMENTUM = "RSI Momentum";
 
     /** Defaults used when the user has not saved a configuration on the strategy screens. */
-    private static final int DEFAULT_SHORT_WINDOW = 5;
-    private static final int DEFAULT_LONG_WINDOW = 20;
+    private static final int DEFAULT_SHORT_WINDOW = 10;
+    private static final int DEFAULT_LONG_WINDOW = 50;
     private static final int DEFAULT_RSI_PERIOD = 14;
     private static final double DEFAULT_OVERSOLD = 30.0;
     private static final double DEFAULT_OVERBOUGHT = 70.0;

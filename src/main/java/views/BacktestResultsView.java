@@ -30,6 +30,8 @@ public class BacktestResultsView extends JPanel {
     private static final String TRADES_LABEL = "Number of Trades";
     private static final String WIN_RATE_LABEL = "Win Rate";
     private static final String BLANK_LINE = " ";
+    private static final String DISCLAIMER =
+            "Historical simulation only. Past performance does not predict future results.";
 
     /** Shown in a metric slot that has no value yet. */
     private static final String NO_VALUE = "\u2014";
@@ -56,6 +58,7 @@ public class BacktestResultsView extends JPanel {
     private final JLabel numberOfTradesLabel = valueLabel(TRADES_LABEL, Theme.FONT_MONO);
     private final JLabel winRateLabel = valueLabel(WIN_RATE_LABEL, Theme.FONT_MONO);
     private final JLabel statusLabel = new JLabel(BLANK_LINE);
+    private final JLabel disclaimerLabel = new JLabel(DISCLAIMER);
 
     private final LineChart equityChart = new LineChart("Portfolio value");
     private final JLabel equityMeta = new JLabel(BLANK_LINE);
@@ -116,9 +119,18 @@ public class BacktestResultsView extends JPanel {
 
         statusLabel.setFont(Theme.FONT_UI);
         statusLabel.setForeground(Theme.FG_MUTED);
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(Theme.SM, 0, 0, 0));
         statusLabel.getAccessibleContext().setAccessibleName("Status");
-        add(statusLabel, BorderLayout.SOUTH);
+
+        disclaimerLabel.setFont(Theme.FONT_UI);
+        disclaimerLabel.setForeground(Theme.FG_MUTED);
+        disclaimerLabel.getAccessibleContext().setAccessibleName("Backtest disclaimer");
+
+        final JPanel footer = new JPanel(new BorderLayout(0, Theme.XS));
+        footer.setBackground(Theme.BG);
+        footer.setBorder(BorderFactory.createEmptyBorder(Theme.SM, 0, 0, 0));
+        footer.add(statusLabel, BorderLayout.NORTH);
+        footer.add(disclaimerLabel, BorderLayout.SOUTH);
+        add(footer, BorderLayout.SOUTH);
 
         viewModel.addPropertyChangeListener(this::onViewModelChanged);
     }
