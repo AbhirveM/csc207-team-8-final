@@ -9,6 +9,13 @@ import java.util.Objects;
  * (Matches the shared entity name from the team's Member Responsibilities doc.)
  */
 public class DailyPrice implements Serializable {
+
+    // Pinned to the value the JVM computed before it was declared, so save files written
+    // by an earlier build still load. Declaring a fresh 1L here would have changed the UID
+    // and made every existing watchlist.dat an InvalidClassException - which the DAO reads
+    // as corruption and recovers from by resetting, the exact data loss this prevents.
+    private static final long serialVersionUID = 7757619468639421704L;
+
     private final LocalDate date;
     private final double open;
     private final double high;
