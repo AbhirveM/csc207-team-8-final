@@ -3,6 +3,9 @@ package interface_adapter.watchlist;
 import java.util.List;
 import java.util.Objects;
 
+import interface_adapter.chart.ChartTick;
+import use_case.watchlist.ChartPeriod;
+
 /**
  * Everything {@code WatchlistView} needs in order to paint itself, and nothing else.
  *
@@ -59,29 +62,40 @@ public final class WatchlistState {
     }
 
     /**
-     * The close-price series for the selected ticker, together with the axis labels and the
-     * spoken summary the presenter has already formatted for it.
+     * The close-price series for the selected ticker, together with the axis it is scaled
+     * against, its labelled ticks, and the spoken summary the presenter has already formatted.
      *
-     * <p>The same deliberate duplication as {@link TickerRow} and {@link PriceRow}: this
-     * mirrors {@code LineChart.Series} component for component so the view can hand it straight
-     * over without either layer importing the other's types.
+     * <p>The same deliberate duplication as {@link TickerRow} and {@link PriceRow}: this carries
+     * {@code LineChart.Series} component for component, so the view hands it straight over
+     * without composing anything. The two extras are {@code meta}, which belongs to the header
+     * band rather than to the plot, and {@code period}, which belongs to the control beside it.
+     *
+     * <p>The period rides here rather than beside it on the state because restoring the control
+     * is a chart concern: it exists so a repopulate can put the combo back where the user left
+     * it, and so what the combo reads can never disagree with what the line shows.
      *
      * @param closes     the closing prices, <em>oldest first</em> - the opposite order to
-     *                   {@link #getPriceRows()}, because a line runs forwards in time
-     * @param lowLabel   the lowest close, formatted
-     * @param highLabel  the highest close, formatted
-     * @param startLabel the date of the oldest close
-     * @param endLabel   the date of the newest close
+     *                   {@link #getPriceRows()}, because a line runs forwards in time - and
+     *                   already narrowed to {@code period}
+     * @param lowerBound the value at the foot of the axis, below the lowest close so the line
+     *                   clears the frame
+     * @param upperBound the value at the head of the axis, above the highest close
+     * @param valueTicks the labelled marks down the gutter, each also drawn as a gridline
+     * @param timeTicks  the labelled dates along the foot, each tick's value being a point index
+     *                   into {@code closes}
+     * @param period     the window {@code closes} was narrowed to, so the control can be restored
      * @param meta       the compact signed readout for the header band's meta slot, which has
      *                   room for about four words beside the region title
      * @param summary    the full sentence, spoken as the chart's accessible description
      */
-    public record PriceChart(List<Double> closes, String lowLabel, String highLabel,
-                             String startLabel, String endLabel, String meta, String summary) {
+    public record PriceChart(List<Double> closes, double lowerBound, double upperBound,
+                             List<ChartTick> valueTicks, List<ChartTick> timeTicks,
+                             ChartPeriod period, String meta, String summary) {
 
         /** @return the chart shown when nothing is selected or the selection has no prices. */
         public static PriceChart empty() {
-            return new PriceChart(List.of(), "", "", "", "", "", "No data.");
+            return new PriceChart(List.of(), 0.0, 1.0, List.of(), List.of(), ChartPeriod.ALL,
+                    "", "No data.");
         }
     }
 

@@ -2,6 +2,8 @@ package interface_adapter.backtest;
 
 import entity.BacktestResult;
 import entity.Trade;
+import interface_adapter.chart.AxisScale;
+import interface_adapter.chart.ChartTick;
 import use_case.backtest.RunBacktestOutputBoundary;
 import use_case.backtest.RunBacktestOutputData;
 
@@ -19,6 +21,12 @@ public class BacktestPresenter implements RunBacktestOutputBoundary {
     private static final String MONEY_FORMAT = "$%.2f";
     private static final String PERCENT_FORMAT = "%.2f%%";
     private static final String PLAIN_FORMAT = "%.2f";
+
+    /**
+     * Roughly how many gaps the value axis is divided into. A target rather than a count: the
+     * rounding can land one either side of it.
+     */
+    private static final int AXIS_INTERVALS = 4;
 
     private final BacktestViewModel viewModel;
 
@@ -77,6 +85,20 @@ public class BacktestPresenter implements RunBacktestOutputBoundary {
             high = Math.max(high, value);
         }
 
+        // Rounded bounds rather than the raw low and high, so the curve clears the frame and the
+        // gridlines land on figures worth printing. AxisScale does the rounding.
+        final AxisScale scale = AxisScale.forRange(low, high, AXIS_INTERVALS);
+        final List<ChartTick> valueTicks = new ArrayList<>();
+        for (final Double value : scale.tickValues()) {
+            valueTicks.add(new ChartTick(value, String.format(MONEY_FORMAT, value)));
+        }
+
+        // Two date ticks and no more: BacktestResult carries the run's start and end but no
+        // per-point dates, so there is nothing truthful to label the middle of the axis with.
+        final List<ChartTick> timeTicks = List.of(
+                new ChartTick(0, String.valueOf(result.getStartDate())),
+                new ChartTick(values.size() - 1, String.valueOf(result.getEndDate())));
+
         final String returnText = String.format(PERCENT_FORMAT, result.getTotalReturn());
         final String signedReturn;
         if (result.getTotalReturn() > 0.0) {
@@ -98,13 +120,8 @@ public class BacktestPresenter implements RunBacktestOutputBoundary {
         // goes to the accessible description instead.
         final String meta = String.format("%dD %s", values.size(), signedReturn);
 
-        return new BacktestViewModel.EquityCurve(values,
-                String.format(MONEY_FORMAT, low),
-                String.format(MONEY_FORMAT, high),
-                String.valueOf(result.getStartDate()),
-                String.valueOf(result.getEndDate()),
-                meta,
-                summary);
+        return new BacktestViewModel.EquityCurve(values, scale.lowerBound(), scale.upperBound(),
+                valueTicks, timeTicks, meta, summary);
     }
 
     @Override

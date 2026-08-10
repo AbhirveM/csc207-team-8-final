@@ -1,12 +1,15 @@
 package interface_adapter.watchlist;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import interface_adapter.chart.ChartTick;
 import use_case.watchlist.AddTickerOutputData;
+import use_case.watchlist.ChartPeriod;
 import use_case.watchlist.MarketDataException;
 import use_case.watchlist.RefreshTickerOutputData;
 import use_case.watchlist.RemoveTickerOutputData;
@@ -33,6 +36,9 @@ class WatchlistPresenterTest {
 
     /** The em dash the presenter substitutes for an absent cell, as an escape. */
     private static final String ABSENT = "\u2014";
+
+    /** Tolerance for a tick value that must match a bound exactly, not approximately. */
+    private static final double EXACT = 0.0;
 
     private WatchlistViewModel viewModel;
     private WatchlistPresenter presenter;
@@ -512,7 +518,7 @@ class WatchlistPresenterTest {
     }
 
     @Test
-    void theChartCarriesItsBoundsAndDatesTakenFromOppositeEndsOfThePriceRows() {
+    void theChartCarriesDatesTakenFromOppositeEndsOfThePriceRows() {
         // The closes run oldest-first and the price rows newest-first, so the series start date
         // is the last row and the end date is the first. Getting this backwards draws a chart
         // whose axis reads right-to-left, which nothing else would catch.
@@ -520,10 +526,76 @@ class WatchlistPresenterTest {
 
         final WatchlistState.PriceChart chart = viewModel.getState().getPriceChart();
         assertEquals(List.of(100.0, 90.0, 120.0), chart.closes());
-        assertEquals("90.00", chart.lowLabel());
-        assertEquals("120.00", chart.highLabel());
-        assertEquals("2024-05-29", chart.startLabel());
-        assertEquals("2024-05-31", chart.endLabel());
+
+        final List<ChartTick> timeTicks = chart.timeTicks();
+        assertEquals(0.0, timeTicks.get(0).value(), EXACT);
+        assertEquals("2024-05-29", timeTicks.get(0).label());
+        assertEquals(2.0, timeTicks.get(timeTicks.size() - 1).value(), EXACT);
+        assertEquals("2024-05-31", timeTicks.get(timeTicks.size() - 1).label());
+    }
+
+    @Test
+    void theChartScalesToRoundedBoundsSoTheLineClearsTheFrame() {
+        // Scaling to the raw low and high made every series touch both edges of the plot, so a
+        // 2% drift and a crash looked identical. The bounds now sit outside the data.
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(1, chartSnapshot()));
+
+        final WatchlistState.PriceChart chart = viewModel.getState().getPriceChart();
+        assertTrue(chart.lowerBound() < 90.0, "bound was " + chart.lowerBound());
+        assertTrue(chart.upperBound() > 120.0, "bound was " + chart.upperBound());
+    }
+
+    @Test
+    void everyGridlineIsLabelledInTheSameFormatAsThePriceTable() {
+        // An unlabelled gridline is decoration. The labels carry no currency mark, matching the
+        // daily-price column the chart sits above.
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(1, chartSnapshot()));
+
+        final WatchlistState.PriceChart chart = viewModel.getState().getPriceChart();
+        assertTrue(chart.valueTicks().size() >= 3, "ticks were " + chart.valueTicks());
+        for (final ChartTick tick : chart.valueTicks()) {
+            assertFalse(tick.label().contains("$"), "tick label was " + tick.label());
+            assertTrue(tick.label().contains("."), "tick label was " + tick.label());
+        }
+        assertEquals(chart.lowerBound(), chart.valueTicks().get(0).value(), EXACT);
+        assertEquals(chart.upperBound(),
+                chart.valueTicks().get(chart.valueTicks().size() - 1).value(), EXACT);
+    }
+
+    @Test
+    void theDateTicksAreSpreadAcrossTheWindowAndNeverRepeatAnIndex() {
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(1, longChartSnapshot()));
+
+        final List<ChartTick> timeTicks = viewModel.getState().getPriceChart().timeTicks();
+        assertEquals(5, timeTicks.size());
+        for (int index = 1; index < timeTicks.size(); index++) {
+            assertTrue(timeTicks.get(index).value() > timeTicks.get(index - 1).value(),
+                    "date tick indexes must ascend: " + timeTicks);
+        }
+    }
+
+    @Test
+    void aWindowShorterThanTheDateTickCountDegradesToFewerTicks() {
+        // Two closes cannot carry five dates. The alternative is five ticks on two indexes,
+        // which paints the same date on top of itself.
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(1, new WatchlistSnapshot(
+                List.of(tickerRow("AAPL", "Apple Inc.", 2)), "AAPL",
+                List.of(priceRow("2024-05-31"), priceRow("2024-05-30")),
+                List.of(100.0, 75.0))));
+
+        assertEquals(2, viewModel.getState().getPriceChart().timeTicks().size());
+    }
+
+    @Test
+    void theChartCarriesThePeriodItWasBuiltWithSoTheControlCanBeRestored() {
+        presenter.prepareSuccessView(new ShowWatchlistOutputData(1, new WatchlistSnapshot(
+                List.of(tickerRow("AAPL", "Apple Inc.", 3)), "AAPL",
+                List.of(priceRow("2024-05-31"), priceRow("2024-05-30"), priceRow("2024-05-29")),
+                List.of(100.0, 90.0, 120.0), ChartPeriod.THREE_MONTHS)));
+
+        assertEquals(ChartPeriod.THREE_MONTHS,
+                viewModel.getState().getPriceChart().period());
+        assertEquals(ChartPeriod.ALL, WatchlistState.PriceChart.empty().period());
     }
 
     @Test
@@ -593,6 +665,20 @@ class WatchlistPresenterTest {
                 "AAPL",
                 List.of(priceRow("2024-05-31"), priceRow("2024-05-30"), priceRow("2024-05-29")),
                 List.of(100.0, 90.0, 120.0));
+    }
+
+    /** @return a snapshot with twelve closes, enough for the full spread of date ticks. */
+    private static WatchlistSnapshot longChartSnapshot() {
+        final List<WatchlistSnapshot.PriceRow> rows = new ArrayList<>();
+        final List<Double> closes = new ArrayList<>();
+        for (int day = 12; day >= 1; day--) {
+            rows.add(priceRow(String.format("2024-05-%02d", day)));
+        }
+        for (int day = 1; day <= 12; day++) {
+            closes.add(100.0 + day);
+        }
+        return new WatchlistSnapshot(List.of(tickerRow("AAPL", "Apple Inc.", 12)), "AAPL",
+                rows, closes);
     }
 
     /** @return a price row on the given date; only the date matters to the chart tests. */

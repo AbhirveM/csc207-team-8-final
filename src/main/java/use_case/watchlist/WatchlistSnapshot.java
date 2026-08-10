@@ -50,8 +50,34 @@ public final class WatchlistSnapshot {
     private final String selectedSymbol;
     private final List<PriceRow> selectedPriceRows;
     private final List<Double> selectedCloses;
+    private final ChartPeriod chartPeriod;
 
     /**
+     * @param tickerRows        one row per watchlist ticker, copied defensively
+     * @param selectedSymbol    the symbol whose prices are carried, or null/"" for none
+     * @param selectedPriceRows the price rows for {@code selectedSymbol}, newest first
+     * @param selectedCloses    the closing prices for {@code selectedSymbol} as raw numbers,
+     *                          <em>oldest first</em>, already narrowed to {@code chartPeriod}
+     * @param chartPeriod       the window {@code selectedCloses} was narrowed to; a null value
+     *                          is normalized to {@link ChartPeriod#ALL}
+     * @throws NullPointerException if any list is null
+     */
+    public WatchlistSnapshot(List<TickerRow> tickerRows, String selectedSymbol,
+                             List<PriceRow> selectedPriceRows, List<Double> selectedCloses,
+                             ChartPeriod chartPeriod) {
+        Objects.requireNonNull(tickerRows, "Ticker rows cannot be null");
+        Objects.requireNonNull(selectedPriceRows, "Selected price rows cannot be null");
+        Objects.requireNonNull(selectedCloses, "Selected closes cannot be null");
+        this.tickerRows = List.copyOf(tickerRows);
+        this.selectedSymbol = selectedSymbol == null ? "" : selectedSymbol;
+        this.selectedPriceRows = List.copyOf(selectedPriceRows);
+        this.selectedCloses = List.copyOf(selectedCloses);
+        this.chartPeriod = chartPeriod == null ? ChartPeriod.ALL : chartPeriod;
+    }
+
+    /**
+     * The snapshots whose series covers the whole history.
+     *
      * @param tickerRows        one row per watchlist ticker, copied defensively
      * @param selectedSymbol    the symbol whose prices are carried, or null/"" for none
      * @param selectedPriceRows the price rows for {@code selectedSymbol}, newest first
@@ -61,13 +87,7 @@ public final class WatchlistSnapshot {
      */
     public WatchlistSnapshot(List<TickerRow> tickerRows, String selectedSymbol,
                              List<PriceRow> selectedPriceRows, List<Double> selectedCloses) {
-        Objects.requireNonNull(tickerRows, "Ticker rows cannot be null");
-        Objects.requireNonNull(selectedPriceRows, "Selected price rows cannot be null");
-        Objects.requireNonNull(selectedCloses, "Selected closes cannot be null");
-        this.tickerRows = List.copyOf(tickerRows);
-        this.selectedSymbol = selectedSymbol == null ? "" : selectedSymbol;
-        this.selectedPriceRows = List.copyOf(selectedPriceRows);
-        this.selectedCloses = List.copyOf(selectedCloses);
+        this(tickerRows, selectedSymbol, selectedPriceRows, selectedCloses, ChartPeriod.ALL);
     }
 
     /**
@@ -80,7 +100,7 @@ public final class WatchlistSnapshot {
      */
     public WatchlistSnapshot(List<TickerRow> tickerRows, String selectedSymbol,
                              List<PriceRow> selectedPriceRows) {
-        this(tickerRows, selectedSymbol, selectedPriceRows, List.of());
+        this(tickerRows, selectedSymbol, selectedPriceRows, List.of(), ChartPeriod.ALL);
     }
 
     public List<TickerRow> getTickerRows() {
@@ -106,10 +126,22 @@ public final class WatchlistSnapshot {
      * simply drawn backwards. This is the one place in the codebase where the two orders sit
      * side by side, so it is the one place the asymmetry is worth stating.
      *
+     * <p>Narrowed to {@link #getChartPeriod()}, so this is the <em>tail</em> of the history - the
+     * most recent N closes - while {@link #getSelectedPriceRows()} stays whole. That is
+     * deliberate; the reason is in {@code WatchlistSnapshotFactory.priceRowsFor}.
+     *
      * @return the closing prices, oldest first. Never null; empty when nothing is selected.
      */
     public List<Double> getSelectedCloses() {
         return selectedCloses;
+    }
+
+    /**
+     * @return the window {@link #getSelectedCloses()} was narrowed to, so a view can restore the
+     *         control the user chose it with. Never null.
+     */
+    public ChartPeriod getChartPeriod() {
+        return chartPeriod;
     }
 
     /**
@@ -134,11 +166,13 @@ public final class WatchlistSnapshot {
                 // The series is part of the identity, not a derived extra: this equality is
                 // what suppresses a repaint, so a snapshot differing only in its closes would
                 // silently leave a stale line on screen.
-                && selectedCloses.equals(that.selectedCloses);
+                && selectedCloses.equals(that.selectedCloses)
+                && chartPeriod == that.chartPeriod;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tickerRows, selectedSymbol, selectedPriceRows, selectedCloses);
+        return Objects.hash(tickerRows, selectedSymbol, selectedPriceRows, selectedCloses,
+                chartPeriod);
     }
 }

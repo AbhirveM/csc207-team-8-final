@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.FocusTraversalPolicy;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.List;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.InputMap;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JTable;
@@ -31,9 +33,11 @@ import interface_adapter.momentum.MomentumController;
 import interface_adapter.momentum.MomentumViewModel;
 import interface_adapter.moving_average.MovingAverageController;
 import interface_adapter.moving_average.MovingAverageViewModel;
+import interface_adapter.chart.ChartTick;
 import interface_adapter.watchlist.WatchlistController;
 import interface_adapter.watchlist.WatchlistState;
 import interface_adapter.watchlist.WatchlistViewModel;
+import use_case.watchlist.ChartPeriod;
 
 /**
  * The restyle rewrote every builder method in the view package, and the accessibility work
@@ -118,12 +122,52 @@ class ViewConstructionTest {
 
         viewModel.setState(new WatchlistState(
                 List.of(), List.of(), "AAPL", "Loaded.", "", "",
-                new WatchlistState.PriceChart(List.of(1.0, 2.0), "1.00", "2.00",
-                        "2026-01-05", "2026-01-09", "2D +1.00",
+                new WatchlistState.PriceChart(List.of(1.0, 2.0), 0.0, 3.0,
+                        List.of(new ChartTick(0.0, "0.00"), new ChartTick(3.0, "3.00")),
+                        List.of(new ChartTick(0, "2026-01-05"), new ChartTick(1, "2026-01-09")),
+                        ChartPeriod.ALL, "2D +1.00",
                         "Close price for AAPL, 2 days.")));
         flushEventQueue();
         assertEquals("Close price for AAPL, 2 days.",
                 chart.getAccessibleContext().getAccessibleDescription());
+    }
+
+    @Test
+    void theChartCarriesAPeriodSelectorThatIsNamedLabelledAndReachable() {
+        WatchlistView view = watchlistView();
+        List<JComboBox> combos = descendants(view, JComboBox.class);
+        assertEquals(1, combos.size(), "the watchlist should have exactly one combo box");
+
+        JComboBox<?> periodBox = combos.get(0);
+        assertEquals("Chart period",
+                periodBox.getAccessibleContext().getAccessibleName());
+        assertNotNull(periodBox.getToolTipText());
+        assertEquals(ChartPeriod.values().length, periodBox.getItemCount());
+        assertEquals(ChartPeriod.ALL, periodBox.getSelectedItem(),
+                "the whole history is what the screen opens on");
+
+        JLabel periodLabel = labelStartingWith(view, "Period");
+        assertEquals(periodBox, periodLabel.getLabelFor());
+        assertEquals('P', periodLabel.getDisplayedMnemonic(),
+                "the mnemonic must be a character the label actually contains");
+    }
+
+    @Test
+    void thePeriodSelectorIsInTheFocusOrderBetweenTheChartAndThePriceTable() {
+        WatchlistView view = watchlistView();
+        FocusTraversalPolicy policy = view.getFocusTraversalPolicy();
+        LineChart chart = chartNamed(view, "Close price");
+        JComboBox<?> periodBox = descendants(view, JComboBox.class).get(0);
+
+        assertEquals(periodBox, policy.getComponentAfter(view, chart));
+        assertEquals(tableNamed(view, "Daily prices"), policy.getComponentAfter(view, periodBox));
+    }
+
+    @Test
+    void narrowingTheChartDoesNotAddATableToTheWatchlist() {
+        // The period control is a combo box beside the plot, not a third region. Two tables is
+        // the contract the watchlist screen has had since it was built.
+        assertEquals(2, descendants(watchlistView(), JTable.class).size());
     }
 
     @Test

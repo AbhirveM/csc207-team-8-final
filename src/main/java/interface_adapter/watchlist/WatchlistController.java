@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import use_case.watchlist.AddTickerInputBoundary;
 import use_case.watchlist.AddTickerInputData;
+import use_case.watchlist.ChartPeriod;
 import use_case.watchlist.RefreshTickerInputBoundary;
 import use_case.watchlist.RefreshTickerInputData;
 import use_case.watchlist.RemoveTickerInputBoundary;
@@ -80,11 +81,23 @@ public final class WatchlistController {
     }
 
     /**
-     * Re-renders the watchlist with the given symbol selected. Performs no I/O.
+     * Re-renders the watchlist with the given symbol selected, plotting its whole history.
+     * Performs no I/O.
      *
      * @param selectedSymbol the symbol to select; {@code ""} selects nothing
      */
     public void showWatchlist(String selectedSymbol) {
-        showWatchlist.execute(new ShowWatchlistInputData(selectedSymbol));
+        showWatchlist(selectedSymbol, ChartPeriod.ALL);
+    }
+
+    /**
+     * Re-renders the watchlist with the given symbol selected and its chart narrowed to a
+     * window. Performs no I/O.
+     *
+     * @param selectedSymbol the symbol to select; {@code ""} selects nothing
+     * @param chartPeriod    how much of the price history to plot; null means everything
+     */
+    public void showWatchlist(String selectedSymbol, ChartPeriod chartPeriod) {
+        showWatchlist.execute(new ShowWatchlistInputData(selectedSymbol, chartPeriod));
     }
 }

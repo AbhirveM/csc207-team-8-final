@@ -3,6 +3,7 @@ package interface_adapter.backtest;
 import entity.BacktestResult;
 import entity.Ticker;
 import entity.Trade;
+import interface_adapter.chart.ChartTick;
 import org.junit.jupiter.api.Test;
 import use_case.backtest.RunBacktestOutputData;
 
@@ -91,7 +92,7 @@ class BacktestPresenterTest {
     }
 
     @Test
-    void theEquityCurveCarriesItsBoundsAndDatesAsFormattedLabels() {
+    void theEquityCurveCarriesRoundedBoundsAndFormattedValueTicks() {
         final BacktestViewModel viewModel = new BacktestViewModel();
         final BacktestPresenter presenter = new BacktestPresenter(viewModel);
 
@@ -100,10 +101,35 @@ class BacktestPresenterTest {
 
         final BacktestViewModel.EquityCurve curve = viewModel.getEquityCurve();
         assertEquals(List.of(10000.0, 9500.0, 11000.0), curve.values());
-        assertEquals("$9500.00", curve.lowLabel());
-        assertEquals("$11000.00", curve.highLabel());
-        assertEquals("2026-01-05", curve.startLabel());
-        assertEquals("2026-01-09", curve.endLabel());
+
+        // Rounded outwards past the data, so the curve clears the frame at both ends.
+        assertTrue(curve.lowerBound() < 9500.0, "bound was " + curve.lowerBound());
+        assertTrue(curve.upperBound() > 11000.0, "bound was " + curve.upperBound());
+
+        // Every gridline is labelled, and the labels carry this presenter's dollar mark.
+        assertTrue(curve.valueTicks().size() >= 3);
+        for (final ChartTick tick : curve.valueTicks()) {
+            assertTrue(tick.label().startsWith("$"), "tick label was " + tick.label());
+        }
+        assertEquals(curve.lowerBound(), curve.valueTicks().get(0).value(), 0.0);
+        assertEquals(curve.upperBound(),
+                curve.valueTicks().get(curve.valueTicks().size() - 1).value(), 0.0);
+    }
+
+    @Test
+    void theEquityCurveLabelsOnlyItsTwoEndsInTime() {
+        // BacktestResult carries the run's start and end but no per-point dates, so there is
+        // nothing truthful to label the middle of the time axis with. Two ticks, not five.
+        final BacktestViewModel viewModel = new BacktestViewModel();
+        new BacktestPresenter(viewModel).prepareSuccessView(new RunBacktestOutputData(
+                resultWith(List.of(), List.of(10000.0, 9500.0, 11000.0), 10.0)));
+
+        final List<ChartTick> timeTicks = viewModel.getEquityCurve().timeTicks();
+        assertEquals(2, timeTicks.size());
+        assertEquals(0.0, timeTicks.get(0).value(), 0.0);
+        assertEquals("2026-01-05", timeTicks.get(0).label());
+        assertEquals(2.0, timeTicks.get(1).value(), 0.0);
+        assertEquals("2026-01-09", timeTicks.get(1).label());
     }
 
     @Test

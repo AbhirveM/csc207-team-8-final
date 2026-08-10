@@ -8,6 +8,8 @@ import java.awt.Color;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 
+import javax.swing.JLabel;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -68,10 +70,19 @@ class ThemeTest {
         // The gutter and the foot are carved out of the chart's own box, so a plot rectangle
         // only exists while they are smaller than it.
         assertTrue(Theme.CHART_FOOT < Theme.CHART_HEIGHT);
-        assertTrue(Theme.CHART_GUTTER > Theme.LG, "the gutter must hold a money label");
+        // Measured against the real font rather than eyeballed. The old value was 56 with a
+        // comment claiming it fit "$10000.00"; it fit 52 pixels of one, and the backtest chart
+        // spent its whole life printing "1000.00" in the gutter.
+        final int widestLabel = new JLabel().getFontMetrics(Theme.FONT_MONO)
+                .stringWidth("$11000.00");
+        assertTrue(Theme.CHART_GUTTER >= widestLabel + Theme.XS,
+                "the gutter holds " + Theme.CHART_GUTTER + "px but the widest axis label needs "
+                        + (widestLabel + Theme.XS));
         assertTrue(Theme.CHART_HEIGHT > Theme.ROW_HEIGHT + Theme.HEADER_HEIGHT,
                 "a chart region has to be taller than a single banded table row");
-        assertTrue(Theme.CHART_GRID_LINES > 0);
+        // There is no CHART_GRID_LINES to assert on any more: a chart draws one gridline per
+        // labelled tick, and the ticks are chosen by interface_adapter.chart.AxisScale rather
+        // than by a token here. AxisScaleTest covers that they are sane.
         assertTrue(Theme.CHART_STROKE > 0.0f);
     }
 

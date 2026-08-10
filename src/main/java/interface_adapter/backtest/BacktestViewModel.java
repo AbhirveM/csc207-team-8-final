@@ -5,6 +5,8 @@ import java.beans.PropertyChangeSupport;
 import java.util.Collections;
 import java.util.List;
 
+import interface_adapter.chart.ChartTick;
+
 /**
  * The observable state of the backtest results screen.
  *
@@ -46,30 +48,38 @@ public class BacktestViewModel {
     }
 
     /**
-     * The path the run took, together with the axis labels and the spoken summary the
-     * presenter has already formatted for it.
+     * The path the run took, together with the axis it is scaled against, its labelled ticks,
+     * and the spoken summary the presenter has already formatted for it.
      *
-     * <p>The same six components as {@code WatchlistState.PriceChart}, and for the same reason:
-     * it mirrors {@code LineChart.Series} so the view can hand it straight over without either
-     * layer importing the other's types.
+     * <p>The same components as {@code WatchlistState.PriceChart} minus its chart period, and for
+     * the same reason: it carries {@code LineChart.Series} so the view can hand it straight over
+     * without composing anything.
+     *
+     * <p><strong>There is no period selector on this chart</strong>, deliberately. The curve is
+     * the whole run by definition, and a window over it would leave a plot that disagreed with
+     * the total return reported beside it.
      *
      * @param values     the portfolio value at every close, oldest first
-     * @param lowLabel   the lowest value the portfolio reached, formatted
-     * @param highLabel  the highest value the portfolio reached, formatted
-     * @param startLabel the date of the first close
-     * @param endLabel   the date of the last close
+     * @param lowerBound the value at the foot of the axis, below the lowest point reached
+     * @param upperBound the value at the head of the axis, above the highest point reached
+     * @param valueTicks the labelled marks down the gutter, each also drawn as a gridline
+     * @param timeTicks  the labelled dates along the foot, each tick's value being a point index
+     *                   into {@code values}. There are exactly two - the run's start and end -
+     *                   because {@code BacktestResult} carries no per-point dates to label the
+     *                   middle of the run with
      * @param meta       the compact signed readout for the header band's meta slot, which has
      *                   room for about four words beside the region title
      * @param summary    the full sentence, spoken as the chart's accessible description; it
      *                   states the direction in words and with an explicit sign, so the line's
      *                   colour carries nothing on its own
      */
-    public record EquityCurve(List<Double> values, String lowLabel, String highLabel,
-                              String startLabel, String endLabel, String meta, String summary) {
+    public record EquityCurve(List<Double> values, double lowerBound, double upperBound,
+                              List<ChartTick> valueTicks, List<ChartTick> timeTicks,
+                              String meta, String summary) {
 
         /** @return the curve shown before a run, and after one that failed. */
         public static EquityCurve empty() {
-            return new EquityCurve(List.of(), "", "", "", "", "", "No data.");
+            return new EquityCurve(List.of(), 0.0, 1.0, List.of(), List.of(), "", "No data.");
         }
     }
 

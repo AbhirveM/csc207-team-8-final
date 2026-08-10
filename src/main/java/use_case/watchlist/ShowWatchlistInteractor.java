@@ -53,7 +53,8 @@ public final class ShowWatchlistInteractor implements ShowWatchlistInputBoundary
 
         presenter.prepareSuccessView(new ShowWatchlistOutputData(
                 watchlist.getEntries().size(),
-                WatchlistSnapshotFactory.build(watchlist, stockRepository, selectedSymbol)));
+                WatchlistSnapshotFactory.build(watchlist, stockRepository, selectedSymbol,
+                        inputData.getChartPeriod())));
     }
 
     /**

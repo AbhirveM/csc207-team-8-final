@@ -156,8 +156,8 @@ public class BacktestResultsView extends JPanel {
         // short signed form goes in the band, which has room for a few words beside the title.
         // The line's colour repeats what the sign in both of them already says.
         final BacktestViewModel.EquityCurve curve = viewModel.getEquityCurve();
-        equityChart.setSeries(new LineChart.Series(curve.values(), curve.lowLabel(),
-                curve.highLabel(), curve.startLabel(), curve.endLabel(), curve.summary()));
+        equityChart.setSeries(new LineChart.Series(curve.values(), curve.lowerBound(),
+                curve.upperBound(), curve.valueTicks(), curve.timeTicks(), curve.summary()));
         equityMeta.setText(curve.meta().isEmpty() ? BLANK_LINE : curve.meta());
 
         for (final BacktestViewModel.TradeRow row : viewModel.getTradeRows()) {
