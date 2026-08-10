@@ -86,10 +86,10 @@ sequenceDiagram
     autonumber
     actor User
     participant View as BacktestView
-    participant Repo as StockRepository
     participant CfgVM as Momentum / MovingAverage<br/>ViewModel
     participant Ctrl as BacktestController
     participant Int as RunBacktestInteractor
+    participant Repo as StockRepository
     participant Engine as BacktestEngine
     participant Strat as TradingStrategy
     participant Deco as RunBacktestOutputBoundary<br/>(decorator in Main)
@@ -99,15 +99,16 @@ sequenceDiagram
     participant Results as BacktestResultsView
 
     User->>View: select ticker + strategy, click Run
-    View->>Repo: findBySymbol("AAPL")
-    Repo-->>View: Stock
-    View->>CfgVM: getState().getConfiguration()
-    CfgVM-->>View: MomentumConfiguration
+    View->>CfgVM: getState() window sizes / RSI numbers
+    CfgVM-->>View: int, int / int, double, double
     Note over View,CfgVM: Falls back to (5, 20) / (14, 30, 70)<br/>until the user saves their own
-    View->>View: buildStrategy()
 
-    View->>Ctrl: runBacktest(ticker, strategy, prices)
+    View->>Ctrl: runMovingAverageBacktest("AAPL", 5, 20)
     Ctrl->>Int: execute(RunBacktestInputData)
+    Note over Ctrl,Int: A symbol and numbers. No ticker,<br/>no price list, no strategy object
+    Int->>Repo: findBySymbol("AAPL")
+    Repo-->>Int: Stock
+    Int->>Int: build the strategy the input data names
     Int->>Engine: run(ticker, strategy, prices)
 
     Engine->>Engine: validatePrices(...)
@@ -128,7 +129,10 @@ sequenceDiagram
     VM-->>Results: propertyChange(RESULT_PROPERTY)
     Results->>User: metrics + trade log
 
-    alt IllegalArgumentException / NPE / IllegalStateException
+    alt symbol has no loaded prices
+        Repo-->>Int: empty
+        Int->>Pres: prepareFailView("No loaded prices for AAPL. ...")
+    else IllegalArgumentException / NPE / IllegalStateException
         Engine--)Int: throw
         Int->>Pres: prepareFailView(exception.getMessage())
         Note over Pres: e.g. "Not enough price history<br/>to calculate a crossover"
@@ -145,9 +149,13 @@ what keeps that true.
 Second point: engine and strategy exception messages are forwarded to the user *verbatim*. That is
 why the guard messages read as sentences rather than developer shorthand.
 
-**Where it is imperfect.** Everything above `runBacktest(...)` happens inside `BacktestView`, which
-imports eight entity types and constructs strategy objects itself — the project's remaining
-Dependency Rule violation. The whole sequence also runs on the event dispatch thread, with no
+Third point: what crosses from the view is a symbol and a handful of numbers. The lookup and the
+strategy construction used to sit in `BacktestView`, which imported eight entity types and read
+`StockRepository` directly — a jump from Frameworks & Drivers past the adapter layer into both
+inner circles. Both steps now live in `RunBacktestInteractor`, and the view package imports neither
+`entity` nor `use_case`.
+
+**Where it is imperfect.** The whole sequence runs on the event dispatch thread, with no
 `SwingWorker`, unlike Add Ticker.
 
 ---
@@ -193,14 +201,14 @@ sequenceDiagram
         Int->>Pres: prepareFailView("Failed to read watchlist from ...")
     end
 
-    Int->>Pres: presentWatchlist(watchlist)
-    Pres->>VM: setLoadedWatchlist(watchlist)
-    VM->>VM: statusMessage = "Watchlist loaded."
+    Int->>Main: presentWatchlist(watchlist)
+    Note over Main: Main's RestoredWatchlist keeps the entity<br/>and delegates the wording to the presenter
+    Main->>Pres: presentWatchlist(watchlist)
+    Pres->>VM: setStatusMessage("Watchlist loaded.")
     VM-->>MainView: propertyChange(STATUS_PROPERTY)
 
-    Main->>VM: getWatchlist()
-    VM-->>Main: Watchlist (or null)
-    Note over Main: null degrades to new Watchlist()
+    Main->>Main: restoredWatchlist.orEmpty()
+    Note over Main: nothing loaded degrades to new Watchlist()
 
     Main->>WLCtrl: showWatchlist("")
     Note over Main,WLCtrl: Show Watchlist is what actually renders<br/>the restored watchlist — constructing<br/>WatchlistView alone paints only "Ready."
@@ -219,5 +227,3 @@ no backup.
    save until load succeeded" flag.
 2. Corruption recovery is **silent**. The presenter is only reached on the throwing paths, so
    nothing in the UI ever says a backup was made.
-3. `Main` reaches into a view model (`persistenceViewModel.getWatchlist()`) to retrieve an entity,
-   rather than receiving it through the output boundary.

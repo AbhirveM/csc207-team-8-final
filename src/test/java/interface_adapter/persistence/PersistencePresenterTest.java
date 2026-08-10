@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Covers the persistence presenter and its view model together, because the pair is only
@@ -32,11 +31,10 @@ final class PersistencePresenterTest {
     }
 
     @Test
-    void newViewModelStartsBlankAndHoldsNoWatchlist() {
+    void newViewModelStartsBlank() {
         final PersistenceViewModel viewModel = new PersistenceViewModel();
 
         assertEquals("", viewModel.getStatusMessage());
-        assertNull(viewModel.getWatchlist());
     }
 
     @Test
@@ -54,7 +52,7 @@ final class PersistencePresenterTest {
     }
 
     @Test
-    void loadedWatchlistIsExposedAndAnnounced() {
+    void aLoadIsAnnouncedWithoutTheWatchlistItselfReachingTheViewModel() {
         final PersistenceViewModel viewModel = new PersistenceViewModel();
         final List<PropertyChangeEvent> events = listen(viewModel);
         final PersistencePresenter presenter = new PersistencePresenter(viewModel);
@@ -64,9 +62,10 @@ final class PersistencePresenterTest {
 
         presenter.presentWatchlist(loaded);
 
-        // Main reads this straight back out to seed the running application's watchlist,
-        // so it has to be the same instance, not a copy.
-        assertSame(loaded, viewModel.getWatchlist());
+        // The watchlist stops at the presenter. It used to be parked on the view model for
+        // Main to read back out, which put an entity within reach of every screen holding
+        // that view model; Main takes it from the load boundary instead. All the view model
+        // learns is the sentence.
         assertEquals("Watchlist loaded.", viewModel.getStatusMessage());
         assertEquals(1, events.size());
         assertEquals("Watchlist loaded.", events.get(0).getNewValue());

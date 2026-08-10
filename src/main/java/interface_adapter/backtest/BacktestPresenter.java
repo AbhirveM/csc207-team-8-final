@@ -56,4 +56,9 @@ public class BacktestPresenter implements RunBacktestOutputBoundary {
     public void prepareFailView(String errorMessage) {
         viewModel.setError(errorMessage);
     }
+
+    @Override
+    public void presentAvailableTickers(List<String> tickerSymbols) {
+        viewModel.setAvailableTickers(tickerSymbols);
+    }
 }

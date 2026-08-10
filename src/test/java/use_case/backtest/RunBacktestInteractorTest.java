@@ -3,92 +3,118 @@ package use_case.backtest;
 import entity.BacktestEngine;
 import entity.BacktestResult;
 import entity.DailyPrice;
-import entity.SignalType;
+import entity.Stock;
 import entity.Ticker;
-import entity.TradingSignal;
-import entity.TradingStrategy;
+import use_case.watchlist.StockRepository;
 
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * The interactor owns three steps a caller no longer performs: resolving a ticker symbol
+ * against the price repository, building the strategy from the numbers it was handed, and
+ * running the engine over the two. These tests drive it the way a controller does - with
+ * text and numbers only - and cover each way that can fail.
+ */
 class RunBacktestInteractorTest {
 
     private static final double DELTA = 0.0001;
 
     @Test
-    void successfulBacktestPreparesSuccessView() {
+    void aMovingAverageRunResolvesTheSymbolAndPreparesSuccessView() {
         final TestPresenter presenter = new TestPresenter();
+        final TestStockRepository repository = new TestStockRepository();
+        repository.save(stockWith("TEST", 12));
 
         final RunBacktestInteractor interactor =
                 new RunBacktestInteractor(
                         new BacktestEngine(),
+                        repository,
                         presenter);
 
-        final Ticker ticker =
-                new Ticker(
-                        "TEST",
-                        "Test Company");
+        interactor.execute(
+                RunBacktestInputData.movingAverageCrossover(
+                        "TEST", 2, 4));
 
-        final List<DailyPrice> prices = List.of(
-                createPrice(1, 100.0, 100.0),
-                createPrice(2, 50.0, 50.0),
-                createPrice(3, 60.0, 60.0)
-        );
-
-        final TradingStrategy strategy =
-                new FixedSignalStrategy(
-                        SignalType.BUY,
-                        SignalType.SELL,
-                        SignalType.HOLD);
-
-        final RunBacktestInputData inputData =
-                new RunBacktestInputData(
-                        ticker,
-                        strategy,
-                        prices);
-
-        interactor.execute(inputData);
-
-        assertNotNull(presenter.successData);
         assertNull(presenter.errorMessage);
+        assertNotNull(presenter.successData);
 
         final BacktestResult result =
                 presenter.successData.getBacktestResult();
 
         assertEquals(
-                ticker,
-                result.getTicker());
+                "TEST",
+                result.getTicker().getSymbol());
 
         assertEquals(
-                "Fixed Test Strategy",
+                "Moving Average Crossover",
                 result.getStrategyName());
+    }
+
+    @Test
+    void aMomentumRunBuildsTheStrategyFromTheNumbersItWasHanded() {
+        final TestPresenter presenter = new TestPresenter();
+        final TestStockRepository repository = new TestStockRepository();
+        repository.save(stockWith("TEST", 20));
+
+        final RunBacktestInteractor interactor =
+                new RunBacktestInteractor(
+                        new BacktestEngine(),
+                        repository,
+                        presenter);
+
+        interactor.execute(
+                RunBacktestInputData.rsiMomentum(
+                        "TEST", 5, 25.0, 75.0));
+
+        assertNull(presenter.errorMessage);
+        assertNotNull(presenter.successData);
 
         assertEquals(
-                12000.0,
-                result.getFinalCapital(),
-                DELTA);
+                "RSI Momentum Strategy",
+                presenter.successData
+                        .getBacktestResult()
+                        .getStrategyName());
+    }
 
-        assertEquals(
-                20.0,
-                result.getTotalReturn(),
-                DELTA);
+    @Test
+    void aSymbolWithNoLoadedPricesPreparesFailViewAndNeverReachesTheEngine() {
+        final TestPresenter presenter = new TestPresenter();
 
-        assertEquals(
-                1,
-                result.getNumberOfTrades());
+        final RunBacktestInteractor interactor =
+                new RunBacktestInteractor(
+                        new BacktestEngine(),
+                        new TestStockRepository(),
+                        presenter);
 
-        assertEquals(
-                100.0,
-                result.getWinRate(),
-                DELTA);
+        interactor.execute(
+                RunBacktestInputData.movingAverageCrossover(
+                        "MISSING", 2, 4));
+
+        assertNull(presenter.successData);
+
+        // The wording has to name the symbol and say where to fix it: this is the state a
+        // user is in before they have ever pressed "Load prices".
+        assertTrue(
+                presenter.errorMessage.startsWith(
+                        "No loaded prices for MISSING"),
+                presenter.errorMessage);
+
+        assertTrue(
+                presenter.errorMessage.contains("Watchlist"),
+                presenter.errorMessage);
     }
 
     @Test
@@ -99,6 +125,7 @@ class RunBacktestInteractorTest {
         final RunBacktestInteractor interactor =
                 new RunBacktestInteractor(
                         new BacktestEngine(),
+                        new TestStockRepository(),
                         presenter);
 
         interactor.execute(null);
@@ -115,20 +142,25 @@ class RunBacktestInteractorTest {
         final TestPresenter presenter =
                 new TestPresenter();
 
-        final RunBacktestInteractor interactor =
-                new RunBacktestInteractor(
-                        new BacktestEngine(),
-                        presenter);
+        final TestStockRepository repository =
+                new TestStockRepository();
 
-        final RunBacktestInputData inputData =
-                new RunBacktestInputData(
+        repository.save(
+                new Stock(
                         new Ticker(
                                 "TEST",
                                 "Test Company"),
-                        new FixedSignalStrategy(),
-                        List.of());
+                        List.of()));
 
-        interactor.execute(inputData);
+        final RunBacktestInteractor interactor =
+                new RunBacktestInteractor(
+                        new BacktestEngine(),
+                        repository,
+                        presenter);
+
+        interactor.execute(
+                RunBacktestInputData.movingAverageCrossover(
+                        "TEST", 2, 4));
 
         assertNull(presenter.successData);
 
@@ -138,70 +170,71 @@ class RunBacktestInteractorTest {
     }
 
     @Test
-    void nullTickerPreparesFailView() {
+    void strategyParametersOutsideTheirBoundsPrepareFailView() {
         final TestPresenter presenter =
                 new TestPresenter();
+
+        final TestStockRepository repository =
+                new TestStockRepository();
+
+        repository.save(stockWith("TEST", 12));
 
         final RunBacktestInteractor interactor =
                 new RunBacktestInteractor(
                         new BacktestEngine(),
+                        repository,
                         presenter);
 
-        final List<DailyPrice> prices =
-                List.of(
-                        createPrice(
-                                1,
-                                100.0,
-                                100.0));
-
-        final RunBacktestInputData inputData =
-                new RunBacktestInputData(
-                        null,
-                        new FixedSignalStrategy(
-                                SignalType.HOLD),
-                        prices);
-
-        interactor.execute(inputData);
+        // The windows are the user's, so their bounds are enforced by the configuration
+        // entity and worded through the same failure path as an engine complaint rather
+        // than escaping as an exception.
+        interactor.execute(
+                RunBacktestInputData.movingAverageCrossover(
+                        "TEST", 20, 5));
 
         assertNull(presenter.successData);
 
         assertEquals(
-                "Ticker cannot be null",
+                "Long window must be greater than short window",
                 presenter.errorMessage);
     }
 
     @Test
-    void nullStrategyPreparesFailView() {
+    void loadAvailableTickersPresentsEverySymbolWithPriceHistory() {
         final TestPresenter presenter =
                 new TestPresenter();
 
-        final RunBacktestInteractor interactor =
-                new RunBacktestInteractor(
-                        new BacktestEngine(),
-                        presenter);
+        final TestStockRepository repository =
+                new TestStockRepository();
 
-        final List<DailyPrice> prices =
-                List.of(
-                        createPrice(
-                                1,
-                                100.0,
-                                100.0));
+        repository.save(stockWith("AAPL", 3));
+        repository.save(stockWith("NVDA", 3));
 
-        final RunBacktestInputData inputData =
-                new RunBacktestInputData(
-                        new Ticker(
-                                "TEST",
-                                "Test Company"),
-                        null,
-                        prices);
-
-        interactor.execute(inputData);
-
-        assertNull(presenter.successData);
+        new RunBacktestInteractor(
+                new BacktestEngine(),
+                repository,
+                presenter)
+                .loadAvailableTickers();
 
         assertEquals(
-                "Strategy cannot be null",
-                presenter.errorMessage);
+                List.of("AAPL", "NVDA"),
+                presenter.availableTickers);
+    }
+
+    @Test
+    void loadAvailableTickersPresentsAnEmptyListWhenNothingHasBeenLoaded() {
+        final TestPresenter presenter =
+                new TestPresenter();
+
+        new RunBacktestInteractor(
+                new BacktestEngine(),
+                new TestStockRepository(),
+                presenter)
+                .loadAvailableTickers();
+
+        assertEquals(
+                List.of(),
+                presenter.availableTickers);
     }
 
     @Test
@@ -213,6 +246,20 @@ class RunBacktestInteractorTest {
                 NullPointerException.class,
                 () -> new RunBacktestInteractor(
                         null,
+                        new TestStockRepository(),
+                        presenter));
+    }
+
+    @Test
+    void constructorRejectsNullStockRepository() {
+        final TestPresenter presenter =
+                new TestPresenter();
+
+        assertThrows(
+                NullPointerException.class,
+                () -> new RunBacktestInteractor(
+                        new BacktestEngine(),
+                        null,
                         presenter));
     }
 
@@ -222,10 +269,30 @@ class RunBacktestInteractorTest {
                 NullPointerException.class,
                 () -> new RunBacktestInteractor(
                         new BacktestEngine(),
+                        new TestStockRepository(),
                         null));
     }
 
-    private DailyPrice createPrice(
+    /**
+     * Builds a stock whose closes fall then rise, so a short/long crossover strategy has
+     * something to cross on.
+     *
+     * @param symbol the ticker symbol
+     * @param days how many trading days of history to produce
+     * @return the stock
+     */
+    private static Stock stockWith(String symbol, int days) {
+        final List<DailyPrice> prices = new ArrayList<>();
+        for (int day = 1; day <= days; day++) {
+            final double close = day <= days / 2
+                    ? 100.0 - day * 2.0
+                    : 100.0 + day * 2.0;
+            prices.add(createPrice(day, close, close));
+        }
+        return new Stock(new Ticker(symbol, symbol + " Company"), prices);
+    }
+
+    private static DailyPrice createPrice(
             int day,
             double open,
             double close) {
@@ -247,6 +314,7 @@ class RunBacktestInteractorTest {
 
         private RunBacktestOutputData successData;
         private String errorMessage;
+        private List<String> availableTickers;
 
         @Override
         public void prepareSuccessView(
@@ -263,46 +331,43 @@ class RunBacktestInteractorTest {
             this.errorMessage = errorMessage;
             this.successData = null;
         }
+
+        @Override
+        public void presentAvailableTickers(
+                List<String> tickerSymbols) {
+
+            this.availableTickers = tickerSymbols;
+        }
     }
 
     /**
-     * Deterministic strategy used only for testing.
+     * A repository holding whatever the test put in it, sorted by symbol like the real one.
      */
-    private static class FixedSignalStrategy
-            implements TradingStrategy {
+    private static class TestStockRepository implements StockRepository {
 
-        private final List<SignalType> signalTypes;
+        private final Map<String, Stock> bySymbol = new LinkedHashMap<>();
 
-        FixedSignalStrategy(
-                SignalType... signalTypes) {
-
-            this.signalTypes =
-                    List.of(signalTypes);
+        @Override
+        public void save(Stock stock) {
+            bySymbol.put(stock.getTicker().getSymbol(), stock);
         }
 
         @Override
-        public String getName() {
-            return "Fixed Test Strategy";
+        public Optional<Stock> findBySymbol(String normalizedSymbol) {
+            return Optional.ofNullable(bySymbol.get(normalizedSymbol));
         }
 
         @Override
-        public List<TradingSignal> generateSignals(
-                List<DailyPrice> prices) {
+        public void remove(String normalizedSymbol) {
+            bySymbol.remove(normalizedSymbol);
+        }
 
-            final List<TradingSignal> signals =
-                    new ArrayList<>();
-
-            for (int index = 0;
-                 index < signalTypes.size();
-                 index++) {
-
-                signals.add(
-                        new TradingSignal(
-                                prices.get(index).getDate(),
-                                signalTypes.get(index)));
-            }
-
-            return signals;
+        @Override
+        public List<Stock> findAll() {
+            final List<Stock> all = new ArrayList<>(bySymbol.values());
+            all.sort((left, right) ->
+                    left.getTicker().getSymbol().compareTo(right.getTicker().getSymbol()));
+            return List.copyOf(all);
         }
     }
 }
